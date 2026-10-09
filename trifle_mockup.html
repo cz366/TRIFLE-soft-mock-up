@@ -288,6 +288,12 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
   .rec-print-only { display: block !important; }
   .panel { border: 0; }
   .rec-sec { break-inside: avoid; }
+  .rec-sec:nth-child(4) { break-inside: auto; }
+  img.rec-fig { break-inside: avoid; }
+  #scr-record .scr-h { display: none; }
+  #scr-record .grid2 { display: block; }
+  #scr-record .grid2 > .stack, #scr-record > .panel, #scr-record .scr-h .sp ~ *, #scr-record .btn, #scr-record .rh .btn { display: none !important; }
+  #scr-record textarea { border: 0; resize: none; padding: 0; height: auto; }
   table.tbl { font-size: 8.5pt; }
   .tbl th { position: static; }
   img.rec-fig { max-width: 100%; }
@@ -308,6 +314,9 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
     <section class="screen" id="scr-readiness" aria-label="Readiness"></section>
     <section class="screen fixed" id="scr-run" aria-label="Run"></section>
     <section class="screen fixed" id="scr-fractions" aria-label="Fraction review"></section>
+    <section class="screen" id="scr-calibration" aria-label="Calibration"></section>
+    <section class="screen" id="scr-comparison" aria-label="Run comparison"></section>
+    <section class="screen" id="scr-integrations" aria-label="Integrations"></section>
     <section class="screen" id="scr-record" aria-label="Record"></section>
     <section class="screen" id="scr-engineer" aria-label="Engineer diagnostics"></section>
     <section class="screen" id="scr-testing" aria-label="What this prototype is testing"></section>
@@ -1272,13 +1281,13 @@ const TR = (function () {
       function blend(tab, x, w) { let v = tab[L[0].key]; for (let i = 1; i < L.length; i++) v += (tab[L[i].key] - tab[L[i - 1].key]) * sig((x - (L[i].v0 + Vv)) / w); return v; }
       res.at = function (x) {
         const Sbg = blend(bg, x, 0.08);
-        const varF = 1 + 0.15 * smoothNoise(SEED + 7, x, [0.31, 0.53, 0.87, 1.4]);
+        const varF = 1 + 0.15 * smoothNoise(SEED + (mods.varSeed || 7), x, [0.31, 0.53, 0.87, 1.4]);
         let lev = 2.4 * varF * sig((Math.min(x, xEnd) - xFront) / 0.08);
         if (x < pLoad.v0) lev = 0;
         const Sft = lev * (x > xEnd ? Math.exp(-(x - xEnd) / 0.7) : 1);
         const uvFt = (x < pLoad.v0 ? 0 : 5000 * varF * sig((Math.min(x, xEnd) - xFront) / 0.08)) * (x > xEnd ? Math.exp(-(x - xEnd) / 0.5) : 1);
         const pk = lookup(el, x - (pEl.v0 + Vv));
-        const Smab = 0.95 * pk;
+        const Smab = 0.95 * (mods.peakScale || 1) * pk;
         const gs = Math.exp(-0.5 * ((x - (pStrip.v0 + Vv + 0.4)) / 0.3) ** 2);
         const Sstrip = 0.08 * gs;
         res.Sbg = Sbg; res.Sft = Sft; res.Smab = Smab; res.Sstrip = Sstrip; res.conc = 0;
@@ -1401,7 +1410,7 @@ const TR = (function () {
       A.F[0][i] = f0 / 10; A.F[1][i] = f1 / 10; A.F[2][i] = f2 / 10; A.F[3][i] = f3 / 10;
       A.ruse[i] = ru / 10; A.ruseMax[i] = ruMax; A.nOver[i] = over;
       for (let j = 0; j < NSAMP; j++) A.med[j] = median10(A.buf, j);
-      A.decay[i] = (A.ruse[i] >= 0.2 && A.ruse[i] <= 0.9) ? decayMetric(A.med, A.irfPeak) : NaN;
+      A.decay[i] = A.ruse[i] >= 0.05 ? decayMetric(A.med, A.irfPeak) : NaN;
       if (o.beamPerBlock) { const bmRel = sg.E * (1 + 0.003 * gauss(rb)); A.bm[i] = bmRel; A.bmV[i] = 0.28 * bmRel; } else { A.bm[i] = NaN; A.bmV[i] = NaN; }
       A.blocksCompleted++;
       A.lastWave.set(A.buf.subarray(9 * NSAMP, 10 * NSAMP)); A.lastMed.set(A.med); A.hasLast = true;
@@ -1993,6 +2002,8 @@ const M = (function () {
     const s = S.setup, ok = s.irfFile === s.pmt && s.ladderFile === s.pmt;
     return { ok, msg: ok ? 'PMT, IRF and ladder match.' : 'Preset mismatch: PMT ' + s.pmt + ' mV with IRF for ' + s.irfFile + ' mV and ladder for ' + s.ladderFile + ' mV. The run is blocked.' };
   }
+  // simulation noise floor and gain by PMT preset (800 mV values assumed)
+  function pmtSim(pmt) { return pmt === 800 ? { gain: 20, sigma: 0.0012 } : { gain: 1, sigma: 0.0002 }; }
   function procMode() { const p = S.proc; return (p.median || p.window || p.laser) ? 'prop' : 'v20'; }
   function procLabel(m) {
     const p = S.proc; if ((m || procMode()) === 'v20') return 'v2.0 reference';
@@ -2054,7 +2065,7 @@ const M = (function () {
     const R = S.readiness = newReadiness(); R.started = true; R.t0 = S.simT;
     R.pmtConfirmed = S._pmtConfirmed || false;
     const pmt = S.setup.pmt;
-    R.acq = TR.createAcq({ seed: TR.SEED, stream: 2, pmt, sigma: 0.0002, cap: 400, tEnd: 330, signalAt: (tS) => ({ S: 0.0080 * (1 + 0.004 * TR.smoothNoise(TR.SEED + 3, (R.t0 + tS) / 60, [3.1, 7.7, 13.3])), tau: 3.5, E: S.fault === 'laser' ? 0 : 1, u: 0, vp: 0, phase: 0 }) });
+    R.acq = TR.createAcq({ seed: TR.SEED, stream: 2, pmt, ...pmtSim(pmt), cap: 400, tEnd: 330, signalAt: (tS) => ({ S: 0.0080 * (1 + 0.004 * TR.smoothNoise(TR.SEED + 3, (R.t0 + tS) / 60, [3.1, 7.7, 13.3])), tau: 3.5, E: S.fault === 'laser' ? 0 : 1, u: 0, vp: 0, phase: 0 }) });
     audit('readiness', 'Readiness checks started.');
     emit('readiness');
   }
@@ -2074,9 +2085,9 @@ const M = (function () {
     if (dt < 5.0) set('dark', 'running', '');
     else if (!R.dark) {
       // dark block: 10 waveforms with the laser blocked, most sensitive step
-      const A = TR.createAcq({ seed: TR.SEED, stream: 3, pmt: S.setup.pmt, sigma: 0.0002, signalAt: () => ({}) }), v = new Float64Array(TR.NSAMP); let ss = 0, n = 0;
+      const A = TR.createAcq({ seed: TR.SEED, stream: 3, pmt: S.setup.pmt, ...pmtSim(S.setup.pmt), signalAt: () => ({}) }), v = new Float64Array(TR.NSAMP); let ss = 0, n = 0;
       for (let w = 0; w < 10; w++) { TR.genWaveform(A, 0, w, 0, 0, 3.5, TR.LADDERS[S.setup.pmt].length, v); const m = TR.mean(v, 0, TR.NSAMP); for (let j = 0; j < TR.NSAMP; j++) { ss += (v[j] - m) * (v[j] - m); n++; } }
-      R.dark = Math.sqrt(ss / n); set('dark', R.dark <= S.th.darkRms ? 'pass' : 'fail', fmt.mv(R.dark) + ' mV RMS');
+      R.dark = Math.sqrt(ss / n); const lim = S.th.darkRms * (S.setup.pmt === 800 ? 10 : 1); set('dark', R.dark <= lim ? 'pass' : 'fail', fmt.mv(R.dark) + ' mV RMS (limit ' + fmt.mv(lim) + ' mV)');
     }
     // buffer baseline acquisition from t = 6 s
     if (dt >= 6) {
@@ -2131,7 +2142,7 @@ const M = (function () {
     const fault = S.fault, E0 = fault === 'laser' ? 0 : 1;
     R.bmStart = 0.28 * E0 * TR.laserExcitation(R.laserTl0);
     R.acq = TR.createAcq({
-      seed: TR.SEED, stream: 1, pmt: s.pmt, sigma: 0.0002, pDisc: 0.00025, beamPerBlock: s.beamPerBlock, tEnd: timer * 60, tauJit: 0.047, cap: Math.ceil(timer * 60) + 50,
+      seed: TR.SEED, stream: 1, pmt: s.pmt, ...pmtSim(s.pmt), pDisc: 0.00025, beamPerBlock: s.beamPerBlock, tEnd: timer * 60, tauJit: 0.047, cap: Math.ceil(timer * 60) + 50,
       arMedian: s.autorange === 'prop', arSymmetric: s.autorange === 'prop', arUnscaled: s.autorange === 'prop',
       signalAt: (tS) => {
         const tA = tS / 60 - preMin, vp = TR.pumpVolAt(ph, Math.max(0, tA)), u = vp - R.V1, pr = prof.at(u);
@@ -2173,7 +2184,9 @@ const M = (function () {
     const v20 = A.F[0][i], pu = A.F[k][i], bm = A.bm[i], pc = lc && isFinite(bm) ? pu / bm : pu;
     R.y.v20[i] = v20; R.y.propU[i] = pu; R.y.prop[i] = pc; R.y.bm[i] = isFinite(bm) ? bm * 100 : NaN;
     R.y.diff[i] = v20 !== 0 ? (pc - v20) / Math.abs(v20) * 100 : NaN;
-    R.y.act[i] = procMode() === 'v20' ? v20 : pc; R.y.decay[i] = A.decay[i];
+    R.y.act[i] = procMode() === 'v20' ? v20 : pc;
+    const dmin = S.th.decayUseMin != null ? S.th.decayUseMin : 0.2, dmax = S.th.decayUseMax != null ? S.th.decayUseMax : 0.9;
+    R.y.decay[i] = A.ruse[i] >= dmin && A.ruse[i] <= dmax ? A.decay[i] : NaN;
   }
   function rederive(R) { if (!R) return; const k = comboIdx(), lc = S.proc.laser; for (let i = 0; i < R.acq.n; i++) deriveY(R, i, k, lc); R.dataGen++; R.rules.replay(); emit('data'); }
   function stepRun(R) {
@@ -2220,10 +2233,12 @@ const M = (function () {
 
   /* ---------- evidence rules (section 11) ---------- */
   const LEVELS = { I: 'Instrument evidence', P: 'Process observation', H: 'Research hypothesis' };
+  const ruleHooks = [], fracHooks = [];
   class RuleEngine {
     constructor(R) { this.R = R; this.reset(); }
     reset() {
       this.cards = []; this.i = 0; this.st = {}; this.fired = {}; this.dq = []; this.sx = 0; this.sy = 0; this.sxx = 0; this.sxy = 0; this.plateau = null; this.phaseVals = {}; this.lastPhase = -1; this.disc = []; this.i6 = {}; this.logK = 0; this.i5At = this.i5At || 0; this.i1done = false; this.i1 = null; this.i5card = null; this.ended = {};
+      for (const h of ruleHooks) if (h.reset) h.reset(this);
     }
     replay() { const keep = this.i5At; this.reset(); this.i5At = keep; this.process(this.R.state === 'complete'); }
     phaseKey(i) { const L = this.R.ph.list; return L[this.R.acq.phase[i]].key; }
@@ -2270,6 +2285,7 @@ const M = (function () {
         const fr = R.fractions.map(f => f.id);
         this.i5card = this.card({ rule: 'I5', phaseIdx: A.phase[Math.min(this.i5At, n - 1)], title: al.detector === 'Uncertain' ? 'Alignment uncertain' : 'Fraction assignment uncertain', obs: al.issues.join(' ') + (fr.length ? ' Fractions affected: ' + rangeIds(fr) + '.' : ''), x0: A.u[Math.min(this.i5At, n - 1)], x1: A.u[Math.min(this.i5At, n - 1)], fractions: fr, action: al.detector === 'Uncertain' ? 'Enter the missing delay volume or import the flow trace.' : 'Update the UNICORN fraction delay to V1 + V2 for future runs. For this run, treat signal-to-fraction links near fraction cuts as uncertain.' });
       }
+      for (const h of ruleHooks) if (h.pre) h.pre(this, n);
       for (let i = this.i; i < n; i++) {
         const ph = this.ph(i), pk = R.standalone ? 'run' : L[ph].key, disc = A.disc[i], u = R.standalone ? A.t[i] / 60 : A.u[i], y = R.y.act[i];
         // phase change bookkeeping (P3/P4 evaluate at the end of a phase)
@@ -2297,10 +2313,12 @@ const M = (function () {
         // P2 and H1: fluorescence slope after the load plateau (Protein A template only)
         if (tpl.breakthroughRule && pk === 'load' && !disc && isFinite(y)) this.p2(i, u, y, ph);
         // P5: beam monitor changed from run start (per-block capture)
+        for (const h of ruleHooks) if (h.block) h.block(this, i, ph, u, y, disc);
         if (!disc && isFinite(A.bm[i])) { const ref = R.bmRef || (R.bmRef = A.bm[i]); const ch = Math.abs(A.bm[i] / ref - 1) * 100; this.cond('P5', ch > th.p5Pct, i, () => this.card({ rule: 'P5', phaseIdx: ph, title: 'Beam monitor changed from run start', obs: 'Beam monitor ' + fmt.pct1(A.bm[i] / ref) + ' % of its run-start value at ' + this.loc(u) + ' (limit ±' + th.p5Pct + ' %).', x0: u, x1: u, fractions: this.fracsIn(u - 0.01, u + 0.01), features: [{ name: 'Beam monitor with every block', label: 'P' }] })); }
       }
       this.i = n;
       if (final && this.lastPhase !== -1 && n && !R.standalone) this.endPhase(this.lastPhase, n);
+      for (const h of ruleHooks) if (h.post) h.post(this, final);
       this.i6ctl();
     }
     p2(i, u, y, ph) {
@@ -2327,6 +2345,7 @@ const M = (function () {
     }
     endPhase(ph, i) {
       const R = this.R, L = R.ph.list, p = L[ph], th = S.th; if (this.ended[ph]) return; this.ended[ph] = true;
+      for (const h of ruleHooks) if (h.endPhase) h.endPhase(this, ph, i);
       const tplPh = R.tpl.phases.find(q => q.key === p.key);
       // P3: buffer-phase baseline versus the pre-run baseline (readiness)
       if (tplPh && tplPh.buffer && R.readyAcq) {
@@ -2406,7 +2425,7 @@ const M = (function () {
       const laser = cards.filter(c => c.rule === 'I6' && c.x1 >= ca && c.x0 <= cb).length;
       const linked = cards.filter(c => c.fractions && c.fractions.includes(f.id)).map(c => c.rule);
       const st = { ...f, ca, cb, cvA: f.a / R.cv, cvB: f.b / R.cv, nBlocks: cnt, fMean: cnt ? sum / cnt : NaN, fMax: cnt ? mx : NaN, uvMean: uc ? us / uc : NaN, uvMax: uc ? umx : NaN, uvSat: umx >= 3799.5, chg, over, disc, low, lowShare: cnt ? low / cnt : 0, laser, assign: al.fractions === 'Uncertain' ? 'Uncertain' : 'Aligned', integ, linked: [...new Set(linked)], complete: R.aktaN && K.v[R.aktaN - 1] >= cb && n && A.u[n - 1] >= cb };
-      phaseInt[f.phaseKey] = (phaseInt[f.phaseKey] || 0);
+      for (const h of fracHooks) h(st, R, i0, i1);
       out.push(st);
     }
     // share of integrated fluorescence within each phase (relative signal area only)
@@ -2454,10 +2473,238 @@ const M = (function () {
   }
 
   return {
-    S, fmt, wall, stamp, emit, on, audit, TH_INFO, presetInfo, presetCheck, procMode, procLabel, comboIdx, template, plumbing, alignmentState,
+    S, fmt, wall, stamp, pmtSim, emit, on, audit, TH_INFO, presetInfo, presetCheck, procMode, procLabel, comboIdx, template, plumbing, alignmentState,
     laserUpdate, laserText, RD_CHECKS, readinessStart, readinessStep, readinessSummary, bufferMetrics, newRun, log, runTimeS, aktaMin, deriveTo, rederive, stepRun, finishRun, pauseRun, continueRun, fastForward,
-    LEVELS, cardRespond, fractionStats, uvPool, flBounds, addNote, tick, rangeIds
+    LEVELS, ruleHooks, fracHooks, cardRespond, fractionStats, uvPool, flBounds, addNote, tick, rangeIds
   };
+})();
+
+/* =====================================================================
+   Stage 2 model: calibration (Proposed), decay-shape analysis (Proposed,
+   research hypothesis only), run comparison (Proposed). No DOM access.
+   ===================================================================== */
+window.STAGE2 = true;
+const S2 = (function () {
+  const S = M.S, fmt = M.fmt;
+  Object.assign(S.th, { calDepPct: 5, calExpiryDays: 30, decayThrNs: 0.2, decaySdMult: 3, decayUseMin: 0.20, decayUseMax: 0.90, decayWinMl: 0.5 });
+  Object.assign(M.TH_INFO, {
+    calDepPct: ['Calibration linear range: largest departure from the fit (development assumption, not validated)', '%'], calExpiryDays: ['Calibration expires after', 'days'],
+    decayThrNs: ['P7: decay metric shift larger than', 'ns'], decaySdMult: ['P7: and larger than this multiple of the steady-phase SD', '× SD'],
+    decayUseMin: ['Decay metric computed only above this input range use', 'fraction'], decayUseMax: ['Decay metric computed only below this input range use', 'fraction'], decayWinMl: ['P7: comparison window', 'mL']
+  });
+  S.proc.decay = false;
+  function sgn(d, dp) { return (d > 0 ? '+' : d < 0 ? '−' : '') + Math.abs(d).toFixed(dp); }
+  function addDays(date, n) { const d = new Date(date + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+  function today() { return M.wall(S.simT).date; }
+
+  /* ---------- calibration (section 1) ---------- */
+  const LEVELS = [0.1, 0.5, 1, 2, 5, 10];
+  const SCHED = { pre: 3, on: 4, off: 2, edge: 0.12 };
+  const MAT = {
+    IgG: { name: 'Purified IgG', k: 1.0, eps: 1.4, lot: 'SIM-IgG-0425', note: 'Default standard.' },
+    BSA: { name: 'BSA', k: 0.25, eps: 0.667, lot: 'SIM-BSA-0611', note: 'Weak surrogate for IgG: extinction coefficient 0.667 against about 1.4 to 1.6 mL/mg/cm, fewer tryptophans and a different size.' }
+  };
+  function schedule() { const steps = []; let t = SCHED.pre; for (const c of LEVELS) { steps.push({ c, t0: t, t1: t + SCHED.on }); t += SCHED.on + SCHED.off; } return { steps, total: t }; }
+  const sims = {};
+  function simulate(material, pmt) {
+    const key = material + pmt; if (sims[key]) return sims[key];
+    const sch = schedule(), m = MAT[material], kF = 0.471 * m.k, a = 0.03 * m.eps / 1.4;
+    const acq = TR.createAcq({
+      seed: TR.SEED, stream: (material === 'IgG' ? 40 : 50) + (pmt === 800 ? 1 : 0), pmt, ...M.pmtSim(pmt), cap: Math.ceil(sch.total * 60) + 20, tEnd: sch.total * 60,
+      signalAt: tS => { const t = tS / 60; let c = 0; for (const s of sch.steps) c += s.c * (TR.sig((t - s.t0) / SCHED.edge) - TR.sig((t - s.t1) / SCHED.edge)); const g = c > 1e-9 ? (1 - Math.exp(-a * c)) / (a * c) : 1; return { S: 0.0080 * (1 + 0.004 * TR.smoothNoise(TR.SEED + 5, t, [3.1, 7.7])) + kF * c * g, tau: 3.5, E: 1, u: t, vp: 0, phase: 0, c }; }
+    });
+    TR.acqStep(acq, 1e9);
+    return (sims[key] = { material, pmt, acq, sch, t: Float64Array.from(acq.t.subarray(0, acq.n), x => x / 60) });
+  }
+  function fluor(sim) { const A = sim.acq, k = M.comboIdx(), y = new Float64Array(A.n); for (let i = 0; i < A.n; i++) y[i] = A.disc[i] ? NaN : A.F[k][i]; return y; }
+  function plateaus(sim, y, windows) {
+    const A = sim.acq, t = sim.t, n = A.n, out = [];
+    const sm = new Float64Array(n); for (let i = 0; i < n; i++) { let s = 0, c = 0; for (let k = Math.max(0, i - 2); k <= Math.min(n - 1, i + 2); k++) if (y[k] === y[k]) { s += y[k]; c++; } sm[i] = c ? s / c : NaN; }
+    const edge = (tc, dir) => { let best = tc, bv = 0; for (let i = 5; i < n - 5; i++) { if (Math.abs(t[i] - tc) > 1) continue; const d = (sm[i + 5] - sm[i - 5]) * dir; if (d > bv) { bv = d; best = t[i]; } } return best; };
+    sim.sch.steps.forEach((s, k) => {
+      const rise = edge(s.t0, 1), fall = edge(s.t1, -1), auto = [rise + 0.8, fall - 0.3], w = windows && windows[k] ? windows[k] : auto;
+      const v = []; for (let i = 0; i < n; i++) if (t[i] >= w[0] && t[i] <= w[1] && y[i] === y[i]) v.push(y[i]);
+      const mean = v.reduce((a, b) => a + b, 0) / v.length, sd = Math.sqrt(v.reduce((a, b) => a + (b - mean) * (b - mean), 0) / Math.max(1, v.length - 1));
+      out.push({ c: s.c, rise, fall, auto, w, manual: !!(windows && windows[k]), n: v.length, mean, sd, cv: sd / mean });
+    });
+    return out;
+  }
+  function weights(model, x) { return x.map(c => model === 'unweighted' ? 1 : model === '1/x' ? 1 / c : 1 / (c * c)); }
+  function fit(pl, model, crit) {
+    const x = pl.map(p => p.c), y = pl.map(p => p.mean); let best = null;
+    for (let n = x.length; n >= 3; n--) {
+      const f = TR.linreg(x.slice(0, n), y.slice(0, n), weights(model, x.slice(0, n)));
+      const dep = x.slice(0, n).map((c, i) => (y[i] - (f.a + f.b * c)) / (f.a + f.b * c) * 100);
+      if (Math.max(...dep.map(Math.abs)) <= crit) { best = { a: f.a, b: f.b, n }; break; }
+    }
+    if (!best) { const f = TR.linreg(x.slice(0, 3), y.slice(0, 3), weights(model, x.slice(0, 3))); best = { a: f.a, b: f.b, n: 0 }; }
+    const dep = x.map((c, i) => (y[i] - (best.a + best.b * c)) / (best.a + best.b * c) * 100);
+    return { a: best.a, b: best.b, n: best.n, lo: best.n ? x[0] : null, hi: best.n ? x[best.n - 1] : null, onset: best.n && best.n < x.length ? x[best.n] : null, dep, model, crit, yLo: best.n ? best.a + best.b * x[0] : null, yHi: best.n ? best.a + best.b * x[best.n - 1] : null };
+  }
+  const cal = S.cal = { material: 'IgG', model: '1/x', windows: {}, records: [], activeId: null, seq: 7 };
+  function current() {
+    const sim = simulate(cal.material, S.setup.pmt), y = fluor(sim), pl = plateaus(sim, y, cal.windows[cal.material + S.setup.pmt]);
+    return { sim, y, pl, fit: fit(pl, cal.model, S.th.calDepPct), material: cal.material, pmt: S.setup.pmt, mode: M.procLabel() };
+  }
+  function procKey() { return JSON.stringify([S.proc.median, S.proc.window, S.proc.laser]); }
+  function makeRecord(cur, date, id) {
+    const pi = M.presetInfo(cur.pmt), m = MAT[cur.material];
+    const rec = { id: id || ('CAL-P' + cur.pmt + '-' + String(++cal.seq).padStart(4, '0')), date, material: cur.material, materialName: m.name, lot: m.lot, pmt: cur.pmt, presetId: pi.id, mode: cur.mode, procKey: procKey(), expiry: addDays(date, S.th.calExpiryDays), fit: cur.fit, levels: cur.pl.map(p => p.c), means: cur.pl.map(p => p.mean), cvs: cur.pl.map(p => p.cv) };
+    cal.records.push(rec); return rec;
+  }
+  function active() { return cal.records.find(r => r.id === cal.activeId) || null; }
+  function status(R) {
+    const rec = active(); if (!rec) return { ok: false, none: true, reasons: ['No calibration selected.'] };
+    const pmt = R ? R.pmt : S.setup.pmt, reasons = [];
+    if (rec.pmt !== pmt) reasons.push('PMT preset differs (calibration ' + rec.presetId + ', run ' + M.presetInfo(pmt).id + ')');
+    if (rec.procKey !== procKey()) reasons.push('processing mode differs (calibration ' + rec.mode + ', run ' + M.procLabel() + ')');
+    if (today() > rec.expiry) reasons.push('expired on ' + rec.expiry);
+    if (!rec.fit.n) reasons.push('no demonstrated linear range');
+    return { ok: reasons.length === 0, rec, reasons };
+  }
+  function conc(F, R, phaseKey) {
+    const st = status(R); if (!st.ok || !isFinite(F)) return { state: 'na', st };
+    if (phaseKey && phaseKey !== 'el') return { state: 'mixed', st };
+    const f = st.rec.fit, c = (F - f.a) / f.b;
+    return { state: c > f.hi ? 'above' : c < f.lo ? 'below' : 'in', c, st };
+  }
+  function concText(F, R, phaseKey) {
+    const k = conc(F, R, phaseKey); if (k.state === 'na') return k.st.none ? '' : 'Calibration not applicable';
+    if (k.state === 'mixed') return 'Not applicable outside elution: mixed proteins';
+    if (k.state === 'above') return 'Above calibrated range, relative only'; if (k.state === 'below') return 'Below calibrated range, relative only';
+    return fmt.sig3(k.c) + ' mg/mL (indicative)';
+  }
+  function initRecord() {
+    const keep = S.proc.median || S.proc.window || S.proc.laser;
+    const cur0 = { ...current(), mode: 'v2.0 reference' };
+    if (!keep) { const r = makeRecord(cur0, '2026-10-02', 'CAL-P400-0007'); cal.activeId = r.id; }
+  }
+
+  /* ---------- decay-shape analysis (section 2) ---------- */
+  const irf = {}; function irfInfo(pmt) { return irf[pmt] || (irf[pmt] = TR.irfStats(TR.irfCurve(TR.IRF_TERMS[pmt]))); }
+  // Optional reconvolution fit (Engineer view): single exponential convolved with the stored IRF; A solved linearly.
+  function reconFit(v, pmt) {
+    const h = TR.irfCurve(TR.IRF_TERMS[pmt]), st = irfInfo(pmt), b = TR.median(v, 0, 100), d = new Float64Array(600);
+    for (let j = 0; j < 600; j++) d[j] = -(v[j] - b);
+    let sd = TR.pstd(v, 0, 100); const q = (Math.max(...v) - Math.min(...v)) / 254; sd = Math.max(sd, q / Math.sqrt(12), 1e-7);
+    const i0 = Math.max(0, st.peakIdx - 10), i1 = Math.min(599, st.peakIdx + 100), tmp = new Float64Array(600);
+    const model = tau => { TR.convExp(h, tau, tmp); const m = new Float64Array(600); for (let j = 0; j < 600; j++) m[j] = -tmp[j]; return m; };
+    const sig = new Float64Array(600); for (let j = 0; j < 600; j++) sig[j] = Math.sqrt(sd * sd + (0.006 * Math.abs(d[j])) * (0.006 * Math.abs(d[j])));
+    const chi = tau => { const m = model(tau); let sdm = 0, smm = 0; for (let j = i0; j <= i1; j++) { const w = 1 / (sig[j] * sig[j]); sdm += w * d[j] * m[j]; smm += w * m[j] * m[j]; } const A = sdm / smm; let c2 = 0; for (let j = i0; j <= i1; j++) { const r = (d[j] - A * m[j]) / sig[j]; c2 += r * r; } return { c2, A, m }; };
+    let lo = 0.8, hi = 8, g = (Math.sqrt(5) - 1) / 2, x1 = hi - g * (hi - lo), x2 = lo + g * (hi - lo), f1 = chi(x1).c2, f2 = chi(x2).c2;
+    for (let k = 0; k < 60; k++) { if (f1 < f2) { hi = x2; x2 = x1; f2 = f1; x1 = hi - g * (hi - lo); f1 = chi(x1).c2; } else { lo = x1; x1 = x2; f1 = f2; x2 = lo + g * (hi - lo); f2 = chi(x2).c2; } }
+    const tau = (lo + hi) / 2, best = chi(tau), hh = 0.01, cp = chi(tau + hh).c2, cm = chi(tau - hh).c2, curv = (cp - 2 * best.c2 + cm) / (hh * hh);
+    const N = i1 - i0 + 1, res = new Float64Array(600).fill(NaN), fitv = new Float64Array(600).fill(NaN);
+    for (let j = i0; j <= i1; j++) { fitv[j] = best.A * best.m[j]; res[j] = (d[j] - fitv[j]) / sig[j]; }
+    return { tau, sigTau: curv > 0 ? Math.sqrt(2 / curv) : NaN, A: best.A, chi2: best.c2, chi2r: best.c2 / (N - 2), N, i0, i1, sd, data: d, fit: fitv, res, irf: h, irfPeak: st.peakNs, fwhm: st.fwhmNs };
+  }
+  function decayRef(R) { return R && R.rules && R.rules.s2d ? R.rules.s2d.ref : null; }
+
+  /* ---------- rules I7, P6, P7 and H3 ---------- */
+  M.ruleHooks.push({
+    reset(E) { E.s2 = { i7: null, p6: {}, i7At: E.s2 ? E.s2.i7At : 0 }; E.s2d = { vals: [], ref: null, win: [], sum: 0 }; },
+    pre(E, n) {
+      const R = E.R; if (R.standalone || !n) return;
+      const st = status(R), at = Math.min(E.s2.i7At || 0, n - 1);
+      if (!st.ok && !st.none && !E.s2.i7 && n > (E.s2.i7At || 0)) E.s2.i7 = E.card({ rule: 'I7', phaseIdx: E.ph(at), title: 'Calibration not applicable', obs: 'Calibration ' + st.rec.id + ' does not apply to this run: ' + st.reasons.join('; ') + '. No concentration is shown; fluorescence is relative only.', x0: R.acq.u[at], x1: R.acq.u[at], fractions: [], features: [{ name: 'Calibration to mg/mL', label: 'P' }], action: 'Use a calibration made with the same PMT preset and processing mode, within its expiry date.' });
+    },
+    block(E, i, ph, u, y, disc) {
+      const R = E.R; if (disc || R.standalone) return;
+      // P6: fluorescence above the calibrated linear range within a collected fraction
+      const k = conc(y, R, R.ph.list[ph].key);
+      if (k.state === 'above') {
+        const f = R.fractions.find(q => { const [a, b] = TR.collectedRange(q, M.plumbing()); return u >= a && u < b; });
+        if (f) {
+          let c = E.s2.p6[ph]; const fit = k.st.rec.fit;
+          if (!c) c = E.s2.p6[ph] = E.card({ rule: 'P6', phaseIdx: ph, title: 'Fluorescence above the calibrated range', obs: '', x0: u, x1: u, fractions: [], max: 0, features: [{ name: 'Calibration ' + k.st.rec.id, label: 'P' }] });
+          if (!c.fractions.includes(f.id)) c.fractions.push(f.id); c.x1 = u; c.max = Math.max(c.max, y);
+          c.obs = 'Fluorescence exceeded the calibrated linear range (to ' + fmt.ml(fit.hi) + ' mg/mL, ' + fmt.sig3(fit.yHi) + ' V·ns) in ' + M.rangeIds(c.fractions) + ', up to ' + fmt.sig3(c.max) + ' V·ns. These fractions show "Above calibrated range, relative only"; no concentration, yield or recovery is derived.';
+        }
+      }
+      // P7: decay metric shift (research display; only when decay analysis is on)
+      if (!S.proc.decay) return;
+      const v = R.y.decay[i]; if (!isFinite(v)) return;
+      const L = R.ph.list, pk = L[ph].key, d = E.s2d, cv = R.cv, load = L.find(p => p.key === 'load');
+      if (!d.ref) { if (pk === 'load' && load && u > load.v0 + Math.min(2 * cv, load.vol * 0.4) && u < load.v1 - Math.min(cv, load.vol * 0.2)) d.vals.push([u, v]); return; }
+      d.win.push([u, v]); d.sum += v; while (d.win.length && u - d.win[0][0] > S.th.decayWinMl) d.sum -= d.win.shift()[1];
+      if (d.win.length < 20) return;
+      const m = d.sum / d.win.length, shift = m - d.ref.mean, unc = Math.sqrt(d.ref.sd * d.ref.sd / d.win.length + d.ref.sd * d.ref.sd / d.ref.n);
+      const lim = Math.max(S.th.decaySdMult * d.ref.sd, S.th.decayThrNs), on = Math.abs(shift) > lim, x0 = d.win[0][0];
+      const card = E.cond('P7', on, i, () => {
+        const fr = E.fracsIn(x0, u), info = irfInfo(R.pmt);
+        const p = E.card({ rule: 'P7', phaseIdx: ph, title: 'Decay metric changed', obs: '', x0, x1: u, fractions: fr, shift, unc, features: [{ name: 'Decay-shape analysis (research display)', label: 'P' }] });
+        E.card({ rule: 'H3', phaseIdx: ph, linkedTo: p.id, title: 'Possible change in tryptophan environment', obs: 'Possible change in tryptophan environment, for example conformational change at low pH, from P7. Fluorescence decay alone does not identify the cause.', x0, x1: u, fractions: fr, confirm: 'HPLC-SEC on ' + (fr.length ? M.rangeIds(fr) : 'the linked fractions') + '.' });
+        return p;
+      });
+      if (card && on) {
+        if (Math.abs(shift) >= Math.abs(card.shift)) { card.shift = shift; card.unc = unc; card.x0 = x0; card.x1 = u; card.fractions = E.fracsIn(x0, u); }
+        const info = irfInfo(R.pmt);
+        card.obs = 'Decay metric changed by ' + sgn(card.shift, 2) + ' ± ' + card.unc.toFixed(2) + ' ns between the window ' + fmt.ml(card.x0) + ' to ' + fmt.ml(card.x1) + ' mL, in ' + card.phase + ', and the reference, the load plateau ' + fmt.ml(d.ref.u0) + ' to ' + fmt.ml(d.ref.u1) + ' mL (' + d.ref.mean.toFixed(2) + ' ± ' + d.ref.sd.toFixed(2) + ' ns, block-to-block SD). Fires only above ' + S.th.decaySdMult + ' × SD (' + (S.th.decaySdMult * d.ref.sd).toFixed(2) + ' ns) and ' + S.th.decayThrNs + ' ns. IRF about ' + info.fwhmNs.toFixed(1) + ' ns FWHM; sampling 0.2 ns.';
+        const h = E.cards.find(c => c.linkedTo === card.id); if (h) { h.fractions = card.fractions; h.x0 = card.x0; h.x1 = card.x1; h.confirm = 'HPLC-SEC on ' + (card.fractions.length ? M.rangeIds(card.fractions) : 'the linked fractions') + '.'; }
+      }
+    },
+    endPhase(E, ph) {
+      const d = E.s2d; if (d.ref || E.R.ph.list[ph].key !== 'load' || d.vals.length < 30) return;
+      const v = d.vals.map(x => x[1]), mean = v.reduce((a, b) => a + b, 0) / v.length, sd = Math.sqrt(v.reduce((a, b) => a + (b - mean) * (b - mean), 0) / (v.length - 1));
+      d.ref = { mean, sd, n: v.length, u0: d.vals[0][0], u1: d.vals[d.vals.length - 1][0] };
+      setTimeout(() => M.emit('series'), 0);
+    }
+  });
+  M.fracHooks.push((st, R, i0, i1) => {
+    // indicative concentration only where the whole fraction is inside the linear range; decay metric mean
+    const s = status(R), prod = st.phaseKey === 'el'; let cs = 0, cn = 0, above = false, below = false, ds = 0, dn = 0;
+    for (let i = i0; i < i1; i++) {
+      const y = R.y.act[i]; if (!(y === y)) continue;
+      if (s.ok && prod) { const k = conc(y, R); if (k.state === 'above') above = true; else if (k.state === 'below') below = true; else { cs += k.c; cn++; } }
+      const dv = R.y.decay[i]; if (isFinite(dv)) { ds += dv; dn++; }
+    }
+    st.conc = !s.ok ? (s.none ? null : 'Calibration not applicable') : !prod ? 'Not applicable: mixed proteins' : above ? 'Above calibrated range, relative only' : below && !cn ? 'Below calibrated range, relative only' : cn ? (cs / cn) : null;
+    st.concPartBelow = s.ok && below && cn > 0; st.decay = dn >= 5 ? ds / dn : NaN; st.decayN = dn;
+  });
+
+  /* ---------- run comparison (section 3) ---------- */
+  const ARCHIVE = [
+    { id: 'RUN-0128-01', name: 'Earlier run, same template', eln: 'ELN-SIM-2026-0128', date: '2026-09-24', tpl: 'protA', pmt: 400, mode: 'v2.0 reference', stream: 11, mods: { kF: 0.471 * 0.94, loadScale: 1.03 }, note: 'Simulated: elution integrated fluorescence 6 % lower, load plateau 3 % higher.' },
+    { id: 'RUN-0091-01', name: 'Development run, PMT 800 mV', eln: 'ELN-SIM-2026-0091', date: '2026-08-14', tpl: 'protA', pmt: 800, mode: 'v2.0 reference', stream: 12, mods: {}, note: 'Different PMT preset: relative comparison only.' },
+    { id: 'UCL-AAV-0813', name: 'AAVX crude AAV, 3.6 mL', eln: 'UCL-SIM-2026-0813', date: '2026-08-13', tpl: 'aav', pmt: 400, mode: 'v2.0 reference', stream: 13, mods: { varSeed: 19, peakScale: 0.9 }, note: 'Simulated UCL AAV capture run: different lysate lot, elution peak 10 % lower.' }
+  ];
+  const archive = {};
+  function startArchived(def) {
+    if (archive[def.id]) return archive[def.id];
+    const tpl = TR.cloneTemplate(def.tpl), ph = TR.buildPhases(tpl), prof = TR.buildProfile(def.tpl, ph, def.mods), pre = 1, V1 = 0.20, tEnd = Math.ceil(ph.totalMin + 2) * 60;
+    const acq = TR.createAcq({ seed: TR.SEED, stream: def.stream, pmt: def.pmt, ...M.pmtSim(def.pmt), pDisc: 0.00025, tauJit: 0.047, tEnd, cap: tEnd + 50,
+      signalAt: tS => { const tA = tS / 60 - pre, vp = TR.pumpVolAt(ph, Math.max(0, tA)), u = vp - V1, pr = prof.at(u); return { S: pr.S * (1 + 0.004 * TR.smoothNoise(TR.SEED + 3 + def.stream, tS / 60, [3.1, 7.7, 13.3])), tau: pr.tau, E: 1 - 0.02 * Math.max(0, tA) / ph.totalMin, u, vp, phase: TR.phaseIdxAtVol(ph, u) }; } });
+    return (archive[def.id] = { def, tpl, ph, acq, tEnd, done: false, cv: tpl.cv, fractions: TR.buildFractions(ph, tpl.fractions) });
+  }
+  function stepArchived(a, budgetMs) { const t0 = performance.now(); while (!a.done && performance.now() - t0 < budgetMs) { TR.acqStep(a.acq, Math.min(a.tEnd, a.acq.tCursor + 120)); if (a.acq.done || a.acq.tCursor >= a.tEnd - 1) a.done = true; } return a.done; }
+  // A uniform record for the live run or an archived run
+  function runView(r) {
+    if (!r) return null;
+    if (r.def) { const A = r.acq, y = new Float64Array(A.n); for (let i = 0; i < A.n; i++) y[i] = A.disc[i] ? NaN : A.F[0][i]; return { id: r.def.id, name: r.def.name, date: r.def.date, eln: r.def.eln, tpl: r.tpl, ph: r.ph, cv: r.cv, pmt: r.def.pmt, mode: r.def.mode, procKey: '[false,false,false]', u: A.u, y, n: A.n, A, fractions: r.fractions, plumb: { V1: 0.20, V2: 0.15, fracDelay: 0.35 }, note: r.def.note }; }
+    return { id: r.id, name: 'This run', date: today(), eln: r.setupSnap.eln, tpl: r.tpl, ph: r.ph, cv: r.cv, pmt: r.pmt, mode: M.procLabel(), procKey: procKey(), u: r.acq.u, y: r.y.act, n: r.derivedN, A: r.acq, fractions: r.fractions, plumb: M.plumbing(), live: true };
+  }
+  const BIN = 0.05;
+  function binned(v, xMode, rel) {
+    const lo = -1, nb = Math.ceil((v.ph.totalVol + 2) / BIN), s = new Float64Array(nb), c = new Float64Array(nb);
+    for (let i = 0; i < v.n; i++) { const y = v.y[i]; if (!(y === y)) continue; const b = Math.floor((v.u[i] - lo) / BIN); if (b >= 0 && b < nb) { s[b] += y; c[b]++; } }
+    const x = new Float64Array(nb), y = new Float64Array(nb);
+    let norm = 1; if (rel) { const el = v.ph.list.find(p => p.key === 'el'); let mx = 0; for (let b = 0; b < nb; b++) { const xv = lo + (b + 0.5) * BIN; if (c[b] && xv >= el.v0 && xv < el.v1) mx = Math.max(mx, s[b] / c[b]); } norm = mx > 0 ? 100 / mx : 1; }
+    for (let b = 0; b < nb; b++) { const xv = lo + (b + 0.5) * BIN; x[b] = xMode === 'cv' ? xv / v.cv : xv; y[b] = c[b] ? s[b] / c[b] * norm : NaN; }
+    return { x, y, n: nb };
+  }
+  function phaseIntegral(v, key) { const p = v.ph.list.find(q => q.key === key); if (!p) return NaN; let tot = 0, pu = null, py = null; for (let i = 0; i < v.n; i++) { const u = v.u[i], y = v.y[i]; if (u < p.v0 || u >= p.v1 || !(y === y)) continue; if (pu != null && u > pu) tot += (u - pu) * (y + py) / 2; pu = u; py = y; } return tot; }
+  function loadPlateau(v) { const p = v.ph.list.find(q => q.key === 'load'); if (!p) return NaN; const vals = []; for (let i = 0; i < v.n; i++) { const u = v.u[i]; if (u > p.v0 + 0.3 * p.vol && u < p.v1 - 0.25 * p.vol && v.y[i] === v.y[i]) vals.push(v.y[i]); } return TR.medianOf(vals); }
+  function fracCompare(v) {
+    const el = v.ph.list.find(q => q.key === 'el'), tot = phaseIntegral(v, 'el'), out = {};
+    for (const f of v.fractions.filter(q => q.phaseKey === 'el')) {
+      const [a, b] = TR.collectedRange(f, v.plumb); let integ = 0, pu = null, py = null, over = 0, chg = 0, disc = 0, prevStep = null;
+      for (let i = 0; i < v.n; i++) { const u = v.u[i]; if (u < a || u >= b) continue; if (v.A.disc[i]) { disc++; continue; } const y = v.y[i]; if (pu != null && u > pu) integ += (u - pu) * (y + py) / 2; pu = u; py = y; over += v.A.nOver[i]; if (prevStep != null && v.A.step[i] !== prevStep) chg++; prevStep = v.A.step[i]; }
+      out[f.id] = { share: tot > 0 ? integ / tot : NaN, over, chg, disc };
+    }
+    return out;
+  }
+
+  return { LEVELS, MAT, SCHED, schedule, simulate, current, fit, makeRecord, active, status, conc, concText, procKey, initRecord, cal, irfInfo, reconFit, decayRef, ARCHIVE, startArchived, stepArchived, runView, binned, phaseIntegral, loadPlateau, fracCompare, archive, today, addDays, sgn };
 })();
 
 /* =====================================================================
@@ -2614,14 +2861,16 @@ const UI = (function () {
         '<label class="chk"><input type="checkbox" data-k="median"> Median baseline (one definition everywhere) ' + tag('P', p.median ? 'always' : 'engineer') + '</label><br>' +
         '<label class="chk"><input type="checkbox" data-k="window"> Integration window 30 to 70 ns ' + tag('P', p.window ? 'always' : 'engineer') + '</label><br>' +
         '<label class="chk"><input type="checkbox" data-k="laser"' + (canLaser ? '' : ' disabled') + '> Laser correction by beam monitor ' + tag('P', p.laser ? 'always' : 'engineer') + '</label>' + (canLaser ? '' : '<div class="small muted" style="margin:2px 0 0 22px">Needs the beam monitor captured with every block (Setup).</div>') + '<br>' +
-        '<label class="chk"><input type="checkbox" data-k="compare"> Compare: overlay v2.0 reference and Proposed, with a difference trace</label></div>');
+        '<label class="chk"><input type="checkbox" data-k="compare"> Compare: overlay v2.0 reference and Proposed, with a difference trace</label>' + procExtras.map(x => x.html()).join('') + '</div>');
       $$('input', c).forEach(i => { i.checked = !!p[i.dataset.k]; i.onchange = () => { setProc(i.dataset.k, i.checked); upd(); const t = i.parentElement.querySelector('.tag'); if (t) t.dataset.scope = i.checked ? 'always' : 'engineer'; }; });
       popover(b, c);
     };
     upd(); host.append(b); M.on(ev => { if (ev === 'proc') upd(); });
     return b;
   }
+  const procExtras = [];
   function setProc(k, v) {
+    const ex = procExtras.find(x => x.key === k); if (ex) { S.proc[k] = v; M.audit('setting', ex.label + (v ? ' on' : ' off') + '.'); ex.onChange && ex.onChange(v); M.emit('proc'); emitDirty(); return; }
     const old = M.procLabel(); S.proc[k] = v;
     M.audit('setting', 'Processing ' + ({ median: 'median baseline', window: '30 to 70 ns window', laser: 'laser correction', compare: 'compare view' }[k]) + (v ? ' on' : ' off') + '. Mode: ' + M.procLabel() + '.');
     if (S.run && k !== 'compare') M.rederive(S.run);
@@ -2642,6 +2891,7 @@ const UI = (function () {
     const foot = el('<div class="rail-foot"></div>');
     foot.append(el('<button class="nav" data-go="testing" style="padding-left:2px;border-left:0">What this prototype is testing</button>'));
     foot.lastChild.onclick = () => go('testing');
+    if (window.STAGE2) { const ib = el('<button class="nav" data-go="integrations" style="padding-left:2px;border-left:0"><span>Integrations</span>' + tag('F', 'always') + '</button>'); ib.onclick = () => go('integrations'); foot.append(ib); }
     const sw = el('<label class="switch" title="Simulated role switch. This is not access control."><input type="checkbox" id="engSwitch"><span>Engineer view<br><span class="muted small">simulated role, not access control</span></span></label>');
     foot.append(sw);
     const demo = el('<div class="demo-box" aria-label="Demo controls"><div class="demo-h">Demo controls</div>' +
@@ -2657,7 +2907,7 @@ const UI = (function () {
     $('#demoEarly').onchange = e => { S.demo.laserEarly = e.target.checked; M.audit('demo', 'Demo control: start ÄKTA run before laser is stable ' + (e.target.checked ? 'on' : 'off') + '.'); emitDirty(); };
     $('#demoDelay').onchange = e => { setDelayDemo(e.target.checked); };
     $('#demoFF').onclick = () => fastForwardUI();
-    $('#demoReset').onclick = async () => { const r = await modal('Restart demo', '<p>Restart the mock-up from the beginning? The run, decisions and audit trail are cleared. The simulation uses the same seed, so playback is identical.</p>', [{ label: 'Cancel', value: false }, { label: 'Restart', value: true, primary: true }]); if (r.value) location.reload(); };
+    $('#demoReset').onclick = () => { const c = el('<div style="width:260px"><div class="small" style="margin-bottom:6px">Restart the mock-up from the beginning? The run, decisions and audit trail are cleared. The same seed gives identical playback.</div><button class="btn primary sm" id="rsGo">Restart</button></div>'); popover($('#demoReset'), c); $('#rsGo', c).onclick = () => location.reload(); };
   }
   function setDelayDemo(on) {
     S.demo.delayNotUpdated = on; const d = $('#demoDelay'); if (d) d.checked = on;
@@ -2671,7 +2921,7 @@ const UI = (function () {
   let ffRunning = false;
   function fastForwardUI() {
     const R = S.run;
-    if (!R) { modal('Fast-forward', '<p>Start a run first. Fast-forward simulates the rest of an acquisition that is in progress.</p>', [{ label: 'Close', primary: true }]); return; }
+    if (!R) { const c = el('<div class="small" style="width:240px">Start a run first. Fast-forward simulates the rest of an acquisition that is in progress.</div>'); popover($('#demoFF'), c); return; }
     if (R.state !== 'acquiring' || ffRunning) return;
     ffRunning = true; M.audit('demo', 'Demo control: fast-forward to run end.');
     const step = () => { const done = M.fastForward(R, 30); emitDirty(); if (!done && R.state === 'acquiring') setTimeout(step, 0); else ffRunning = false; };
@@ -2693,14 +2943,14 @@ const UI = (function () {
     table.tHead && [...table.tHead.querySelectorAll('th')].forEach(th => { if (!th.classList.contains('nosort')) { th.classList.add('sortable'); th.title = th.title || 'Click to sort'; } });
   }
   function sortAll(root) { (root || document).querySelectorAll('table.tbl').forEach(t => { if (t.id !== 'frTbl') sortable(t); }); }
-  return { sortable, sortAll, $, $$, esc, el, tag, TAGS, sgn, stateHtml, register, go, cur, screen, emitDirty, frame, modal, popover, closePopover, download, downloadDataUrl, copyText, processingButton, setProc, buildRail, renderChips, setDelayDemo, settingChangedDuringRun, isFF, indicators };
+  return { procExtras, sortable, sortAll, $, $$, esc, el, tag, TAGS, sgn, stateHtml, register, go, cur, screen, emitDirty, frame, modal, popover, closePopover, download, downloadDataUrl, copyText, processingButton, setProc, buildRail, renderChips, setDelayDemo, settingChangedDuringRun, isFF, indicators };
 })();
 
 /* ---------- Setup (Acquire) ---------- */
 (function () {
   const { $, $$, esc, el, tag } = UI, S = M.S, fmt = M.fmt;
   const root = () => $('#scr-setup');
-  const SAMPLES = ['mAb CUB', 'Protein A eluate', 'IgG standard', 'BSA standard', 'Buffer blank'];
+  const SAMPLES = ['mAb CUB', 'Protein A eluate', 'IgG standard', 'BSA standard', 'Buffer blank'].concat(window.STAGE2 ? ['AAV crude lysate'] : []);
   function locked() { return !!S.run; }
   function set(path, val, label, unit) {
     const parts = path.split('.'); let o = S.setup; for (let i = 0; i < parts.length - 1; i++) o = o[parts[i]];
@@ -2735,11 +2985,11 @@ const UI = (function () {
       '<label class="l" for="sCol">Column</label><input id="sCol" type="text" value="' + esc(s.column) + '"' + dis + '>' +
       '<label class="l" for="sCv">Column volume (mL)</label><div class="inl"><input id="sCv" type="number" step="0.001" min="0.1" value="' + s.cvMl + '" style="width:100px"' + dis + '>' + (s.template === 'aav' ? tag('A', 'always') : '') + '</div>' +
       (s.template === 'free' ? '<div class="full callout">Free run: no method template. Phase-based rules P2, P4 and H1 are off; phases and fractions come from the imported UNICORN result.</div>' : '') +
-      (s.template === 'aav' ? '<div class="full callout">Empty and full capsid assessment is not a TRIFLE output in this version. Breakthrough rule P2 and hypothesis H1 apply to mAb Protein A templates only.</div>' : '') +
+      (s.template === 'aav' ? '<div class="full callout"><b>Empty and full capsid assessment is not a TRIFLE output in this version.</b> Existing use at UCL ' + tag('E', 'always') + ': the v2.0 settings file records a 95 min run on an ÄKTA pure with AAVX resin, 3.6 mL of crude AAV and 400 mV PMT. The template itself is ' + tag('P', 'always') + '; its volumes and flows are assumed apart from the 3.6 mL load and 95 min duration. Breakthrough rule P2 and hypothesis H1 apply to mAb Protein A templates only.</div>' : '') +
       '</div></div>' +
       '<div class="panel"><div class="ph"><h3>Method phases and flow</h3><span class="sp"></span><span class="note">Totals computed from the phase table</span></div><div class="pb" style="padding:0"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Phase</th><th class="num">CV</th><th class="num">Volume <span class="unit">(mL)</span></th><th class="num">Flow <span class="unit">(mL/min)</span></th><th class="num" title="Residence time">Res. <span class="unit">(min)</span></th><th class="num">Duration <span class="unit">(min)</span></th></tr></thead><tbody>' +
-      ph.list.map((p, i) => '<tr><td>' + esc(p.name) + (p.assumed || (tpl.id === 'aav' && p.key !== 'load') ? ' ' + tag('A', 'engineer') : '') + '</td><td class="num">' + fmt.cv(p.cv) + '</td><td class="num">' + fmt.ml(p.vol) + '</td><td class="num"><input type="number" class="flowIn" data-i="' + i + '" step="0.01" min="0.01" value="' + p.flow + '" style="width:72px;height:22px"' + dis + '></td><td class="num">' + fmt.min1(p.res) + '</td><td class="num">' + fmt.min1(p.tPump - p.t0) + (p.hold ? ' + ' + fmt.min1(p.hold) + ' hold' : '') + '</td></tr>').join('') +
-      '<tr><td><b>Total</b></td><td class="num"><b>' + fmt.cv(ph.totalVol / tpl.cv) + '</b></td><td class="num"><b>' + fmt.ml(ph.totalVol) + '</b></td><td></td><td></td><td class="num"><b>' + fmt.min1(ph.pumpMin) + (ph.holdMin ? ' + ' + fmt.min1(ph.holdMin) : '') + ' = ' + fmt.min1(ph.totalMin) + '</b></td></tr>' +
+      ph.list.map((p, i) => '<tr><td>' + esc(p.name) + (tpl.id === 'aav' ? ' ' + tag('A', 'always') + (p.key === 'load' ? ' <span class="note">flow only</span>' : '') : '') + '</td><td class="num">' + fmt.cv(p.cv) + '</td><td class="num">' + fmt.ml(p.vol) + '</td><td class="num"><input type="number" class="flowIn" data-i="' + i + '" step="0.01" min="0.01" value="' + p.flow + '" style="width:72px;height:22px"' + dis + '></td><td class="num">' + fmt.min1(p.res) + '</td><td class="num">' + fmt.min1(p.tPump - p.t0) + (p.hold ? ' + ' + fmt.min1(p.hold) + ' hold' : '') + '</td></tr>').join('') +
+      '<tr><td><b>Total</b></td><td class="num"><b>' + fmt.cv(ph.totalVol / tpl.cv) + '</b></td><td class="num"><b>' + fmt.ml(ph.totalVol) + '</b></td><td></td><td></td><td class="num"><b>' + (ph.holdMin ? fmt.min1(ph.pumpMin) + ' + ' + fmt.min1(ph.holdMin) + ' = ' : '') + fmt.min1(ph.totalMin) + '</b></td></tr>' +
       '</tbody></table></div><div class="note" style="padding:6px 10px">' + (tpl.primeMl ? 'The ' + tpl.primeMl + ' mL sample-pump prime goes to waste and is excluded from the volume axis. ' : '') + (ph.holdMin ? 'During the ' + ph.holdMin + ' min NaOH hold, time advances but volume does not. ' : '') + (tpl.id === 'aav' ? 'Volumes and flows are assumed apart from the 3.6 mL load; the v2.0 settings file records a 95 min run.' : 'Product-contacting phases run at 6 min residence time, the rest at 5 min.') + '</div></div></div>' +
       '<div class="panel"><div class="ph"><h3>Fraction scheme</h3><span class="sp"></span><span class="note">Read from the method; editable</span></div><div class="pb form">' +
       '<label class="l" for="sFl">Load fractions (mL)</label><input id="sFl" type="number" step="0.5" min="0.5" value="' + s.frac.loadSize + '" style="width:100px"' + dis + '>' +
@@ -2800,7 +3050,7 @@ const UI = (function () {
     $('#sTpl').onchange = e => {
       const v = e.target.value; const t = TR.TEMPLATES[v === 'free' ? 'protA' : v];
       S.setup.flows = null; S.setup.cvMl = t.cv; S.setup.column = t.column; S.setup.frac = { loadSize: t.fractions.loadSize, elSize: t.fractions.elSize, elCollect: t.fractions.elCollect };
-      if (v === 'aav') { S.setup.system = 'pure'; S.setup.sample = 'Buffer blank'; S.setup.sample = 'mAb CUB'; } else S.setup.system = 'avant';
+      if (v === 'aav') { S.setup.system = 'pure'; S.setup.sample = 'AAV crude lysate'; S.setup.runName = 'AAVX capture, crude AAV 3.6 mL'; } else { S.setup.system = 'avant'; if (S.setup.sample === 'AAV crude lysate') S.setup.sample = 'mAb CUB'; }
       S.setup.timerMin = null; set('template', v, 'Method template');
     };
     $('#sCol').onchange = e => set('column', e.target.value, 'Column');
@@ -2928,13 +3178,12 @@ const UI = (function () {
     $('#rdRun').textContent = R && R.started ? 'Run checks again' : 'Run checks';
     $('#rdRun').disabled = !!S.run;
   }
-  async function override(reason) {
-    if (!reason) {
-      const r = await UI.modal('Override readiness', '<p>The laser has not reached "stable (provisional)". Starting now will raise rule I1 and flag early data. Record the reason for the override.</p><textarea id="ovReason" rows="3" style="width:100%" placeholder="Reason"></textarea>', [{ label: 'Cancel', value: null }, { label: 'Record override', primary: true, value: 'ok', validate: bd => $('#ovReason', bd).value.trim().length > 2 }]);
-      if (r.value !== 'ok') return false; reason = $('#ovReason', r.el).value.trim();
-    }
-    S.readiness.override = { reason, by: S.setup.operator, t: S.simT };
-    M.audit('override', 'Readiness override recorded: ' + reason); UI.emitDirty(); return true;
+  function override(reason) {
+    const rec = r => { S.readiness.override = { reason: r, by: S.setup.operator, t: S.simT }; M.audit('override', 'Readiness override recorded: ' + r); UI.emitDirty(); };
+    if (reason) { rec(reason); return true; }
+    const c = el('<form style="width:340px"><div style="font-weight:bold;margin-bottom:4px">Override readiness</div><div class="small" style="margin-bottom:6px">The laser has not reached "stable (provisional)". Starting now raises rule I1 and flags early data. Record the reason.</div><textarea id="ovReason" rows="3" style="width:100%" placeholder="Reason"></textarea><div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="btn primary" type="submit">Record override</button></div></form>');
+    c.onsubmit = e => { e.preventDefault(); const t = $('#ovReason', c).value.trim(); if (t.length < 3) return; rec(t); UI.closePopover(); };
+    UI.popover($('#rdOverride'), c); setTimeout(() => $('#ovReason', c).focus(), 0); return false;
   }
   function update() {
     if (!built) build();
@@ -2951,6 +3200,7 @@ const UI = (function () {
 const RC = (function () {
   const S = M.S, fmt = M.fmt, C = CH.C, { esc } = UI;
   const view = { x: 'vol', log: false };
+  const extraSeries = [], extraPanels = [], extraInfo = [], runRows = [];
   const XT = { vol: 'Volume (mL)', cv: 'Column volumes (CV)', min: 'Time (min)' };
   function R() { return S.run; }
   function sa() { const r = R(); return !!(r && r.standalone); }
@@ -2994,6 +3244,7 @@ const RC = (function () {
       { key: 'diff', label: 'Difference, Proposed minus v2.0', color: C.diff, width: 1, panel: 'diff', src: trifle('diff'), fmt: v => UI.sgn(v, 1) + ' %', visible: cmp && p === 'prop', legend: cmp && p === 'prop' }
     ];
     if (opts && opts.extra) list.push(...opts.extra);
+    for (const f of extraSeries) list.push(...f());
     return list;
   }
   function panels(extraStrips) {
@@ -3008,6 +3259,7 @@ const RC = (function () {
       { key: 'diff', px: 46, hidden: () => !(S.proc.compare && M.procMode() === 'prop'), yl: { title: 'Difference', short: 'Difference', unit: '%', sym: true, symMin: 5, zero: false } }
     ];
     if (extraStrips) out.push(...extraStrips);
+    for (const f of extraPanels) out.push(...f());
     return out;
   }
   function markers(withTicks) {
@@ -3030,7 +3282,7 @@ const RC = (function () {
     const f = r.fractions.find(q => v >= q.a && v < q.b);
     let s = fmt.ml(v) + ' mL · ' + fmt.cv(v / r.cv) + ' CV · ' + fmt.min1(t) + ' min · ' + ph.name + (f ? ' · ' + f.id : '');
     if (view.x === 'min') { const hp = r.ph.list.find(p => p.hold && x >= p.tPump && x < p.t1); if (hp) return 'Hold, no flow: ' + fmt.min1(x) + ' min. Volume stays at ' + fmt.ml(hp.v1) + ' mL; TRIFLE readings during the hold sit at the pre-hold volume.'; }
-    const i = TR.lowerBound(r.x.vol, r.derivedN, v); if (i < r.derivedN && Math.abs(r.x.vol[i] - v) < 0.2) { const A = r.acq; s += ' · step ' + A.step[i] + ' · range use ' + (isFinite(A.ruse[i]) ? fmt.pct0(A.ruse[i]) + ' %' : 'discarded block') + (r.low[i] ? ' (low precision)' : ''); }
+    const i = TR.lowerBound(r.x.vol, r.derivedN, v); if (i < r.derivedN && Math.abs(r.x.vol[i] - v) < 0.2) { const A = r.acq; s += ' · step ' + A.step[i] + ' · range use ' + (isFinite(A.ruse[i]) ? fmt.pct0(A.ruse[i]) + ' %' : 'discarded block') + (r.low[i] ? ' (low precision)' : ''); for (const f of extraInfo) s += f(r, i); }
     return s;
   }
   function rulerInfo(a, b) {
@@ -3042,7 +3294,7 @@ const RC = (function () {
   }
   function legendExtras() { return [{ html: '<span class="ch-sw box" style="background:rgba(183,121,31,0.12);border:1px solid rgba(183,121,31,0.5)"></span><span class="ch-ll">Low precision</span>', tip: 'Pulse fills under ' + Math.round(S.th.lowPrec * 100) + ' % of the input range (provisional). The v2.0 baseline leverage matters most here. The y-axis autoscale ignores these blocks; values beyond the axis are marked at its edge.' }]; }
   function xTitle() { return sa() ? 'Time from TRIFLE start (min)' : XT[view.x]; }
-  return { view, XT, xTitle, sa, toX, fromX, xDomain, bands, fracItems, trifle, akta, seriesFor, panels, markers, hatches, intervals, info, rulerInfo, legendExtras };
+  return { extraSeries, extraPanels, extraInfo, runRows, view, XT, xTitle, sa, toX, fromX, xDomain, bands, fracItems, trifle, akta, seriesFor, panels, markers, hatches, intervals, info, rulerInfo, legendExtras };
 })();
 
 /* ---------- Run (Acquire and Validate) ---------- */
@@ -3094,7 +3346,7 @@ const RC = (function () {
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && expanded) toggleExpand(); });
     window.addEventListener('resize', layoutBottom);
     built = true; syncSeg(); layoutBottom();
-    M.on(ev => { if (ev === 'proc' || ev === 'run') { chart.cfg.panels = RC.panels(); chart.setSeries(RC.seriesFor()); chart.cfg.legendExtras = RC.legendExtras(); chart.buildLegend(); chart.relayout(); pulse.blk = -1; } if (ev === 'cards') cardsKey = ''; if (ev === 'notes') chart.invalidateBase(); });
+    M.on(ev => { if (ev === 'proc' || ev === 'run' || ev === 'series') { chart.cfg.panels = RC.panels(); chart.setSeries(RC.seriesFor()); chart.cfg.legendExtras = RC.legendExtras(); chart.buildLegend(); chart.relayout(); pulse.blk = -1; } if (ev === 'cards') cardsKey = ''; if (ev === 'notes') chart.invalidateBase(); });
   }
   function layoutBottom() { const rb = $('#runBottom'); if (!rb) return; const narrow = rb.getBoundingClientRect().width < 980; rb.classList.toggle('narrow', narrow); $('#cardPanel').style.display = narrow && narrowTab === 'log' ? 'none' : ''; $('#logPanel').style.display = narrow && narrowTab === 'cards' ? 'none' : ''; ensureTabs(narrow); }
   function ensureTabs(narrow) {
@@ -3122,10 +3374,11 @@ const RC = (function () {
     const r = await UI.modal('End acquisition', '<p>End TRIFLE acquisition now? This stops TRIFLE only; it does not act on the ÄKTA. The wheel moves to OD 4, a beam monitor block is captured and the record is saved.</p>', [{ label: 'Cancel', value: false }, { label: 'End acquisition', value: true, primary: true }]);
     if (r.value) { M.finishRun(R, 'user'); UI.emitDirty(); }
   }
-  async function noteDlg(kind) {
+  function noteDlg(kind) {
     const R = S.run; if (!R) return;
-    const r = await UI.modal(kind === 'note' ? 'Add note' : 'Mark event', '<p class="small muted">Placed at the current volume, ' + fmt.ml(R.acq.n ? R.acq.u[R.acq.n - 1] : 0) + ' mL. It appears as a marker on the chart and in the run log.</p><input type="text" id="ntText" style="width:100%" placeholder="' + (kind === 'note' ? 'Note' : 'Event, for example sample change') + '">', [{ label: 'Cancel', value: null }, { label: 'Add', primary: true, value: 'ok', validate: bd => $('#ntText', bd).value.trim().length > 0 }]);
-    if (r.value === 'ok') { M.addNote(R, kind, $('#ntText', r.el).value.trim()); chart.invalidateBase(); }
+    const c = el('<form style="width:320px"><div style="font-weight:bold;margin-bottom:4px">' + (kind === 'note' ? 'Add note' : 'Mark event') + '</div><div class="small muted" style="margin-bottom:6px">Placed at the current volume, ' + fmt.ml(R.acq.n ? R.acq.u[R.acq.n - 1] : 0) + ' mL. It appears as a marker on the chart and in the run log.</div><div class="inl" style="display:flex;gap:6px"><input type="text" id="ntText" style="flex:1" placeholder="' + (kind === 'note' ? 'Note' : 'Event, for example sample change') + '"><button class="btn primary" type="submit">Add</button></div></form>');
+    c.onsubmit = e => { e.preventDefault(); const t = $('#ntText', c).value.trim(); if (!t) return; M.addNote(R, kind, t); chart.invalidateBase(); UI.closePopover(); };
+    UI.popover($(kind === 'note' ? '#rNote' : '#rMark'), c); setTimeout(() => $('#ntText', c).focus(), 0);
   }
   function controls() {
     const R = S.run, sm = M.readinessSummary(), st = R ? R.state : 'idle';
@@ -3176,7 +3429,7 @@ const RC = (function () {
       row('Input range', '', rangeBar(use)) +
       row('Blocks', '', fmt.int(n - disc) + ' · ' + disc + ' disc.') +
       row('Beam monitor', R.setupSnap.beamPerBlock ? '% of start' : '', R.setupSnap.beamPerBlock && n ? fmt.pct1(A.bm[i] / (R.bmRef || A.bm[i])) : 'start/end only') +
-      row('Alignment', '', esc(al.detector + (al.fractions === 'Uncertain' && al.detector !== 'Uncertain' ? ', fractions Uncertain' : ''))) + '</table>' +
+      row('Alignment', '', esc(al.detector + (al.fractions === 'Uncertain' && al.detector !== 'Uncertain' ? ', fractions Uncertain' : ''))) + RC.runRows.map(f => f(R, i, row)).join('') + '</table>' +
       (use < S.th.lowPrec ? '<div class="note">Low precision: pulse under ' + Math.round(S.th.lowPrec * 100) + ' % of the input range.</div>' : use > TR.ACQ.limit ? '<div class="note" style="color:var(--fault)">Above the 90 % limit.</div>' : '');
     if (box._h !== html) { box.innerHTML = html; box._h = html; }
   }
@@ -3293,11 +3546,11 @@ const RC = (function () {
     });
     zm = new CH.Chart(el('<div style="height:100%"></div>'), mkZoomCfg());
     built = true; sync();
-    M.on(ev => { if (ev === 'proc' || ev === 'run') { ov.cfg.panels = ovPanels(); ov.setSeries(ovSeries()); zm.cfg.panels = RC.panels().slice(0, 1); zm.setSeries(zmSeries()); for (const c of [ov, zm]) { c.cfg.legendExtras = RC.legendExtras(); c.buildLegend(); c.relayout(); } lastKey = ''; mp.fid = null; } if (ev === 'cards' || ev === 'data') lastKey = ''; });
+    M.on(ev => { if (ev === 'proc' || ev === 'run' || ev === 'series') { ov.cfg.panels = ovPanels(); ov.setSeries(ovSeries()); zm.cfg.panels = RC.panels().slice(0, 1); zm.setSeries(zmSeries()); for (const c of [ov, zm]) { c.cfg.legendExtras = RC.legendExtras(); c.buildLegend(); c.relayout(); } lastKey = ''; mp.fid = null; } if (ev === 'cards' || ev === 'data') lastKey = ''; });
   }
   // overview: main panel plus the strips that carry Proposed processing (beam monitor, difference)
-  function ovPanels() { return RC.panels().filter(p => p.key === 'main' || p.key === 'bm' || p.key === 'diff'); }
-  function ovSeries() { return RC.seriesFor().filter(s => s.panel === 'main' || s.panel === 'bm' || s.panel === 'diff'); }
+  function ovPanels() { return RC.panels().filter(p => p.key === 'main' || p.key === 'bm' || p.key === 'diff' || p.key === 'decay'); }
+  function ovSeries() { return RC.seriesFor().filter(s => s.panel === 'main' || s.panel === 'bm' || s.panel === 'diff' || s.panel === 'decay'); }
   function zmSeries() { return RC.seriesFor().filter(s => s.panel === 'main').map(s => ({ ...s, legend: false })); }
   function mkZoomCfg() {
     return {
@@ -3351,8 +3604,8 @@ const RC = (function () {
     return out.join('') || '<span class="muted">none</span>';
   }
   function table() {
-    const R = S.run; const cols = COLS.filter(c => !c.opt || showShare);
-    const key = JSON.stringify([R ? R.derivedN : 0, R ? R.dataGen : 0, [...sel], sortKey, sortDir, showShare, R ? R.rules.cards.length : 0, S.decisions, M.alignmentState().fractions, RC.view.x]);
+    const R = S.run; const cols = COLS.filter(c => (!c.opt || showShare) && (!c.show || c.show()));
+    const key = JSON.stringify([R ? R.derivedN : 0, R ? R.dataGen : 0, [...sel], sortKey, sortDir, showShare, COLS.map(c => c.show ? c.show() : 1), R ? R.rules.cards.length : 0, S.decisions, M.alignmentState().fractions, RC.view.x]);
     if (key === lastKey) return; lastKey = key;
     rows = R ? M.fractionStats(R) : [];
     if (sortKey) { const c = COLS.find(x => x.k === sortKey); rows.sort((a, b) => { const va = c.v(a), vb = c.v(b); return (va > vb ? 1 : va < vb ? -1 : 0) * sortDir; }); }
@@ -3467,7 +3720,9 @@ const RC = (function () {
   }
   UI.register('fractions', {
     show(o) { if (!built) build(); setTimeout(() => { ov.resize(); if (zm._mounted) zm.resize(); if (pc) pc.resize(); }, 0); lastKey = ''; sideKey = ''; zm._mounted = false; if (o && o.anchor === 'samples') { tab = 'samples'; $$('#frTabs button').forEach(x => x.classList.toggle('on', x.dataset.v === 'samples')); } side(true); },
-    update, samplesText, select(id) { focus = id; sel = new Set([id]); selChanged(); }
+    update, samplesText, select(id) { focus = id; sel = new Set([id]); selChanged(); },
+    addCol(col, beforeKey) { const k = COLS.findIndex(c => c.k === beforeKey); COLS.splice(k < 0 ? COLS.length : k, 0, col); lastKey = ''; },
+    refresh() { lastKey = ''; sideKey = ''; }
   });
 })();
 
@@ -3536,13 +3791,14 @@ const REC = (function () {
     const R = S.run, s = sections();
     const key = JSON.stringify([R ? R.derivedN : 0, R ? R.state : '', R ? R.rules.cards.map(c => c.status + c.obs.length) : 0, S.decisions, M.procLabel(), purpose, S.audit.length]);
     if (key === lastKey) return; lastKey = key;
+    const sec3 = (s, fig) => '<div class="rec-sec"><div class="rh"><h3>3. Results: chromatogram figure and fraction table</h3><span class="sp"></span><button class="btn sm" data-copy="3">Copy</button></div>' + fig + '<div class="rec-text">' + esc(s.results.split('\n')[0]) + '</div>' + (s.resultsTable.length ? '<div class="tbl-wrap" style="margin-top:6px"><table class="tbl"><thead><tr><th>Fraction</th><th>Phase</th><th class="num">Volume <span class="unit">(mL)</span></th><th class="num">UV mean <span class="unit">(mAU)</span></th><th class="num">UV max <span class="unit">(mAU)</span></th><th class="num">Fluor. mean <span class="unit">(V·ns)</span></th><th class="num">Fluor. max <span class="unit">(V·ns)</span></th><th>Assignment</th><th>Cards</th></tr></thead><tbody>' + s.resultsTable.map(r => '<tr>' + r.map((c, k) => '<td' + (k >= 2 && k <= 6 ? ' class="num"' : '') + '>' + esc(c) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>' : '') + '</div>';
     const sec = (n, title, text, extra) => '<div class="rec-sec"><div class="rh"><h3>' + n + '. ' + title + '</h3><span class="sp"></span><button class="btn sm" data-copy="' + n + '">Copy</button></div>' + (extra || '') + '<div class="rec-text">' + esc(text) + '</div></div>';
     let fig = '';
     const rc = runChart();
     if (R && rc && rc.W) { try { fig = '<img class="rec-fig" alt="Chromatogram with TRIFLE fluorescence and UV 280" style="width:100%;border:1px solid var(--border);margin-bottom:6px" src="' + rc.toPNG('Run ' + R.id + ', ' + M.procLabel()) + '">'; } catch (e) { fig = ''; } }
-    $('#recBody').innerHTML =
+    $('#recBody').innerHTML = '<div class="rec-print-only" style="border-bottom:1px solid #999;margin-bottom:8px;padding-bottom:4px"><b>TRIFLE notebook-ready summary</b><br>' + esc((R ? R.setupSnap : S.setup).eln + ' · ' + (R ? R.id : 'no run') + ' · ' + (R ? R.setupSnap : S.setup).runName + ' · printed ' + M.stamp(S.simT) + ' · TRIFLE-01 mock-up, simulated data') + '</div>' +
       '<div class="rec-sec"><div class="rh"><h3>1. Purpose</h3><span class="sp"></span><button class="btn sm" data-copy="1">Copy</button></div><textarea id="recPurpose" rows="2" style="width:100%">' + esc(s.purpose) + '</textarea></div>' +
-      sec(2, 'Methods', s.methods) + sec(3, 'Results: chromatogram figure and fraction table', s.results, fig) + sec(4, 'Data quality', s.quality) + sec(5, 'Fraction decisions', s.decisions) + sec(6, 'Attachments', s.attachments);
+      sec(2, 'Methods', s.methods) + sec3(s, fig) + sec(4, 'Data quality', s.quality) + sec(5, 'Fraction decisions', s.decisions) + sec(6, 'Attachments', s.attachments);
     $('#recPurpose').onchange = e => { purpose = e.target.value; M.audit('record', 'Purpose edited.'); };
     $$('[data-copy]', $('#recBody')).forEach(b => b.onclick = () => { const k = +b.dataset.copy, t = [null, sections().purpose, s.methods, s.results, s.quality, s.decisions, s.attachments][k]; UI.copyText(t, b); M.audit('record', 'Section ' + k + ' copied.'); });
     exportsPanel(); prov(); audit();
@@ -3554,7 +3810,7 @@ const REC = (function () {
       '<div class="toolbar"><button class="btn" id="exBlocks"' + dis + '>CSV per block</button><button class="btn" id="exFr"' + dis + '>CSV per fraction</button><button class="btn" id="exJson">JSON metadata</button><button class="btn" id="exPng"' + dis + '>PNG of main chart</button><span id="exStage2"></span></div>' +
       '<div class="small">Instrument record: v2.0 saves a Python pickle of the whole experiment object, with copies of the settings files and class source, in its own folder ' + tag('E') + '. ' + (S.setup.csvJson ? 'CSV plus JSON metadata are written alongside ' + tag('P', 'always') + '.' : 'CSV plus JSON alongside is off (Proposed option on Setup).') + '</div>' +
       '<div class="callout small">v2.0 reminder: move the data to SharePoint, then delete the local copy. ' + tag('E') + ' Automatic upload to the agreed GSK repository is Future work. ' + tag('F', 'always') + '</div>' +
-      '<div class="small muted">Legacy .pkl import: conversion in an isolated, trusted environment, because opening a pickle can execute code embedded in it. Not available in the mock-up. ' + tag('F', 'always') + '</div>';
+      '<div class="callout small"><b>Legacy .pkl conversion</b> ' + tag('F', 'always') + '<br>v2.0 records are Python pickles of the whole experiment object. Opening a pickle can execute code embedded in it, so conversion to CSV and JSON must run in an isolated, trusted environment. Nothing is implemented in the mock-up.</div>';
     if (R) { $('#exBlocks').onclick = () => exportBlocks(); $('#exFr').onclick = () => exportFractions(); $('#exPng').onclick = () => exportPng(); }
     $('#exJson').onclick = () => exportJson();
     if (window.REC_STAGE2) window.REC_STAGE2($('#exStage2'));
@@ -3978,12 +4234,280 @@ const Q = (function () {
   return { init, collapse, answerQuestion, addIntent, OUT, RULES };
 })();
 
+/* =====================================================================
+   Stage 2 UI: Calibration, Run comparison, Integrations, decay display,
+   AAV template, export packaging, Engineer additions.
+   ===================================================================== */
+(function () {
+  const { $, $$, esc, el, tag } = UI, S = M.S, fmt = M.fmt, C = CH.C;
+  const DEV = '<span class="tag" data-scope="always">Development assumption, not validated</span>';
+
+  /* ---------- Run and Fraction review additions ---------- */
+  UI.procExtras.push({ key: 'decay', label: 'Decay-shape analysis (research display)', html: () => '<hr style="border:0;border-top:1px solid var(--border);margin:6px 0"><label class="chk"><input type="checkbox" data-k="decay"> Decay-shape analysis, research display only ' + tag('P', S.proc.decay ? 'always' : 'engineer') + '</label><div class="small muted" style="margin-left:22px">Adds the decay metric strip and rule P7. Unvalidated; nothing is concluded from it.</div>', onChange: () => { if (S.run) { S.run.dataGen++; S.run.rules.replay(); } } });
+  RC.extraPanels.push(() => [{ key: 'decay', px: 46, hidden: () => !S.proc.decay, yl: { title: 'Decay metric', short: 'Decay', unit: 'ns', zero: false, minSpan: 0.4 } }]);
+  RC.extraSeries.push(() => { const ref = S2.decayRef(S.run), info = S2.irfInfo(S.run ? S.run.pmt : S.setup.pmt); return [{ key: 'decay', label: 'Decay metric' + (ref ? ' (load plateau ' + ref.mean.toFixed(2) + ' ± ' + ref.sd.toFixed(2) + ' ns SD)' : ', shown once its SD is measured on the load plateau') + '; IRF ' + info.fwhmNs.toFixed(1) + ' ns FWHM; sampling 0.2 ns', color: C.decay, width: 1, panel: 'decay', src: ref ? RC.trifle('decay') : () => null, fmt: v => v.toFixed(2) + ' ns', visible: !!S.proc.decay, legend: !!S.proc.decay, tag: 'Proposed', tagScope: 'always', tip: 'Intensity-weighted mean delay after the IRF peak, 0 to 20 ns, on the block median waveform. Computed only where input range use is between ' + Math.round(S.th.decayUseMin * 100) + ' and ' + Math.round(S.th.decayUseMax * 100) + ' %. Research display only.' }]; });
+  RC.extraInfo.push((r, i) => { let s = ''; const pk = r.ph.list[r.acq.phase[i]].key, k = S2.conc(r.y.act[i], r, pk); if (k.state !== 'na') s += ' · ' + S2.concText(r.y.act[i], r, pk); const ref = S2.decayRef(r); if (S.proc.decay && ref && isFinite(r.y.decay[i])) s += ' · decay ' + r.y.decay[i].toFixed(2) + ' ± ' + ref.sd.toFixed(2) + ' ns'; return s; });
+  RC.runRows.push((R, i, row) => {
+    let h = ''; if (!(i >= 0) || !R.derivedN) return h;
+    const st = S2.status(R);
+    if (!st.none) h += row('Concentration', '', st.ok ? esc(S2.concText(R.y.act[i], R, R.ph.list[R.acq.phase[i]].key)) + ' ' + tag('P', 'always') : '<span class="state warn" style="font-weight:normal">Calibration not applicable</span>');
+    if (S.proc.decay) { const ref = S2.decayRef(R), v = R.y.decay[i], info = S2.irfInfo(R.pmt); h += row('Decay metric', 'ns', ref ? (isFinite(v) ? v.toFixed(2) : '–') + ' <span class="muted" style="font-weight:normal">± ' + ref.sd.toFixed(2) + ' SD; IRF ' + info.fwhmNs.toFixed(1) + ' ns FWHM; 0.2 ns sampling</span>' : '<span class="muted" style="font-weight:normal">SD not yet measured</span>'); }
+    return h;
+  });
+  function addFrCols() {
+    const fr = UI.screen('fractions'); if (!fr || !fr.addCol) return;
+    fr.addCol({ k: 'conc', h: 'Concentration <span class="unit">(mg/mL, indicative)</span>', num: true, show: () => !S2.status(S.run).none, tip: 'Indicative only, from an applicable calibration, and only where the whole fraction is inside the calibrated linear range. Never yield or recovery.', v: f => typeof f.conc === 'number' ? f.conc : -1, f: f => f.conc == null ? '<span class="muted">no calibration</span>' : typeof f.conc === 'number' ? fmt.sig3(f.conc) + (f.concPartBelow ? ' <span class="flag" title="Part of the fraction is below the calibrated range">part below</span>' : '') : '<span class="muted small">' + esc(f.conc) + '</span>' }, 'qc');
+    fr.addCol({ k: 'decay', h: 'Decay metric <span class="unit">(ns ± SD; IRF ' + S2.irfInfo(400).fwhmNs.toFixed(1) + ' ns FWHM; 0.2 ns sampling)</span>', num: true, show: () => !!S.proc.decay && !!S2.decayRef(S.run), tip: 'Research display only. Mean of the block decay metric over the fraction.', v: f => f.decay, f: f => { const ref = S2.decayRef(S.run); return S.proc.decay && ref && isFinite(f.decay) ? f.decay.toFixed(2) + ' <span class="muted">± ' + ref.sd.toFixed(2) + '</span>' : '–'; } }, 'assign');
+  }
+  /* ---------- Calibration screen (Proposed) ---------- */
+  let calBuilt = false, cAcq = null, cFit = null, cur = null, calKey = '';
+  const pts = { x: new Float64Array(6), y: new Float64Array(6), ylo: new Float64Array(6), yhi: new Float64Array(6), open: new Uint8Array(6), n: 6 };
+  const fitLine = { x: new Float64Array(2), y: new Float64Array(2), n: 2 }, extLine = { x: new Float64Array(2), y: new Float64Array(2), n: 2 };
+  const res = { x: new Float64Array(6), y: new Float64Array(6), n: 6 }, band = { x: Float64Array.from([0, 10.5]), yp: new Float64Array(2), ym: new Float64Array(2), n: 2 };
+  function calBuild() {
+    const r = $('#scr-calibration');
+    r.innerHTML = '<div class="scr-h"><h1>Calibration</h1><span class="seq">Validate and interpret</span>' + tag('P', 'always') + '<span class="sp"></span><span class="note">Converts fluorescence to an indicative concentration, inside a demonstrated linear range only. No yield or recovery is computed.</span></div>' +
+      '<div class="grid2" style="grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)"><div class="stack">' +
+      '<div class="panel"><div class="ph"><h3>Standard and acquisition</h3><span class="sp"></span><span class="note">Step injections at known concentrations (simulated)</span></div><div class="pb"><div class="form" style="grid-template-columns:150px 1fr">' +
+      '<label class="l" for="calMat">Standard</label><select id="calMat"><option value="IgG">Purified IgG (default)</option><option value="BSA">BSA (weak surrogate)</option></select>' +
+      '<label class="l">Levels</label><div class="small">' + S2.LEVELS.map(c => c + ' mg/mL').join(', ') + '; ' + S2.SCHED.on + ' min each with ' + S2.SCHED.off + ' min buffer between</div>' +
+      '<label class="l">PMT preset and processing</label><div class="small" id="calPre"></div><div class="full" id="calMatNote"></div></div>' +
+      '<div style="height:240px;margin-top:6px" id="calAcqChart"></div><div class="note">The software detects each plateau. Drag the window edges on the chart to adjust them; the mean and CV are recomputed.</div></div></div>' +
+      '<div class="panel"><div class="ph"><h3>Plateaus</h3><span class="sp"></span><button class="btn sm" id="calAuto">Reset windows to automatic</button></div><div class="pb tbl-wrap" style="padding:0"><table class="tbl" id="calTbl"><thead><tr><th class="num">Level <span class="unit">(mg/mL)</span></th><th class="num">Window <span class="unit">(min)</span></th><th class="num">Blocks</th><th class="num">Mean <span class="unit">(V·ns)</span></th><th class="num">CV <span class="unit">(%)</span></th><th class="num">Departure <span class="unit">(%)</span></th><th>Linear range</th></tr></thead><tbody></tbody></table></div></div>' +
+      '</div><div class="stack">' +
+      '<div class="panel"><div class="ph"><h3>Fit</h3><span class="sp"></span>' + DEV + '</div><div class="pb"><div class="form" style="grid-template-columns:150px 1fr">' +
+      '<label class="l" for="calModel">Fit model</label><div class="inl"><select id="calModel"><option value="unweighted">Unweighted linear</option><option value="1/x">1/x weighted linear (default)</option><option value="1/x2">1/x² weighted linear</option></select>' + DEV + '</div>' +
+      '<label class="l" for="calCrit">Linear range criterion</label><div class="inl"><input type="number" id="calCrit" min="1" max="20" step="0.5" style="width:70px"> % departure from the fit ' + DEV + '</div></div>' +
+      '<div id="calFitSum" class="small" style="margin:6px 0"></div><div style="height:300px" id="calFitChart"></div></div></div>' +
+      '<div class="panel"><div class="ph"><h3>Calibration record</h3></div><div class="pb" id="calRec"></div></div>' +
+      '</div></div>';
+    $('#calMat').onchange = e => { S.cal.material = e.target.value; M.audit('calibration', 'Calibration standard set to ' + S2.MAT[e.target.value].name + '.'); calKey = ''; mountAcq(); };
+    $('#calModel').onchange = e => { S.cal.model = e.target.value; M.audit('calibration', 'Calibration fit model set to ' + e.target.selectedOptions[0].textContent + ' (development assumption).'); calKey = ''; };
+    $('#calCrit').onchange = e => { const v = parseFloat(e.target.value); if (v > 0) { M.audit('threshold', 'Calibration linear range criterion changed to ' + v + ' % (provisional).'); S.th.calDepPct = v; calKey = ''; } };
+    $('#calAuto').onclick = () => { delete S.cal.windows[S.cal.material + S.setup.pmt]; M.audit('calibration', 'Plateau windows reset to automatic.'); calKey = ''; };
+    cFit = new CH.Chart($('#calFitChart'), {
+      ariaLabel: 'Calibration fit', topBand: 18, marginRight: 12, liveReadout: false, zoom: true,
+      xDomain: () => [0, 10.5], xTitle: () => 'Concentration (mg/mL)',
+      panels: [{ key: 'main', yl: { title: 'Plateau mean', unit: 'V·ns' } }, { key: 'res', px: 72, yl: { title: 'Residual', short: 'Residual', unit: '%', sym: true, symMin: 8, zero: false } }],
+      bands: () => cur && cur.fit.n ? [{ x0: cur.fit.lo, x1: cur.fit.hi, label: 'Linear range', fill: 'rgba(47,125,79,0.07)' }] : [],
+      vlines: () => cur && cur.fit.onset ? [{ x: cur.fit.onset, label: 'Possible inner-filter onset', color: C.warn, dash: 'dash', align: 'right' }] : [],
+      series: [
+        { key: 'fit', label: 'Fit over the linear range', color: C.v20, width: 1.25, panel: 'main', src: () => fitLine, fmt: v => fmt.sig3(v) + ' V·ns' },
+        { key: 'ext', label: 'Fit extended (outside range)', color: C.v20, dash: 'dot', width: 1, panel: 'main', src: () => extLine, fmt: v => fmt.sig3(v) + ' V·ns' },
+        { key: 'pts', label: 'Plateau mean ± SD (open: outside linear range)', color: C.text, mode: 'points', panel: 'main', src: () => pts },
+        { key: 'res', label: 'Residual', color: C.text, mode: 'points', panel: 'res', src: () => res, legend: false },
+        { key: 'bp', label: 'Criterion', color: C.irf, dash: 'dash', width: 1, panel: 'res', src: () => ({ x: band.x, y: band.yp, n: 2 }), legend: false },
+        { key: 'bm', label: 'Criterion', color: C.irf, dash: 'dash', width: 1, panel: 'res', src: () => ({ x: band.x, y: band.ym, n: 2 }), legend: false }
+      ]
+    });
+    calBuilt = true; mountAcq();
+  }
+  let acqData = null;
+  function mountAcq() {
+    if (cAcq) cAcq.destroy();
+    cur = S2.current(); const sim = cur.sim; acqData = { x: sim.t, y: cur.y, n: sim.acq.n, gen: Math.random() };
+    cAcq = new CH.Chart($('#calAcqChart'), {
+      ariaLabel: 'Calibration acquisition', topBand: 16, marginRight: 12, liveReadout: false,
+      xDomain: () => [0, sim.sch.total], xTitle: () => 'Time (min)',
+      panels: [{ key: 'main', yl: { title: 'Fluorescence', unit: 'V·ns', log: () => true, minLog: -2 } }],
+      bands: () => cur.pl.map(p => ({ x0: p.w[0], x1: p.w[1], label: p.c + ' mg/mL', fill: 'rgba(27,54,93,0.07)' })),
+      series: [{ key: 'f', label: 'Fluorescence, ' + M.procLabel() + ' (log scale)', color: M.procMode() === 'v20' ? C.v20 : C.prop, dash: M.procMode() === 'v20' ? null : 'dash', width: 1, panel: 'main', src: () => ({ ...acqData, gen: calKey }), robust: null, fmt: v => fmt.sig3(v) + ' V·ns' }],
+      guides: () => cur.pl.flatMap((p, k) => [0, 1].map(j => ({ id: 'w' + k + j, x: p.w[j], color: C.accent, dash: 'dash', drag: v => { const key = S.cal.material + S.setup.pmt, W = S.cal.windows[key] || (S.cal.windows[key] = cur.pl.map(q => q.w.slice())); W[k][j] = v; }, onEnd: () => { M.audit('calibration', 'Plateau window for ' + p.c + ' mg/mL adjusted by hand.'); calKey = ''; } })))
+    });
+  }
+  function calRender() {
+    const key = JSON.stringify([S.cal.material, S.cal.model, S.th.calDepPct, S.cal.windows, M.procLabel(), S.setup.pmt, S.cal.activeId, S.cal.records.length, !!S.run]);
+    if (key === calKey) return; calKey = key;
+    cur = S2.current(); acqData.y = cur.y;
+    $('#calMat').value = S.cal.material; $('#calModel').value = S.cal.model; $('#calCrit').value = S.th.calDepPct;
+    $('#calPre').innerHTML = esc(M.presetInfo(S.setup.pmt).id) + ' (PMT ' + S.setup.pmt + ' mV); ' + esc(M.procLabel()) + '. A calibration applies only to runs with the same preset and processing mode.';
+    $('#calMatNote').innerHTML = S.cal.material === 'BSA' ? '<div class="callout warn">BSA is a weak surrogate for IgG: extinction coefficient 0.667 against about 1.4 to 1.6 mL/mg/cm, fewer tryptophans and a different size. Indicative mAb concentrations from a BSA calibration are not reliable.</div>' : '<div class="note">Purified IgG is the default standard.</div>';
+    const f = cur.fit;
+    $('#calTbl tbody').innerHTML = cur.pl.map((p, k) => '<tr><td class="num">' + p.c + '</td><td class="num">' + p.w[0].toFixed(2) + '–' + p.w[1].toFixed(2) + (p.manual ? ' <span class="flag">by hand</span>' : '') + '</td><td class="num">' + p.n + '</td><td class="num">' + fmt.sig3(p.mean) + '</td><td class="num">' + (p.cv * 100).toFixed(2) + '</td><td class="num">' + S2.sgn(f.dep[k], 2) + '</td><td>' + (f.n && k < f.n ? 'Inside' : (f.onset === p.c ? '<span class="state warn" style="font-weight:normal">Departs: inner-filter onset?</span>' : 'Outside')) + '</td></tr>').join('');
+    for (let k = 0; k < 6; k++) { const p = cur.pl[k]; pts.x[k] = p.c; pts.y[k] = p.mean; pts.ylo[k] = p.mean - p.mean * p.cv; pts.yhi[k] = p.mean + p.mean * p.cv; pts.open[k] = f.n && k < f.n ? 0 : 1; res.x[k] = p.c; res.y[k] = f.dep[k]; }
+    if (f.n) { fitLine.x[0] = 0; fitLine.x[1] = f.hi; fitLine.y[0] = f.a; fitLine.y[1] = f.a + f.b * f.hi; extLine.x[0] = f.hi; extLine.x[1] = 10.5; extLine.y[0] = f.a + f.b * f.hi; extLine.y[1] = f.a + f.b * 10.5; }
+    band.yp.fill(S.th.calDepPct); band.ym.fill(-S.th.calDepPct);
+    $('#calFitSum').innerHTML = f.n ? 'Linear from <b>' + f.lo + ' to ' + f.hi + ' mg/mL</b> (' + f.n + ' levels within ' + S.th.calDepPct + ' %). Slope ' + fmt.sig3(f.b) + ' V·ns per mg/mL; intercept ' + fmt.sig3(f.a) + ' V·ns.' + (f.onset ? ' The ' + f.onset + ' mg/mL level departs from linear: possible inner-filter onset.' : '') : '<span class="state fault">No linear range demonstrated with this criterion.</span>';
+    cFit.invalidate(); cAcq.cfg.series[0].label = 'Fluorescence, ' + M.procLabel() + ' (log scale)'; cAcq.buildLegend(); cAcq.invalidate();
+    // records
+    const st = S2.status(S.run), recs = S.cal.records;
+    $('#calRec').innerHTML = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Active</th><th>ID</th><th>Date</th><th>Material</th><th>Standard lot</th><th>PMT preset</th><th>Processing mode</th><th class="num">Linear range <span class="unit">(mg/mL)</span></th><th>Expiry</th></tr></thead><tbody>' +
+      recs.map(r => '<tr><td><input type="radio" name="calAct" value="' + r.id + '"' + (r.id === S.cal.activeId ? ' checked' : '') + '></td><td>' + r.id + '</td><td>' + r.date + '</td><td>' + esc(r.materialName) + '</td><td>' + r.lot + '</td><td>' + r.presetId + '</td><td class="wrap">' + esc(r.mode) + '</td><td class="num">' + (r.fit.n ? r.fit.lo + '–' + r.fit.hi : 'none') + '</td><td>' + r.expiry + '</td></tr>').join('') +
+      '<tr><td><input type="radio" name="calAct" value=""' + (!S.cal.activeId ? ' checked' : '') + '></td><td colspan="8" class="muted">No calibration: fluorescence relative only</td></tr></tbody></table></div>' +
+      '<div style="margin-top:8px">' + (st.none ? UI.stateHtml('na', 'No calibration active') : st.ok ? UI.stateHtml('ok', 'Applicable to ' + (S.run ? 'this run' : 'the current setup')) + ' <span class="small">Run and Fraction review show mg/mL (indicative) only inside ' + st.rec.fit.lo + ' to ' + st.rec.fit.hi + ' mg/mL; outside, "Above calibrated range, relative only".</span>' : UI.stateHtml('warn', 'Calibration not applicable') + ' <span class="small">' + esc(st.reasons.join('; ')) + '. Rule I7.</span>') + '</div>' +
+      '<div class="toolbar" style="margin-top:8px"><button class="btn" id="calSave"' + (f.n ? '' : ' disabled') + '>Save the current fit as a calibration record</button><span class="note">Records the material, lot, PMT preset, processing mode and an expiry ' + S.th.calExpiryDays + ' days ahead (provisional).</span></div>';
+    $$('input[name=calAct]').forEach(rb => rb.onchange = () => { S.cal.activeId = rb.value || null; M.audit('calibration', rb.value ? 'Calibration ' + rb.value + ' made active.' : 'No calibration active.'); calChanged(); });
+    $('#calSave').onclick = () => { const rec = S2.makeRecord(cur, S2.today()); S.cal.activeId = rec.id; M.audit('calibration', 'Calibration record ' + rec.id + ' saved (' + rec.materialName + ', ' + rec.presetId + ', ' + rec.mode + ', linear ' + rec.fit.lo + ' to ' + rec.fit.hi + ' mg/mL) and made active.'); calChanged(); };
+  }
+  function calChanged() { calKey = ''; const R = S.run; if (R) { R.rules.s2.i7At = R.derivedN; R.rules.replay(); } M.emit('cards'); UI.emitDirty(); const fr = UI.screen('fractions'); if (fr && fr.refresh) fr.refresh(); }
+  M.on(ev => { if (ev === 'proc') { calKey = ''; if (S.run) { S.run.rules.s2.i7At = S.run.derivedN; } } });
+  UI.register('calibration', { show() { if (!calBuilt) calBuild(); setTimeout(() => { cAcq.resize(); cFit.resize(); }, 0); calKey = ''; calRender(); }, update() { calRender(); } });
+
+  /* ---------- Run comparison (Proposed) ---------- */
+  let cmpBuilt = false, cmpChart = null, sel = new Set(), refId = null, xMode = 'vol', relForce = false, cmpKey = '', loading = false;
+  const STY = [{ c: C.v20, d: null }, { c: '#1F2933', d: 'dash' }, { c: '#6B7785', d: 'dot' }, { c: '#8C96A0', d: 'dashdot' }];
+  function views() {
+    const out = []; if (S.run) out.push({ key: S.run.id, v: () => S2.runView(S.run), def: null });
+    for (const d of S2.ARCHIVE) out.push({ key: d.id, def: d, v: () => { const a = S2.archive[d.id]; return a && a.done ? S2.runView(a) : null; } });
+    return out;
+  }
+  function compat(entry) {
+    const live = S.run; if (!live) return { ok: false, why: 'No current run.' };
+    const tplId = live.tpl.id === 'free' ? 'protA' : live.tpl.id, dt = entry.def ? entry.def.tpl : tplId;
+    if (dt !== tplId) return { ok: false, why: 'Different method template' };
+    return { ok: true };
+  }
+  function cmpBuild() {
+    const r = $('#scr-comparison');
+    r.innerHTML = '<div class="scr-h"><h1>Run comparison</h1><span class="seq">Validate and interpret</span>' + tag('P', 'always') + '<span class="sp"></span><div class="toolbar"><span class="lab">x</span><div class="seg sm" id="cmpX"><button data-v="vol" class="on">mL</button><button data-v="cv">CV</button></div><label class="chk small"><input type="checkbox" id="cmpRel"> Relative mode</label><button class="btn sm" id="cmpReset">Reset zoom</button></div></div>' +
+      '<div class="grid2" style="grid-template-columns:minmax(0,1fr) minmax(0,2.2fr)"><div class="stack"><div class="panel"><div class="ph"><h3>Runs</h3><span class="sp"></span><span class="note">Up to 4, same method template</span></div><div class="pb" id="cmpRuns"></div></div><div id="cmpNote"></div></div>' +
+      '<div class="panel"><div class="pb" style="height:470px"><div id="cmpChart" style="height:100%"></div></div></div></div>' +
+      '<div class="panel" style="margin-top:12px"><div class="ph"><h3>Per-fraction comparison</h3><span class="sp"></span><span class="note">Same fraction IDs across runs; share of the elution-phase integrated fluorescence (relative signal area only, not mass, yield or recovery)</span></div><div class="pb tbl-wrap" style="padding:0" id="cmpTbl"></div></div>';
+    $$('#cmpX button').forEach(b => b.onclick = () => { xMode = b.dataset.v; $$('#cmpX button').forEach(x => x.classList.toggle('on', x === b)); cmpKey = ''; cmpChart.resetZoom(); });
+    $('#cmpRel').onchange = e => { relForce = e.target.checked; M.audit('comparison', 'Relative mode ' + (relForce ? 'on' : 'off') + '.'); cmpKey = ''; };
+    $('#cmpReset').onclick = () => cmpChart.resetZoom();
+    cmpChart = new CH.Chart($('#cmpChart'), {
+      ariaLabel: 'Run comparison overlay', topBand: 16, liveReadout: false,
+      xDomain: () => { const v = S.run ? S.run.ph.totalVol : 165; return xMode === 'cv' ? [-0.2, (v + 1) / (S.run ? S.run.cv : 4.657)] : [-1, v + 1]; },
+      xTitle: () => xMode === 'cv' ? 'Column volumes (CV), aligned by volume' : 'Volume (mL), aligned by volume',
+      panels: [{ key: 'main', yl: { title: 'Fluorescence', unit: () => 'x', log: false } }, { key: 'diff', px: 90, yl: { title: 'Difference', short: 'Difference', unit: '', sym: true, symMin: 0.5, zero: false } }],
+      bands: () => { if (!S.run) return []; const k = xMode === 'cv' ? 1 / S.run.cv : 1; return S.run.ph.list.map(p => ({ x0: p.v0 * k, x1: p.v1 * k, label: p.name, short: p.short })); },
+      series: []
+    });
+    cmpBuilt = true;
+  }
+  function ensureArchives() {
+    if (loading) return; const need = S2.ARCHIVE.filter(d => !(S2.archive[d.id] && S2.archive[d.id].done) && (!S.run || d.tpl === (S.run.tpl.id === 'free' ? 'protA' : S.run.tpl.id) || true));
+    if (!need.length) return; loading = true;
+    const d = need[0], a = S2.startArchived(d);
+    const step = () => { const done = S2.stepArchived(a, 40); $('#cmpNote').innerHTML = '<div class="callout small">Loading archived run ' + esc(d.id) + ' (simulated): ' + Math.round(Math.min(1, a.acq.tCursor / a.tEnd) * 100) + ' %</div>'; if (done) { loading = false; cmpKey = ''; ensureArchives(); } else setTimeout(step, 0); };
+    step();
+  }
+  function cmpRender() {
+    ensureArchives();
+    const entries = views();
+    if (!sel.size && S.run) { sel.add(S.run.id); const e = entries.find(x => x.def && compat(x).ok); if (e) sel.add(e.key); refId = S.run.id; }
+    const vs = entries.filter(e => sel.has(e.key)).map(e => ({ e, v: e.v() })).filter(x => x.v);
+    const presets = new Set(vs.map(x => x.v.pmt)), modes = new Set(vs.map(x => x.v.procKey));
+    const mustRel = presets.size > 1 || modes.size > 1, rel = mustRel || relForce;
+    const key = JSON.stringify([[...sel], refId, xMode, rel, vs.length, S.run ? S.run.derivedN : 0, M.procLabel(), loading]);
+    if (key === cmpKey) return; cmpKey = key;
+    // run list
+    $('#cmpRuns').innerHTML = !S.run ? '<div class="note">Start a run first; it is compared with archived runs of the same method template.</div>' : entries.map((e, k) => {
+      const c = compat(e), a = e.def ? S2.archive[e.def.id] : null, v = e.v(), ready = !!v, isSel = sel.has(e.key), idx = [...sel].indexOf(e.key);
+      const sty = idx >= 0 ? STY[idx % 4] : null;
+      return '<div class="opt" style="margin-bottom:8px' + (c.ok ? '' : ';color:var(--text2)') + '"><input type="checkbox" data-k="' + e.key + '"' + (isSel ? ' checked' : '') + (c.ok && ready ? '' : ' disabled') + '><span style="flex:1"><b>' + esc(e.key) + '</b> ' + (sty ? '<span class="ch-sw ' + (sty.d || 'solid') + '" style="border-top-color:' + sty.c + ';vertical-align:middle"></span>' : '') + '<span class="note">' + esc(e.def ? e.def.name + ', ' + e.def.date + '; PMT ' + e.def.pmt + ' mV; ' + e.def.mode : 'This run; PMT ' + S.run.pmt + ' mV; ' + M.procLabel()) + (c.ok ? '' : '. Not comparable: ' + c.why + '.') + (e.def && !ready && c.ok ? ' Loading.' : '') + '</span></span><label class="small" title="Reference for the difference trace"><input type="radio" name="cmpRef" value="' + e.key + '"' + (refId === e.key ? ' checked' : '') + (isSel ? '' : ' disabled') + '> reference</label></div>';
+    }).join('');
+    $$('#cmpRuns input[type=checkbox]').forEach(cb => cb.onchange = () => { if (cb.checked) { if (sel.size >= 4) { cb.checked = false; return; } sel.add(cb.dataset.k); } else { sel.delete(cb.dataset.k); if (refId === cb.dataset.k) refId = [...sel][0] || null; } M.audit('comparison', 'Run ' + cb.dataset.k + (cb.checked ? ' added to' : ' removed from') + ' the comparison.'); cmpKey = ''; });
+    $$('#cmpRuns input[name=cmpRef]').forEach(rb => rb.onchange = () => { refId = rb.value; M.audit('comparison', 'Reference run set to ' + refId + '.'); cmpKey = ''; });
+    $('#cmpRel').checked = rel; $('#cmpRel').disabled = mustRel;
+    $('#cmpNote').innerHTML = (mustRel ? '<div class="callout warn small">Relative mode only: the selected runs differ in ' + [presets.size > 1 ? 'PMT preset' : '', modes.size > 1 ? 'processing mode' : ''].filter(Boolean).join(' and ') + ', so absolute fluorescence is not comparable. Each run is shown as a percentage of its own elution maximum.</div>' : rel ? '<div class="callout small">Relative mode: each run as a percentage of its own elution maximum.</div>' : '<div class="note">Absolute comparison: same PMT preset and processing mode.</div>') + (loading ? '' : '') + '<div class="note" style="margin-top:6px">Archived runs are simulated. ' + vs.filter(x => x.e.def).map(x => esc(x.e.key + ': ' + x.e.def.note)).join(' ') + '</div>';
+    // series
+    const ref = vs.find(x => x.e.key === refId), refB = ref ? S2.binned(ref.v, xMode, rel) : null, series = [];
+    vs.forEach((x, k) => {
+      const sty = STY[[...sel].indexOf(x.e.key) % 4], b = S2.binned(x.v, xMode, rel);
+      series.push({ key: 's' + k, label: x.e.key + (x.e.key === refId ? ' (reference)' : ''), color: sty.c, dash: sty.d, width: 1.25, panel: 'main', src: () => ({ ...b, gen: cmpKey }), fmt: v => rel ? v.toFixed(1) + ' %' : fmt.sig3(v) + ' V·ns' });
+      if (refB && x.e.key !== refId) { const d = { x: b.x, y: new Float64Array(b.n), n: b.n }; for (let i = 0; i < b.n; i++) d.y[i] = b.y[i] - refB.y[i]; series.push({ key: 'd' + k, label: x.e.key + ' minus reference', color: sty.c, dash: sty.d, width: 1, panel: 'diff', src: () => ({ ...d, gen: cmpKey }), fmt: v => S2.sgn(v, rel ? 1 : 3) + (rel ? ' points' : ' V·ns'), legend: false }); }
+    });
+    cmpChart.cfg.panels[0].yl = rel ? { title: 'Fluorescence', unit: '% of own elution maximum' } : { title: 'Fluorescence', unit: 'V·ns, ND-corrected' };
+    cmpChart.cfg.panels[1].yl = { title: 'Difference from reference', short: 'Difference', unit: rel ? '% points' : 'V·ns', sym: true, symMin: rel ? 2 : 0.05, zero: false };
+    cmpChart.setSeries(series); cmpChart.relayout();
+    // table
+    const fc = vs.map(x => ({ id: x.e.key, fc: S2.fracCompare(x.v), el: S2.phaseIntegral(x.v, 'el'), lp: S2.loadPlateau(x.v), v: x.v }));
+    const refFc = fc.find(x => x.id === refId);
+    const ids = vs.length ? vs[0].v.fractions.filter(f => f.phaseKey === 'el').map(f => f.id) : [];
+    const flag = q => [q.over ? '<span class="flag f">Over ×' + q.over + '</span>' : '', q.chg ? '<span class="flag">Sens. ×' + q.chg + '</span>' : '', q.disc ? '<span class="flag w">Disc. ×' + q.disc + '</span>' : ''].join('') || '<span class="muted">none</span>';
+    const diffPct = (a, b) => isFinite(a) && isFinite(b) && b ? ' <span class="muted">(' + S2.sgn((a / b - 1) * 100, 1) + ' %)</span>' : '';
+    $('#cmpTbl').innerHTML = !vs.length ? '<div class="pb note">Select runs to compare.</div>' : '<table class="tbl"><thead><tr><th>Fraction</th>' + fc.map(x => '<th class="num">' + esc(x.id) + ' share <span class="unit">(%)</span></th><th>' + esc(x.id) + ' QC</th>').join('') + '</tr></thead><tbody>' +
+      ids.map(id => '<tr><td>' + id + '</td>' + fc.map(x => { const q = x.fc[id]; return q ? '<td class="num">' + (q.share * 100).toFixed(1) + '</td><td>' + flag(q) + '</td>' : '<td class="num">–</td><td></td>'; }).join('') + '</tr>').join('') +
+      '<tr><td><b>Elution integrated fluorescence</b> <span class="unit muted">(V·ns·mL)</span></td>' + fc.map(x => '<td class="num" colspan="2">' + (rel ? '<span class="muted">relative mode</span>' : fmt.sig3(x.el) + (x.id !== refId && refFc ? diffPct(x.el, refFc.el) : '')) + '</td>').join('') + '</tr>' +
+      '<tr><td><b>Load plateau, median</b> <span class="unit muted">(V·ns)</span></td>' + fc.map(x => '<td class="num" colspan="2">' + (rel ? '<span class="muted">relative mode</span>' : fmt.sig3(x.lp) + (x.id !== refId && refFc ? diffPct(x.lp, refFc.lp) : '')) + '</td>').join('') + '</tr></tbody></table>';
+  }
+  UI.register('comparison', { show() { if (!cmpBuilt) cmpBuild(); setTimeout(() => cmpChart.resize(), 0); cmpKey = ''; cmpRender(); }, update() { cmpRender(); } });
+
+  /* ---------- Integrations (Future) ---------- */
+  UI.register('integrations', { show() {
+    const rows = [['Live UNICORN link', 'Phase, flow and fraction events in real time', 'GSK IT approval, UNICORN interface access, validation'], ['IDBS E-WorkBook transfer', 'Push the summary and attachments to an experiment ID', 'IDBS API access, permissions, record structure agreement'], ['Data storage', 'Automatic upload to the agreed GSK repository, replacing the manual SharePoint step', 'Storage location, retention policy'], ['Language-model Questions panel', 'Free-text answers about runs', 'Defined data access, permissions, provenance of every answer, GSK approval'], ['Legacy .pkl conversion', 'Convert v2.0 pickle records to CSV and JSON', 'An isolated, trusted environment: opening a pickle can execute code embedded in it']];
+    $('#scr-integrations').innerHTML = '<div class="scr-h"><h1>Integrations</h1>' + tag('F', 'always') + '<span class="sp"></span></div><div class="panel" style="max-width:1100px"><div class="pb"><p>Integrations with GSK systems. None is implemented in the mock-up.</p><table class="tbl"><thead><tr><th>Integration</th><th>Purpose</th><th>Prerequisites</th><th>Status</th></tr></thead><tbody>' + rows.map(r => '<tr><td class="wrap"><b>' + esc(r[0]) + '</b> ' + tag('F', 'always') + '</td><td class="wrap">' + esc(r[1]) + '</td><td class="wrap">' + esc(r[2]) + '</td><td>' + UI.stateHtml('na', 'Not available in mock-up') + '</td></tr>').join('') + '</tbody></table></div></div>';
+  } });
+
+  /* ---------- Record: export packaging ---------- */
+  window.REC_STAGE2 = slot => {
+    slot.innerHTML = '';
+    const pdf = el('<button class="btn" title="Opens the browser print dialog with an A4 layout; choose Save as PDF">PDF (A4)</button>'), h5 = el('<button class="btn"' + (S.run ? '' : ' disabled') + '>Raw waveforms (HDF5)…</button>');
+    pdf.onclick = () => { REC.logExport(REC.fileBase() + '_summary.pdf (print)'); setTimeout(() => window.print(), 50); };
+    h5.onclick = () => hdf5Dialog();
+    slot.append(pdf, el(tag('P', 'always')), h5, el(tag('P', 'always')));
+  };
+  function hdf5Dialog() {
+    const R = S.run, n = R.acq.n, disc = R.acq.disc.subarray(0, n).reduce((a, b) => a + b, 0), wf = (n - disc) * 10, bytes = wf * 600 * 2 + wf * 96 + (n - disc) * 64 + 64 * 1024;
+    const mb = bytes / 1048576;
+    const tree = ['/', '├─ attributes: settings snapshot (general, acquisition, modelling, preset ' + M.presetInfo(R.pmt).id + ', checksum), software versions, labels', '├─ irf/  (7 Gaussian terms per preset; A, W, T)', '├─ beam_monitor/  start and end blocks' + (R.setupSnap.beamPerBlock ? ', and one per block' : ''), '└─ blocks/', '   ├─ block_000001/', '   │  ├─ attributes: time_s, step, nd_od, range_V, pmt_mV, timestamp', '   │  └─ waveform_01 … waveform_10  int16[600]', '   │     attributes: nd_od, range_V, pmt_preset, timestamp', '   ├─ …', '   └─ block_' + String(n).padStart(6, '0') + '/'].join('\n');
+    UI.modal('Raw waveforms (HDF5)', '<p class="small">' + tag('P', 'always') + ' File structure for the raw waveform export. The mock-up does not write a real HDF5 file.</p><pre style="font-size:12px;background:#F7F8F9;border:1px solid var(--border);padding:8px;overflow:auto">' + esc(tree) + '</pre><table class="tbl"><tbody><tr><td>Blocks</td><td class="num">' + fmt.int(n - disc) + ' (' + disc + ' discarded, not written)</td></tr><tr><td>Waveforms</td><td class="num">' + fmt.int(wf) + '</td></tr><tr><td>Samples per waveform</td><td class="num">600 × int16 (2 bytes)</td></tr><tr><td>Estimated size</td><td class="num"><b>' + mb.toFixed(1) + ' MB</b> uncompressed</td></tr></tbody></table><p class="note">Estimate: waveforms × 600 samples × 2 bytes, plus about 96 bytes of attributes per waveform, 64 bytes per block and 64 kB of settings.</p>', [{ label: 'Close', primary: true }]);
+    M.audit('export', 'HDF5 structure viewed (estimated ' + mb.toFixed(1) + ' MB; no file written).');
+  }
+
+  /* ---------- Engineer additions ---------- */
+  ENG.addTab('defs', 'Calibration and decay'); ENG.addTab('fit', 'Decay fit');
+  let fitBlock = null, fc = null;
+  window.ENG_EXTRA = {
+    defs: { html: () => { const info = S2.irfInfo(S.setup.pmt), ref = S2.decayRef(S.run); return '<div class="grid2"><div class="stack"><div class="panel"><div class="ph"><h3>Decay metric, Option A</h3>' + tag('P', 'always') + '<span class="tag" data-scope="always">Research hypothesis only</span></div><div class="pb small"><p><b>Definition.</b> Intensity-weighted mean delay after the IRF peak: Σ (t − t<sub>peak</sub>) I(t) / Σ I(t) over 0 to 20 ns after the IRF peak (' + info.peakNs.toFixed(1) + ' ns from window start), with I(t) = −(v(t) − b) on the block median waveform and b its median baseline.</p><p>Computed only where input range use is between ' + Math.round(S.th.decayUseMin * 100) + ' and ' + Math.round(S.th.decayUseMax * 100) + ' %.</p><p>Option B (late-to-early gate area ratio) is not implemented.</p><p><b>Precision.</b> Block-to-block SD in a steady phase, the load plateau: ' + (ref ? ref.mean.toFixed(3) + ' ± ' + ref.sd.toFixed(3) + ' ns from ' + fmt.int(ref.n) + ' blocks.' : 'measured once the load is acquired with decay analysis on.') + ' IRF about ' + info.fwhmNs.toFixed(2) + ' ns FWHM; sampling interval 0.2 ns.</p><p><b>Rule P7</b> fires only when a shift exceeds ' + S.th.decaySdMult + ' × SD and ' + S.th.decayThrNs + ' ns (both provisional). Linked hypothesis H3 suggests HPLC-SEC.</p><p class="muted">Simulation: τ shortens by 0.3 ns across the elution peak; metric noise set for a steady-phase SD of about 0.05 ns.</p></div></div></div>' +
+      '<div class="stack"><div class="panel"><div class="ph"><h3>Calibration assumptions</h3>' + tag('P', 'always') + '</div><div class="pb small"><p>Fit models: unweighted, 1/x or 1/x² linear (default 1/x). Linear range: the largest set of the lowest levels whose departures from the fit are all within ' + S.th.calDepPct + ' % (default 5 %). Both are development assumptions, not validated.</p><p>The first level beyond the linear range is labelled "possible inner-filter onset".</p><p>A calibration applies only to runs with the same PMT preset and processing mode, before its expiry (' + S.th.calExpiryDays + ' days, provisional). Otherwise rule I7 and "Calibration not applicable".</p><p>Rule P6 lists fractions with fluorescence above the calibrated linear range. Yield and recovery are never computed from fluorescence.</p><p class="muted">Simulation: IgG response linear to 2 mg/mL, falling below linear above it (inner-filter coefficient 0.03 per mg/mL). BSA response per mg/mL 25 % of IgG (simulation parameter).</p></div></div></div></div>'; } },
+    fit: { html: () => {
+      const R = S.run; if (!R || !R.acq.n) return '<div class="note">Start a run to fit a block.</div>';
+      const A = R.acq; if (fitBlock == null) { let best = 0, bi = A.n - 1; for (let i = 0; i < A.n; i++) if (!A.disc[i] && A.ruse[i] > 0.3 && A.ruse[i] < 0.9 && R.y.v20[i] > best) { best = R.y.v20[i]; bi = i; } fitBlock = bi; }
+      let i = Math.min(A.n - 1, fitBlock); while (i > 0 && A.disc[i]) i--;
+      fc = S2.reconFit(TR.medianWave(TR.regenBlock(A, i)), R.pmt); fc.block = i;
+      return '<div class="toolbar" style="margin-bottom:8px"><label class="small">Block <input type="number" id="fitBlk" min="1" max="' + A.n + '" value="' + (i + 1) + '" style="width:90px"></label><span class="note">' + fmt.ml(A.u[i]) + ' mL, ' + esc(R.ph.list[A.phase[i]].name) + ', range use ' + fmt.pct0(A.ruse[i]) + ' %. Block median waveform.</span>' + tag('P', 'always') + '<span class="tag" data-scope="always">Engineer view only</span></div>' +
+        '<div class="grid2" style="grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)"><div style="height:420px" id="fitChart"></div><div class="stack"><table class="tbl"><thead><tr><th>Parameter</th><th class="num">Value</th></tr></thead><tbody><tr><td>τ, single exponential</td><td class="num"><b>' + fc.tau.toFixed(3) + ' ± ' + fc.sigTau.toFixed(3) + ' ns</b></td></tr><tr><td>Amplitude A</td><td class="num">' + fc.A.toPrecision(4) + '</td></tr><tr><td>χ² (reduced)</td><td class="num">' + fc.chi2r.toFixed(2) + '</td></tr><tr><td>Points in fit range</td><td class="num">' + fc.N + '</td></tr><tr><td>Fit range</td><td class="num">' + (fc.i0 * 0.2).toFixed(1) + ' to ' + (fc.i1 * 0.2).toFixed(1) + ' ns</td></tr><tr><td>IRF width</td><td class="num">' + fc.fwhm.toFixed(2) + ' ns FWHM ' + tag('A', 'always') + '</td></tr><tr><td>Noise σ per sample</td><td class="num">' + (fc.sd * 1000).toFixed(3) + ' mV</td></tr></tbody></table>' +
+        '<div class="callout small">How to read a fit: the fit should overlay the data, the weighted residuals should scatter randomly about zero, and χ² should be close to 1. Prefer the model with the fewest parameters. The IRF width interpretation (W as σ) is assumed.</div><div class="note">The decay is convolved with the stored IRF for the run\'s preset. Uncertainty from the curvature of χ² (Δχ² = 1). Simulated waveforms use τ near 3.5 ns, shortening by 0.3 ns across the elution peak.</div></div></div>';
+    }, mount: () => {
+      const host = $('#fitChart'); if (!host || !fc) return;
+      const x = new Float64Array(600); for (let j = 0; j < 600; j++) x[j] = j * 0.2;
+      const pos = a => Float64Array.from(a, v => v > 0 ? v : NaN), hm = Math.min(...fc.irf), dmax = Math.max(...fc.data);
+      const irfS = Float64Array.from(fc.irf, v => v / hm * dmax);
+      const ch = new CH.Chart(host, { ariaLabel: 'Reconvolution fit', topBand: 14, marginRight: 12, liveReadout: false, xDomain: () => [30, 75], xTitle: () => 'Time from window start (ns)',
+        panels: [{ key: 'main', yl: { title: 'Intensity', unit: 'V', log: () => true, minLog: -6 } }, { key: 'res', px: 90, yl: { title: 'Weighted residual', short: 'Residual', unit: 'σ', sym: true, symMin: 3, zero: false } }],
+        bands: () => [{ x0: fc.i0 * 0.2, x1: fc.i1 * 0.2, label: 'Fit range', fill: 'rgba(27,54,93,0.05)' }],
+        series: [{ key: 'd', label: 'Data (block median)', color: C.v20, width: 1, panel: 'main', src: () => ({ x, y: pos(fc.data), n: 600 }), fmt: v => v.toExponential(2) + ' V' }, { key: 'irf', label: 'IRF (reference)', color: C.irf, dash: 'dash', width: 1, panel: 'main', src: () => ({ x, y: pos(irfS), n: 600 }), fmt: v => v.toExponential(2) }, { key: 'f', label: 'Fit, τ ' + fc.tau.toFixed(2) + ' ns', color: C.prop, width: 1.25, panel: 'main', src: () => ({ x, y: fc.fit, n: 600 }), fmt: v => v.toExponential(2) + ' V' }, { key: 'r', label: 'Weighted residuals', color: C.text2, width: 1, panel: 'res', src: () => ({ x, y: fc.res, n: 600 }), fmt: v => v.toFixed(2) + ' σ' }] });
+      $('#fitBlk').onchange = e => { fitBlock = (+e.target.value || 1) - 1; UI.screen('engineer').show(); };
+    } }
+  };
+
+  /* ---------- Setup additions for the AAV template ---------- */
+  M.on(ev => { if (ev === 'run' && S.run && S.run.tpl.id === 'aav') M.log(S.run, 'system', 'AAV affinity capture template. Empty and full capsid assessment is not a TRIFLE output in this version.'); });
+
+  /* ---------- Questions panel additions ---------- */
+  Q.addIntent((q, ctx) => {
+    const R = ctx.run;
+    if (/concentration|mg\/ml|calibrat|indicative/.test(q)) {
+      const st = S2.status(R); if (st.none) return { text: 'No calibration is active, so fluorescence is relative only. A calibration from purified IgG step injections converts fluorescence to an indicative concentration inside its linear range.', source: 'Calibration screen' };
+      if (!st.ok) return { text: 'Calibration ' + st.rec.id + ' does not apply: ' + st.reasons.join('; ') + '. No concentration is shown (rule I7).', source: 'Calibration record ' + st.rec.id + '; rule I7' };
+      return { text: 'Calibration ' + st.rec.id + ' (' + st.rec.materialName + ', ' + st.rec.presetId + ', ' + st.rec.mode + ') is linear from ' + st.rec.fit.lo + ' to ' + st.rec.fit.hi + ' mg/mL. Concentrations are indicative and shown only inside that range; above it the display reads "Above calibrated range, relative only" (rule P6). Yield and recovery are never computed from fluorescence.', source: 'Calibration record ' + st.rec.id + '; rule P6' };
+    }
+    if (/decay|lifetime|tryptophan environment|conformation/.test(q)) {
+      if (!S.proc.decay) return { text: 'Decay-shape analysis is off. It is a Proposed research display: switch it on under Processing to see the decay metric and rule P7. It cannot identify a cause on its own.', source: 'Processing options; rule P7' };
+      const p7 = R ? R.rules.cards.find(c => c.rule === 'P7') : null, ref = S2.decayRef(R);
+      if (p7) return { text: p7.obs + ' H3 is a research hypothesis: a possible change in tryptophan environment. Confirm with HPLC-SEC on ' + M.rangeIds(p7.fractions) + '.', source: 'Card ' + p7.id + '; H3' };
+      return { text: 'No P7 observation so far.' + (ref ? ' Reference on the load plateau: ' + ref.mean.toFixed(2) + ' ± ' + ref.sd.toFixed(2) + ' ns.' : '') + ' P7 fires only when the shift exceeds ' + S.th.decaySdMult + ' × SD and ' + S.th.decayThrNs + ' ns.', source: 'Rule P7' };
+    }
+    if (/capsid|empty|full/.test(q)) return { text: 'Empty and full capsid assessment is not a TRIFLE output in this version.', source: 'AAV affinity capture template' };
+    if (/compar|earlier run|previous run|other run/.test(q)) return { text: 'Run comparison overlays up to 4 runs of the same method template, aligned by volume, with a difference trace against a reference run and a per-fraction table. Runs with different PMT presets or processing modes are compared in relative mode only.', source: 'Procedure: Run comparison' };
+    return null;
+  });
+  window.Q_EXTRA_CHIPS = { fractions: ['What concentration is shown?'], calibration: ['What concentration is shown?', 'What does "Research hypothesis" mean?'], comparison: ['How are runs compared?', 'Can I trust the elution peak?'], run: ['What is the decay metric?'], integrations: ['How do I put this run into my notebook?'] };
+
+  /* ---------- wiring ---------- */
+  setTimeout(() => { addFrCols(); S2.initRecord(); UI.emitDirty(); }, 0);
+})();
+
 /* ---------- boot ---------- */
 (function () {
   const S = M.S;
   UI.buildRail([
     { group: 'Acquire' }, { key: 'setup', label: 'Setup' }, { key: 'readiness', label: 'Readiness' }, { key: 'run', label: 'Run' },
     { group: 'Validate and interpret' }, { key: 'fractions', label: 'Fraction review' },
+    ...(window.STAGE2 ? [{ key: 'calibration', label: 'Calibration', tag: UI.tag('P', 'always') }, { key: 'comparison', label: 'Run comparison', tag: UI.tag('P', 'always') }] : []),
     { group: 'Decide' }, { key: 'fractions', label: 'Samples to send', anchor: 'samples' },
     { group: 'Record' }, { key: 'record', label: 'Record' },
     { group: 'Engineer', eng: true }, { key: 'engineer', label: 'Diagnostics', eng: true }
