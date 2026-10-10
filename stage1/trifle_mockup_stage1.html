@@ -1430,7 +1430,7 @@ const TR = (function () {
   }
   function medianWave(waves) { const buf = new Float64Array(10 * NSAMP); waves.forEach((w, k) => buf.set(w, k * NSAMP)); const m = new Float64Array(NSAMP); for (let j = 0; j < NSAMP; j++) m[j] = median10(buf, j); return m; }
 
-  /* ---------- chromatography (simulated ÄKTA result export) ---------- */
+  /* ---------- chromatography (simulated AKTA result export) ---------- */
   function makeAkta(ph, prof, seed, dtS) {
     dtS = dtS || 5; const n = Math.floor(ph.totalMin * 60 / dtS) + 1;
     const A = { n, dt: dtS, t: new Float64Array(n), v: new Float64Array(n), flow: new Float32Array(n), uv: new Float32Array(n), cond: new Float32Array(n), ph: new Float32Array(n), phase: new Int8Array(n), uvTrue: new Float32Array(n) };
@@ -2184,7 +2184,7 @@ const M = (function () {
       if (R.acq.n !== before) { deriveTo(R); R.lastSave = S.setup.save2s ? Math.floor(R.acq.t[R.acq.n - 1] / 2) * 2 + 2 : R.acq.tCursor; }
       if (R.acq.done || tS >= R.timerMin * 60) finishRun(R, 'timer');
     }
-    // ÄKTA export samples available up to the current ÄKTA time (simulated import)
+    // AKTA export samples available up to the current AKTA time (simulated import)
     const tA = aktaMin(R, tS); R.aktaN = Math.min(R.akta.n, Math.max(0, Math.floor(tA * 60 / R.akta.dt) + 1));
     // log new sensitivity changes
     const ch = R.acq.changes;
@@ -2210,7 +2210,7 @@ const M = (function () {
     audit('run', 'Run ' + R.id + ' complete: ' + fmt.int(R.acq.n) + ' blocks.');
     emit('run');
   }
-  function pauseRun(R) { if (R.state !== 'acquiring') return; R.state = 'paused'; R.pausedAt = runTimeS(R); log(R, 'system', 'Acquisition paused. The ÄKTA run continues; TRIFLE data will have a gap.'); audit('run', 'Acquisition paused.'); emit('run'); }
+  function pauseRun(R) { if (R.state !== 'acquiring') return; R.state = 'paused'; R.pausedAt = runTimeS(R); log(R, 'system', 'Acquisition paused. The AKTA run continues; TRIFLE data will have a gap.'); audit('run', 'Acquisition paused.'); emit('run'); }
   function continueRun(R) { if (R.state !== 'paused') return; R.state = 'acquiring'; const t = runTimeS(R); R.acq.tCursor = Math.max(R.acq.tCursor, t); R.brkNext = true; log(R, 'system', 'Acquisition continued after ' + fmt.min1((t - R.pausedAt) / 60) + ' min.'); audit('run', 'Acquisition continued.'); emit('run'); }
   function fastForward(R, budgetMs) { // run the simulation to the experiment timer in chunks
     const t0 = performance.now(), end = R.simStart + R.timerMin * 60;
@@ -2528,7 +2528,7 @@ const UI = (function () {
     const el2 = R ? fmt.clock(R.state === 'complete' ? R.endAt : M.runTimeS(R)) : '00:00:00';
     const key = JSON.stringify([ind, st, el2, S.engineer, S.setup.operator, window.innerWidth < 1400]);
     if (key === hdrCache) return; hdrCache = key;
-    const compact = window.innerWidth < 1400, SHORT = { 'Beam monitor': 'Beam mon.', 'Filter wheel': 'Wheel', Chromatography: 'ÄKTA', 'Stable (provisional)': 'Stable (prov.)', 'Start and end': 'Start/end', 'Import (sim.)': 'Import (sim.)' };
+    const compact = window.innerWidth < 1400, SHORT = { 'Beam monitor': 'Beam mon.', 'Filter wheel': 'Wheel', Chromatography: 'AKTA', 'Stable (provisional)': 'Stable (prov.)', 'Start and end': 'Start/end', 'Import (sim.)': 'Import (sim.)' };
     $('#hConn').innerHTML = ind.map(([lab, [k, t]]) => '<span class="ind" title="' + esc(lab + ': ' + t) + '"><span class="dot ' + k + '"></span><span class="lab">' + esc(compact && SHORT[lab] ? SHORT[lab] : lab) + '</span> ' + esc(compact ? (SHORT[t] || t.replace(/, position \d/, '')) : t) + '</span>').join('');
     $('#hState').innerHTML = '<span class="muted">Run</span> <span class="h-state">' + st + '</span>';
     $('#hElapsed').innerHTML = '<span class="muted" title="Elapsed acquisition time">Elapsed</span> ' + el2;
@@ -2646,7 +2646,7 @@ const UI = (function () {
     foot.append(sw);
     const demo = el('<div class="demo-box" aria-label="Demo controls"><div class="demo-h">Demo controls</div>' +
       '<div class="seg sm" id="speedSeg" role="group" aria-label="Playback speed"><button data-v="1">1×</button><button data-v="10">10×</button><button data-v="60">60×</button></div>' +
-      '<label title="Allows Start before the laser is stable, with a recorded override reason. Demonstrates I1."><input type="checkbox" id="demoEarly"> Start ÄKTA run before laser is stable</label>' +
+      '<label title="Allows Start before the laser is stable, with a recorded override reason. Demonstrates I1."><input type="checkbox" id="demoEarly"> Start AKTA run before laser is stable</label>' +
       '<label title="Sets the UNICORN fraction delay to the pre-TRIFLE value. Demonstrates I5."><input type="checkbox" id="demoDelay"> UNICORN fraction delay not updated</label>' +
       '<button class="btn sm" id="demoFF" title="Simulates the rest of the run immediately (demo only)">Fast-forward to run end</button>' +
       '<button class="btn sm" id="demoReset" title="Restarts the mock-up from the beginning with the same seed">Restart demo</button></div>');
@@ -2654,7 +2654,7 @@ const UI = (function () {
     $('#engSwitch').onchange = e => { S.engineer = e.target.checked; document.body.classList.toggle('eng', S.engineer); M.audit('role', 'Simulated role switched to ' + (S.engineer ? 'Engineer' : 'Scientist') + ' view.'); if (!S.engineer && current === 'engineer') go('run'); emitDirty(); };
     $$('#speedSeg button').forEach(b => b.onclick = () => { S.speed = +b.dataset.v; $$('#speedSeg button').forEach(x => x.classList.toggle('on', x === b)); M.audit('demo', 'Playback speed ' + S.speed + '×.'); });
     $$('#speedSeg button').forEach(x => x.classList.toggle('on', +x.dataset.v === S.speed));
-    $('#demoEarly').onchange = e => { S.demo.laserEarly = e.target.checked; M.audit('demo', 'Demo control: start ÄKTA run before laser is stable ' + (e.target.checked ? 'on' : 'off') + '.'); emitDirty(); };
+    $('#demoEarly').onchange = e => { S.demo.laserEarly = e.target.checked; M.audit('demo', 'Demo control: start AKTA run before laser is stable ' + (e.target.checked ? 'on' : 'off') + '.'); emitDirty(); };
     $('#demoDelay').onchange = e => { setDelayDemo(e.target.checked); };
     $('#demoFF').onclick = () => fastForwardUI();
     $('#demoReset').onclick = async () => { const r = await modal('Restart demo', '<p>Restart the mock-up from the beginning? The run, decisions and audit trail are cleared. The simulation uses the same seed, so playback is identical.</p>', [{ label: 'Cancel', value: false }, { label: 'Restart', value: true, primary: true }]); if (r.value) location.reload(); };
@@ -2753,7 +2753,7 @@ const UI = (function () {
     const al = M.alignmentState(), p = M.plumbing(), pi = M.presetInfo(s.pmt), pc = M.presetCheck(), lad = TR.LADDERS[s.pmt];
     Rt.innerHTML =
       '<div class="panel"><div class="ph"><h3>Chromatography source</h3></div><div class="pb form">' +
-      '<label class="l" for="sSys">System</label><select id="sSys"' + dis + '>' + opt('avant', 'ÄKTA avant 150 (GSK target configuration)', s.system === 'avant') + opt('pure', 'ÄKTA pure (current UCL configuration)', s.system === 'pure') + '</select>' +
+      '<label class="l" for="sSys">System</label><select id="sSys"' + dis + '>' + opt('avant', 'AKTA avant 150 (GSK target configuration)', s.system === 'avant') + opt('pure', 'AKTA pure (current UCL configuration)', s.system === 'pure') + '</select>' +
       '<label class="l" style="align-self:start;padding-top:2px">Data</label><div class="stack" style="gap:6px">' +
       '<label class="opt"><input type="radio" name="src" value="import"' + (s.source === 'import' ? ' checked' : '') + dis + '><span>Imported UNICORN result export<span class="note">Stage 1 default. Simulated in the mock-up.</span></span></label>' +
       '<label class="opt"><input type="radio" name="src" value="manual"' + (s.source === 'manual' ? ' checked' : '') + dis + '><span>Manual event marks<span class="note">No flow trace or UV; alignment is Uncertain.</span></span></label>' +
@@ -3076,7 +3076,7 @@ const RC = (function () {
     $('#rExp').onclick = toggleExpand;
     $('#rLogF').onchange = e => { logFilter = e.target.value; logN = -1; };
     chart = new CH.Chart($('#runChart'), {
-      ariaLabel: 'Chromatogram with TRIFLE fluorescence and ÄKTA traces', rulers: [0, 1], rulerColor: C.v20,
+      ariaLabel: 'Chromatogram with TRIFLE fluorescence and AKTA traces', rulers: [0, 1], rulerColor: C.v20,
       xDomain: RC.xDomain, xTitle: RC.xTitle, panels: RC.panels(), series: RC.seriesFor(), bands: RC.bands, fractions: RC.fracItems,
       markers: () => RC.markers(true), hatches: RC.hatches, intervals: RC.intervals, info: RC.info, rulerInfo: RC.rulerInfo, legendExtras: RC.legendExtras(),
       highlights: () => highlight ? [{ x0: RC.toX(highlight[0]), x1: RC.toX(highlight[1]) }] : []
@@ -3112,14 +3112,14 @@ const RC = (function () {
     if (S.fault !== 'none') { await UI.modal('Cannot start', '<p>' + esc({ digitiser: 'Digitiser not found. Check the USB cable and power, then run the readiness checks again.', wheel: 'Filter wheel not responding. Check its cable and power, then run the readiness checks again.', laser: 'Laser not detected. Check the laser controller and the beam path.' }[S.fault]) + '</p>', [{ label: 'Close', primary: true }]); return; }
     if (!pc.ok) { await UI.modal('Preset mismatch', '<p>' + esc(pc.msg) + '</p><p>Choose a matching preset on Setup.</p>', [{ label: 'Close', primary: true }]); return; }
     if (!sm.ready) {
-      if (S.demo.laserEarly && sm.canOverride) { if (!S.readiness.override) { S.readiness.override = { reason: 'Demo control: ÄKTA run started before laser stable (provisional).', by: S.setup.operator, t: S.simT }; M.audit('override', 'Readiness override recorded: ' + S.readiness.override.reason); } }
+      if (S.demo.laserEarly && sm.canOverride) { if (!S.readiness.override) { S.readiness.override = { reason: 'Demo control: AKTA run started before laser stable (provisional).', by: S.setup.operator, t: S.simT }; M.audit('override', 'Readiness override recorded: ' + S.readiness.override.reason); } }
       else if (!(S.readiness && S.readiness.override && sm.canOverride)) return;
     }
     const R = M.newRun(); RC.view.x = RC.view.x || 'vol'; chart.resetZoom(); UI.emitDirty();
   }
   async function endRun() {
     const R = S.run; if (!R || R.state === 'complete') return;
-    const r = await UI.modal('End acquisition', '<p>End TRIFLE acquisition now? This stops TRIFLE only; it does not act on the ÄKTA. The wheel moves to OD 4, a beam monitor block is captured and the record is saved.</p>', [{ label: 'Cancel', value: false }, { label: 'End acquisition', value: true, primary: true }]);
+    const r = await UI.modal('End acquisition', '<p>End TRIFLE acquisition now? This stops TRIFLE only; it does not act on the AKTA. The wheel moves to OD 4, a beam monitor block is captured and the record is saved.</p>', [{ label: 'Cancel', value: false }, { label: 'End acquisition', value: true, primary: true }]);
     if (r.value) { M.finishRun(R, 'user'); UI.emitDirty(); }
   }
   async function noteDlg(kind) {
@@ -3134,7 +3134,7 @@ const RC = (function () {
     $('#rMark').disabled = $('#rNote').disabled = !R || st === 'complete';
     let note = '';
     if (!R) note = sm.ready ? 'Ready to start.' : (canStart ? 'Start is allowed with the recorded override; I1 will flag early data.' : 'Start is disabled until Readiness reaches "Ready to start". ' + sm.text);
-    else if (st === 'paused') note = 'Paused. The ÄKTA run continues.';
+    else if (st === 'paused') note = 'Paused. The AKTA run continues.';
     else if (st === 'complete') note = 'Complete. Review the fractions next.';
     else if (UI.isFF()) note = 'Fast-forwarding (demo).';
     $('#rCtlNote').textContent = note;
@@ -3164,12 +3164,12 @@ const RC = (function () {
     const ph = tA < 0 ? null : R.ph.list[TR.phaseIdxAtTime(R.ph, tA)];
     const flow = tA >= 0 && tA <= R.ph.totalMin ? TR.flowAt(R.ph, tA) : 0, vp = TR.pumpVolAt(R.ph, Math.max(0, tA));
     const lad = TR.LADDERS[R.pmt], st = lad[A.cur - 1], al = M.alignmentState(), disc = A.disc.subarray(0, n).reduce((a, b) => a + b, 0);
-    const sys = R.state === 'complete' ? 'Complete. Acquisition ended at ' + fmt.clock(R.endAt) + '.' : R.state === 'paused' ? 'Paused. The ÄKTA run continues.' : (tA < 0 ? 'Acquiring buffer; ÄKTA run starts in ' + fmt.min1(-tA) + ' min.' : (tA > R.ph.totalMin ? 'Acquiring after the ÄKTA method ended.' : 'Acquiring. ' + ph.name + (ph.hold && tA >= ph.tPump ? ', hold, no flow' : ', ' + fmt.ml(vp - ph.v0) + ' mL in, ' + flow.toFixed(2) + ' mL/min') + '.'));
+    const sys = R.state === 'complete' ? 'Complete. Acquisition ended at ' + fmt.clock(R.endAt) + '.' : R.state === 'paused' ? 'Paused. The AKTA run continues.' : (tA < 0 ? 'Acquiring buffer; AKTA run starts in ' + fmt.min1(-tA) + ' min.' : (tA > R.ph.totalMin ? 'Acquiring after the AKTA method ended.' : 'Acquiring. ' + ph.name + (ph.hold && tA >= ph.tPump ? ', hold, no flow' : ', ' + fmt.ml(vp - ph.v0) + ' mL in, ' + flow.toFixed(2) + ' mL/min') + '.'));
     const row = (k2, u, v) => '<tr><td class="k">' + k2 + (u ? ' <span class="un">(' + u + ')</span>' : '') + '</td><td class="v">' + v + '</td></tr>';
     const fl = n && i >= 0 ? R.y.act[i] : NaN, use = n ? A.ruse[i] : NaN;
     const html = '<div class="sysstate">' + esc(sys) + '</div><table class="rv">' +
       row('Fluorescence', 'V·ns', fmt.sig3(fl)) +
-      (imp ? row('UV 280', 'mAU', fmt.mau(K.uv[k])) + row('Conductivity', 'mS/cm', fmt.cond(K.cond[k])) + row('pH', '', fmt.ph(K.ph[k])) : row('ÄKTA traces', '', 'not available')) +
+      (imp ? row('UV 280', 'mAU', fmt.mau(K.uv[k])) + row('Conductivity', 'mS/cm', fmt.cond(K.cond[k])) + row('pH', '', fmt.ph(K.ph[k])) : row('AKTA traces', '', 'not available')) +
       row('Volume', 'mL · CV', fmt.ml(vp) + ' · ' + fmt.cv(vp / R.cv)) +
       '<tr class="sec"><td colspan="2">Signal QC</td></tr>' +
       row('Sensitivity', 'OD ' + st.nd + ', ' + st.range * 1000 + ' mV', A.cur + ' of ' + lad.length) +
@@ -3484,10 +3484,10 @@ const REC = (function () {
       'Instrument: TRIFLE-01 (pulsed UV laser, 10 Hz; PMT; six-position ND filter wheel; PicoScope 6000 series, 8-bit, 0.2 ns sampling). Software: TRIFLE mock-up, simulated data.',
       'Preset: ' + pi.id + ' (PMT ' + s.pmt + ' mV, checksum ' + pi.checksum + '; ' + pi.ladderFile + ', ' + pi.irfFile + ').',
       'Auto-ranging: ' + (s.autorange === 'v20' ? 'v2.0 reference' : 'Proposed (block median input, symmetric no-signal test, baseline not scaled)') + '. Processing: ' + M.procLabel() + '.',
-      'Chromatography: ' + (s.system === 'avant' ? 'ÄKTA avant 150' : 'ÄKTA pure') + '; source ' + ({ import: 'imported UNICORN result export (simulated)', manual: 'manual event marks', standalone: 'none (standalone TRIFLE)' }[s.source]) + '.',
+      'Chromatography: ' + (s.system === 'avant' ? 'AKTA avant 150' : 'AKTA pure') + '; source ' + ({ import: 'imported UNICORN result export (simulated)', manual: 'manual event marks', standalone: 'none (standalone TRIFLE)' }[s.source]) + '.',
       'Column: ' + s.column + ', CV ' + fmt.ml(tpl.cv) + ' mL. Flows: ' + ph.list.map(q => q.short + ' ' + q.flow.toFixed(2)).join(', ') + ' mL/min. Total ' + fmt.ml(ph.totalVol) + ' mL, ' + fmt.min1(ph.totalMin) + ' min.',
       'Delay volumes: V1 (UV to TRIFLE) ' + fmt.ml(s.V1) + ' mL, V2 (TRIFLE to collector) ' + fmt.ml(s.V2) + ' mL, UNICORN fraction delay ' + fmt.ml(p.fracDelay) + ' mL.',
-      'Alignment method: cumulative volume from the integrated ÄKTA flow trace; delay volumes applied in the volume domain. Detector alignment ' + al.detector + '; fraction assignment ' + al.fractions + '.'
+      'Alignment method: cumulative volume from the integrated AKTA flow trace; delay volumes applied in the volume domain. Detector alignment ' + al.detector + '; fraction assignment ' + al.fractions + '.'
     ].join('\n');
     if (R) {
       const st = M.fractionStats(R);
@@ -3596,7 +3596,7 @@ const REC = (function () {
     const R = S.run, s = R ? R.setupSnap : S.setup, p = M.plumbing(), pi = M.presetInfo(s.pmt);
     const base = R ? 'Raw blocks 1 to ' + fmt.int(R.acq.n) + ' (block waveforms regenerated from seed ' + TR.SEED + '); processing ' + M.procLabel() + '; alignment V1 ' + fmt.ml(s.V1) + ' mL, V2 ' + fmt.ml(s.V2) + ' mL, fraction delay ' + fmt.ml(p.fracDelay) + ' mL; fraction scheme load ' + s.frac.loadSize + ' mL, elution ' + s.frac.elSize + ' mL for ' + s.frac.elCollect + ' mL; preset ' + pi.id + '.' : 'No run.';
     $('#recProv').innerHTML = '<table class="tbl"><thead><tr><th>Item</th><th>Derived from</th></tr></thead><tbody>' +
-      '<tr><td>Chromatogram figure</td><td class="wrap small">' + esc(base) + ' ÄKTA traces from the imported UNICORN result export (simulated).</td></tr>' +
+      '<tr><td>Chromatogram figure</td><td class="wrap small">' + esc(base) + ' AKTA traces from the imported UNICORN result export (simulated).</td></tr>' +
       '<tr><td>Fraction table</td><td class="wrap small">' + esc(base) + ' UV statistics over each fraction\'s collected liquid.</td></tr>' +
       '<tr><td>Data quality</td><td class="wrap small">Evidence rules with provisional thresholds (Engineer view); readiness checks; run log.</td></tr>' +
       '<tr><td>Fraction decisions</td><td class="wrap small">Scientist decisions in Fraction review, with notes; audit trail.</td></tr></tbody></table>';
@@ -3860,7 +3860,7 @@ const Q = (function () {
     'pmt': ['PMT', 'The light detector. Its gain is set by a control voltage, with presets of 400 or 800 mV, on a separate supply.'],
     'baseline': ['Baseline', 'The signal before the pulse arrives, subtracted from every waveform. v2.0 uses the mean of the first 100 samples; Proposed uses the median.'],
     'rapid block': ['Rapid block', 'Ten laser pulses captured together, about one second of data.'],
-    'alignment': ['Alignment', 'Matching TRIFLE data to the ÄKTA run by volume, allowing for the tubing volume between the two detectors (V1).'],
+    'alignment': ['Alignment', 'Matching TRIFLE data to the AKTA run by volume, allowing for the tubing volume between the two detectors (V1).'],
     'fraction assignment': ['Fraction assignment', 'Which collected fraction a stretch of TRIFLE signal ended up in. It depends on the tubing volume to the fraction collector (V2) and on the delay volume set in UNICORN.'],
     'low precision': ['Low precision', 'Stretches where the pulse fills under 20 % of the input range (provisional). The v2.0 baseline leverage matters most there.'],
     'evidence level': ['Evidence levels', 'Instrument evidence: findings about the measurement itself. Process observation: a measured change that warrants attention, stated without interpretation. Research hypothesis: a possible process explanation that needs offline confirmation, always linked to the observation it comes from.']

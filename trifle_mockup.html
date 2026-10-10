@@ -2,8 +2,8 @@
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TRIFLE · TRIFLE-01</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TRIFLE Software Mock-up</title>
 <!-- TRIFLE control and analysis software, interactive mock-up. Runs entirely on simulated data. One file, no network requests. -->
 <style>
 /* ---------- design values (14.5) ---------- */
@@ -29,7 +29,7 @@ a, .link { color: var(--accent); text-decoration: underline; cursor: pointer; ba
 .hidden { display: none !important; }
 
 /* ---------- frame (14.4) ---------- */
-#app { display: grid; grid-template-columns: 200px minmax(0, 1fr) auto; grid-template-rows: 48px minmax(0, 1fr) 24px; height: 100vh; }
+#app { display: grid; grid-template-columns: 200px minmax(0, 1fr) auto; grid-template-rows: 48px minmax(0, 1fr) 24px; height: 100%; }
 #hdr { grid-column: 1 / 4; display: flex; align-items: center; gap: 16px; padding: 0 12px; background: var(--panel); border-bottom: 1px solid var(--border); min-width: 0; }
 .h-id { display: flex; align-items: baseline; gap: 10px; flex: none; }
 .h-name { font-weight: bold; font-size: 16px; letter-spacing: 0.04em; }
@@ -299,6 +299,52 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
   img.rec-fig { max-width: 100%; }
 }
 .rec-print-only { display: none; }
+
+/* ---------- transient notices (file saves, copy) ---------- */
+#toast { position: fixed; right: 16px; bottom: calc(32px + env(safe-area-inset-bottom, 0px)); max-width: min(420px, calc(100vw - 32px)); background: var(--text); color: #fff; font-size: 12.5px; padding: 8px 12px; border-radius: var(--r); box-shadow: 0 1px 3px rgba(0,0,0,0.25); z-index: 70; opacity: 0; transform: translateY(6px); transition: opacity 120ms, transform 120ms; pointer-events: none; }
+#toast.show { opacity: 1; transform: none; }
+#toast.warn { background: #6B4A12; }
+@media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
+
+/* ---------- narrow screens (tablet portrait and phone) ---------- */
+.m-only, .m-backdrop { display: none; }
+@media (max-width: 820px) {
+  #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
+  #hdr { grid-column: 1; flex-wrap: wrap; gap: 6px 10px; padding: 6px 16px; }
+  .m-only { display: inline-flex; }
+  #mMenu { order: 0; } .h-id { order: 1; } .h-right { order: 2; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+  .h-conn { order: 3; flex: 1 1 100%; border-left: 0; padding-left: 0; height: auto; overflow-x: auto; scrollbar-width: none; }
+  .h-conn::-webkit-scrollbar { display: none; }
+  #hUser, #hElapsed { display: none; }
+  #rail { position: fixed; top: 0; bottom: 0; left: 0; width: min(280px, 86vw); z-index: 46; transform: translateX(-105%); transition: transform 160ms ease-out; box-shadow: 0 0 14px rgba(0,0,0,0.18); padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  body.nav-open #rail { transform: none; }
+  body.nav-open .m-backdrop { display: block; position: fixed; inset: 0; background: rgba(31,41,51,0.32); z-index: 45; }
+  #work { grid-column: 1; }
+  #qpanel { display: none; }
+  #qpanel:not(.collapsed) { display: flex; position: fixed; inset: 0; width: auto; z-index: 60; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  #status { grid-column: 1; overflow-x: auto; scrollbar-width: none; }
+  #status .st-warn { flex: none; }
+  .screen { padding: 10px 16px 16px; }
+  .screen.fixed { overflow-y: auto; }
+  .screen.fixed > * { flex: none !important; }
+  .scr-h { flex-wrap: wrap; row-gap: 6px; }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .form { grid-template-columns: minmax(0, 1fr); gap: 2px 10px; }
+  .form .full { grid-column: 1; }
+  .form label.l { margin-top: 6px; }
+  .panel > .ph { height: auto; min-height: 32px; flex-wrap: wrap; padding: 4px 10px; }
+  .panel > .ph h3 { white-space: normal; }
+  .panel > .pb { overflow-x: auto; }
+  .chips { height: auto; }
+  .run-chart { height: 62vh; min-height: 340px; }
+  .run-bottom, .run-bottom.narrow { grid-template-columns: minmax(0, 1fr); }
+  .run-bottom > .panel { height: 300px; }
+  .fr-grid { display: flex !important; flex-direction: column; min-height: 0 !important; }
+  .fr-grid > .panel { min-height: 320px; }
+  .modal { width: calc(100vw - 32px); }
+  .popover { max-width: calc(100vw - 32px); }
+}
+@media (prefers-reduced-motion: reduce) { #rail { transition: none; } }
 </style>
 </head>
 <body>
@@ -1439,7 +1485,7 @@ const TR = (function () {
   }
   function medianWave(waves) { const buf = new Float64Array(10 * NSAMP); waves.forEach((w, k) => buf.set(w, k * NSAMP)); const m = new Float64Array(NSAMP); for (let j = 0; j < NSAMP; j++) m[j] = median10(buf, j); return m; }
 
-  /* ---------- chromatography (simulated ÄKTA result export) ---------- */
+  /* ---------- chromatography (simulated AKTA result export) ---------- */
   function makeAkta(ph, prof, seed, dtS) {
     dtS = dtS || 5; const n = Math.floor(ph.totalMin * 60 / dtS) + 1;
     const A = { n, dt: dtS, t: new Float64Array(n), v: new Float64Array(n), flow: new Float32Array(n), uv: new Float32Array(n), cond: new Float32Array(n), ph: new Float32Array(n), phase: new Int8Array(n), uvTrue: new Float32Array(n) };
@@ -2197,7 +2243,7 @@ const M = (function () {
       if (R.acq.n !== before) { deriveTo(R); R.lastSave = S.setup.save2s ? Math.floor(R.acq.t[R.acq.n - 1] / 2) * 2 + 2 : R.acq.tCursor; }
       if (R.acq.done || tS >= R.timerMin * 60) finishRun(R, 'timer');
     }
-    // ÄKTA export samples available up to the current ÄKTA time (simulated import)
+    // AKTA export samples available up to the current AKTA time (simulated import)
     const tA = aktaMin(R, tS); R.aktaN = Math.min(R.akta.n, Math.max(0, Math.floor(tA * 60 / R.akta.dt) + 1));
     // log new sensitivity changes
     const ch = R.acq.changes;
@@ -2223,7 +2269,7 @@ const M = (function () {
     audit('run', 'Run ' + R.id + ' complete: ' + fmt.int(R.acq.n) + ' blocks.');
     emit('run');
   }
-  function pauseRun(R) { if (R.state !== 'acquiring') return; R.state = 'paused'; R.pausedAt = runTimeS(R); log(R, 'system', 'Acquisition paused. The ÄKTA run continues; TRIFLE data will have a gap.'); audit('run', 'Acquisition paused.'); emit('run'); }
+  function pauseRun(R) { if (R.state !== 'acquiring') return; R.state = 'paused'; R.pausedAt = runTimeS(R); log(R, 'system', 'Acquisition paused. The AKTA run continues; TRIFLE data will have a gap.'); audit('run', 'Acquisition paused.'); emit('run'); }
   function continueRun(R) { if (R.state !== 'paused') return; R.state = 'acquiring'; const t = runTimeS(R); R.acq.tCursor = Math.max(R.acq.tCursor, t); R.brkNext = true; log(R, 'system', 'Acquisition continued after ' + fmt.min1((t - R.pausedAt) / 60) + ' min.'); audit('run', 'Acquisition continued.'); emit('run'); }
   function fastForward(R, budgetMs) { // run the simulation to the experiment timer in chunks
     const t0 = performance.now(), end = R.simStart + R.timerMin * 60;
@@ -2775,7 +2821,7 @@ const UI = (function () {
     const el2 = R ? fmt.clock(R.state === 'complete' ? R.endAt : M.runTimeS(R)) : '00:00:00';
     const key = JSON.stringify([ind, st, el2, S.engineer, S.setup.operator, window.innerWidth < 1400]);
     if (key === hdrCache) return; hdrCache = key;
-    const compact = window.innerWidth < 1400, SHORT = { 'Beam monitor': 'Beam mon.', 'Filter wheel': 'Wheel', Chromatography: 'ÄKTA', 'Stable (provisional)': 'Stable (prov.)', 'Start and end': 'Start/end', 'Import (sim.)': 'Import (sim.)' };
+    const compact = window.innerWidth < 1400, SHORT = { 'Beam monitor': 'Beam mon.', 'Filter wheel': 'Wheel', Chromatography: 'AKTA', 'Stable (provisional)': 'Stable (prov.)', 'Start and end': 'Start/end', 'Import (sim.)': 'Import (sim.)' };
     $('#hConn').innerHTML = ind.map(([lab, [k, t]]) => '<span class="ind" title="' + esc(lab + ': ' + t) + '"><span class="dot ' + k + '"></span><span class="lab">' + esc(compact && SHORT[lab] ? SHORT[lab] : lab) + '</span> ' + esc(compact ? (SHORT[t] || t.replace(/, position \d/, '')) : t) + '</span>').join('');
     $('#hState').innerHTML = '<span class="muted">Run</span> <span class="h-state">' + st + '</span>';
     $('#hElapsed').innerHTML = '<span class="muted" title="Elapsed acquisition time">Elapsed</span> ' + el2;
@@ -2896,7 +2942,7 @@ const UI = (function () {
     foot.append(sw);
     const demo = el('<div class="demo-box" aria-label="Demo controls"><div class="demo-h">Demo controls</div>' +
       '<div class="seg sm" id="speedSeg" role="group" aria-label="Playback speed"><button data-v="1">1×</button><button data-v="10">10×</button><button data-v="60">60×</button></div>' +
-      '<label title="Allows Start before the laser is stable, with a recorded override reason. Demonstrates I1."><input type="checkbox" id="demoEarly"> Start ÄKTA run before laser is stable</label>' +
+      '<label title="Allows Start before the laser is stable, with a recorded override reason. Demonstrates I1."><input type="checkbox" id="demoEarly"> Start AKTA run before laser is stable</label>' +
       '<label title="Sets the UNICORN fraction delay to the pre-TRIFLE value. Demonstrates I5."><input type="checkbox" id="demoDelay"> UNICORN fraction delay not updated</label>' +
       '<button class="btn sm" id="demoFF" title="Simulates the rest of the run immediately (demo only)">Fast-forward to run end</button>' +
       '<button class="btn sm" id="demoReset" title="Restarts the mock-up from the beginning with the same seed">Restart demo</button></div>');
@@ -2904,7 +2950,7 @@ const UI = (function () {
     $('#engSwitch').onchange = e => { S.engineer = e.target.checked; document.body.classList.toggle('eng', S.engineer); M.audit('role', 'Simulated role switched to ' + (S.engineer ? 'Engineer' : 'Scientist') + ' view.'); if (!S.engineer && current === 'engineer') go('run'); emitDirty(); };
     $$('#speedSeg button').forEach(b => b.onclick = () => { S.speed = +b.dataset.v; $$('#speedSeg button').forEach(x => x.classList.toggle('on', x === b)); M.audit('demo', 'Playback speed ' + S.speed + '×.'); });
     $$('#speedSeg button').forEach(x => x.classList.toggle('on', +x.dataset.v === S.speed));
-    $('#demoEarly').onchange = e => { S.demo.laserEarly = e.target.checked; M.audit('demo', 'Demo control: start ÄKTA run before laser is stable ' + (e.target.checked ? 'on' : 'off') + '.'); emitDirty(); };
+    $('#demoEarly').onchange = e => { S.demo.laserEarly = e.target.checked; M.audit('demo', 'Demo control: start AKTA run before laser is stable ' + (e.target.checked ? 'on' : 'off') + '.'); emitDirty(); };
     $('#demoDelay').onchange = e => { setDelayDemo(e.target.checked); };
     $('#demoFF').onclick = () => fastForwardUI();
     $('#demoReset').onclick = () => { const c = el('<div style="width:260px"><div class="small" style="margin-bottom:6px">Restart the mock-up from the beginning? The run, decisions and audit trail are cleared. The same seed gives identical playback.</div><button class="btn primary sm" id="rsGo">Restart</button></div>'); popover($('#demoReset'), c); $('#rsGo', c).onclick = () => location.reload(); };
@@ -2985,7 +3031,7 @@ const UI = (function () {
       '<label class="l" for="sCol">Column</label><input id="sCol" type="text" value="' + esc(s.column) + '"' + dis + '>' +
       '<label class="l" for="sCv">Column volume (mL)</label><div class="inl"><input id="sCv" type="number" step="0.001" min="0.1" value="' + s.cvMl + '" style="width:100px"' + dis + '>' + (s.template === 'aav' ? tag('A', 'always') : '') + '</div>' +
       (s.template === 'free' ? '<div class="full callout">Free run: no method template. Phase-based rules P2, P4 and H1 are off; phases and fractions come from the imported UNICORN result.</div>' : '') +
-      (s.template === 'aav' ? '<div class="full callout"><b>Empty and full capsid assessment is not a TRIFLE output in this version.</b> Existing use at UCL ' + tag('E', 'always') + ': the v2.0 settings file records a 95 min run on an ÄKTA pure with AAVX resin, 3.6 mL of crude AAV and 400 mV PMT. The template itself is ' + tag('P', 'always') + '; its volumes and flows are assumed apart from the 3.6 mL load and 95 min duration. Breakthrough rule P2 and hypothesis H1 apply to mAb Protein A templates only.</div>' : '') +
+      (s.template === 'aav' ? '<div class="full callout"><b>Empty and full capsid assessment is not a TRIFLE output in this version.</b> Existing use at UCL ' + tag('E', 'always') + ': the v2.0 settings file records a 95 min run on an AKTA pure with AAVX resin, 3.6 mL of crude AAV and 400 mV PMT. The template itself is ' + tag('P', 'always') + '; its volumes and flows are assumed apart from the 3.6 mL load and 95 min duration. Breakthrough rule P2 and hypothesis H1 apply to mAb Protein A templates only.</div>' : '') +
       '</div></div>' +
       '<div class="panel"><div class="ph"><h3>Method phases and flow</h3><span class="sp"></span><span class="note">Totals computed from the phase table</span></div><div class="pb" style="padding:0"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Phase</th><th class="num">CV</th><th class="num">Volume <span class="unit">(mL)</span></th><th class="num">Flow <span class="unit">(mL/min)</span></th><th class="num" title="Residence time">Res. <span class="unit">(min)</span></th><th class="num">Duration <span class="unit">(min)</span></th></tr></thead><tbody>' +
       ph.list.map((p, i) => '<tr><td>' + esc(p.name) + (tpl.id === 'aav' ? ' ' + tag('A', 'always') + (p.key === 'load' ? ' <span class="note">flow only</span>' : '') : '') + '</td><td class="num">' + fmt.cv(p.cv) + '</td><td class="num">' + fmt.ml(p.vol) + '</td><td class="num"><input type="number" class="flowIn" data-i="' + i + '" step="0.01" min="0.01" value="' + p.flow + '" style="width:72px;height:22px"' + dis + '></td><td class="num">' + fmt.min1(p.res) + '</td><td class="num">' + fmt.min1(p.tPump - p.t0) + (p.hold ? ' + ' + fmt.min1(p.hold) + ' hold' : '') + '</td></tr>').join('') +
@@ -3003,7 +3049,7 @@ const UI = (function () {
     const al = M.alignmentState(), p = M.plumbing(), pi = M.presetInfo(s.pmt), pc = M.presetCheck(), lad = TR.LADDERS[s.pmt];
     Rt.innerHTML =
       '<div class="panel"><div class="ph"><h3>Chromatography source</h3></div><div class="pb form">' +
-      '<label class="l" for="sSys">System</label><select id="sSys"' + dis + '>' + opt('avant', 'ÄKTA avant 150 (GSK target configuration)', s.system === 'avant') + opt('pure', 'ÄKTA pure (current UCL configuration)', s.system === 'pure') + '</select>' +
+      '<label class="l" for="sSys">System</label><select id="sSys"' + dis + '>' + opt('avant', 'AKTA avant 150 (GSK target configuration)', s.system === 'avant') + opt('pure', 'AKTA pure (current UCL configuration)', s.system === 'pure') + '</select>' +
       '<label class="l" style="align-self:start;padding-top:2px">Data</label><div class="stack" style="gap:6px">' +
       '<label class="opt"><input type="radio" name="src" value="import"' + (s.source === 'import' ? ' checked' : '') + dis + '><span>Imported UNICORN result export<span class="note">Stage 1 default. Simulated in the mock-up.</span></span></label>' +
       '<label class="opt"><input type="radio" name="src" value="manual"' + (s.source === 'manual' ? ' checked' : '') + dis + '><span>Manual event marks<span class="note">No flow trace or UV; alignment is Uncertain.</span></span></label>' +
@@ -3328,7 +3374,7 @@ const RC = (function () {
     $('#rExp').onclick = toggleExpand;
     $('#rLogF').onchange = e => { logFilter = e.target.value; logN = -1; };
     chart = new CH.Chart($('#runChart'), {
-      ariaLabel: 'Chromatogram with TRIFLE fluorescence and ÄKTA traces', rulers: [0, 1], rulerColor: C.v20,
+      ariaLabel: 'Chromatogram with TRIFLE fluorescence and AKTA traces', rulers: [0, 1], rulerColor: C.v20,
       xDomain: RC.xDomain, xTitle: RC.xTitle, panels: RC.panels(), series: RC.seriesFor(), bands: RC.bands, fractions: RC.fracItems,
       markers: () => RC.markers(true), hatches: RC.hatches, intervals: RC.intervals, info: RC.info, rulerInfo: RC.rulerInfo, legendExtras: RC.legendExtras(),
       highlights: () => highlight ? [{ x0: RC.toX(highlight[0]), x1: RC.toX(highlight[1]) }] : []
@@ -3364,14 +3410,14 @@ const RC = (function () {
     if (S.fault !== 'none') { await UI.modal('Cannot start', '<p>' + esc({ digitiser: 'Digitiser not found. Check the USB cable and power, then run the readiness checks again.', wheel: 'Filter wheel not responding. Check its cable and power, then run the readiness checks again.', laser: 'Laser not detected. Check the laser controller and the beam path.' }[S.fault]) + '</p>', [{ label: 'Close', primary: true }]); return; }
     if (!pc.ok) { await UI.modal('Preset mismatch', '<p>' + esc(pc.msg) + '</p><p>Choose a matching preset on Setup.</p>', [{ label: 'Close', primary: true }]); return; }
     if (!sm.ready) {
-      if (S.demo.laserEarly && sm.canOverride) { if (!S.readiness.override) { S.readiness.override = { reason: 'Demo control: ÄKTA run started before laser stable (provisional).', by: S.setup.operator, t: S.simT }; M.audit('override', 'Readiness override recorded: ' + S.readiness.override.reason); } }
+      if (S.demo.laserEarly && sm.canOverride) { if (!S.readiness.override) { S.readiness.override = { reason: 'Demo control: AKTA run started before laser stable (provisional).', by: S.setup.operator, t: S.simT }; M.audit('override', 'Readiness override recorded: ' + S.readiness.override.reason); } }
       else if (!(S.readiness && S.readiness.override && sm.canOverride)) return;
     }
     const R = M.newRun(); RC.view.x = RC.view.x || 'vol'; chart.resetZoom(); UI.emitDirty();
   }
   async function endRun() {
     const R = S.run; if (!R || R.state === 'complete') return;
-    const r = await UI.modal('End acquisition', '<p>End TRIFLE acquisition now? This stops TRIFLE only; it does not act on the ÄKTA. The wheel moves to OD 4, a beam monitor block is captured and the record is saved.</p>', [{ label: 'Cancel', value: false }, { label: 'End acquisition', value: true, primary: true }]);
+    const r = await UI.modal('End acquisition', '<p>End TRIFLE acquisition now? This stops TRIFLE only; it does not act on the AKTA. The wheel moves to OD 4, a beam monitor block is captured and the record is saved.</p>', [{ label: 'Cancel', value: false }, { label: 'End acquisition', value: true, primary: true }]);
     if (r.value) { M.finishRun(R, 'user'); UI.emitDirty(); }
   }
   function noteDlg(kind) {
@@ -3387,7 +3433,7 @@ const RC = (function () {
     $('#rMark').disabled = $('#rNote').disabled = !R || st === 'complete';
     let note = '';
     if (!R) note = sm.ready ? 'Ready to start.' : (canStart ? 'Start is allowed with the recorded override; I1 will flag early data.' : 'Start is disabled until Readiness reaches "Ready to start". ' + sm.text);
-    else if (st === 'paused') note = 'Paused. The ÄKTA run continues.';
+    else if (st === 'paused') note = 'Paused. The AKTA run continues.';
     else if (st === 'complete') note = 'Complete. Review the fractions next.';
     else if (UI.isFF()) note = 'Fast-forwarding (demo).';
     $('#rCtlNote').textContent = note;
@@ -3417,12 +3463,12 @@ const RC = (function () {
     const ph = tA < 0 ? null : R.ph.list[TR.phaseIdxAtTime(R.ph, tA)];
     const flow = tA >= 0 && tA <= R.ph.totalMin ? TR.flowAt(R.ph, tA) : 0, vp = TR.pumpVolAt(R.ph, Math.max(0, tA));
     const lad = TR.LADDERS[R.pmt], st = lad[A.cur - 1], al = M.alignmentState(), disc = A.disc.subarray(0, n).reduce((a, b) => a + b, 0);
-    const sys = R.state === 'complete' ? 'Complete. Acquisition ended at ' + fmt.clock(R.endAt) + '.' : R.state === 'paused' ? 'Paused. The ÄKTA run continues.' : (tA < 0 ? 'Acquiring buffer; ÄKTA run starts in ' + fmt.min1(-tA) + ' min.' : (tA > R.ph.totalMin ? 'Acquiring after the ÄKTA method ended.' : 'Acquiring. ' + ph.name + (ph.hold && tA >= ph.tPump ? ', hold, no flow' : ', ' + fmt.ml(vp - ph.v0) + ' mL in, ' + flow.toFixed(2) + ' mL/min') + '.'));
+    const sys = R.state === 'complete' ? 'Complete. Acquisition ended at ' + fmt.clock(R.endAt) + '.' : R.state === 'paused' ? 'Paused. The AKTA run continues.' : (tA < 0 ? 'Acquiring buffer; AKTA run starts in ' + fmt.min1(-tA) + ' min.' : (tA > R.ph.totalMin ? 'Acquiring after the AKTA method ended.' : 'Acquiring. ' + ph.name + (ph.hold && tA >= ph.tPump ? ', hold, no flow' : ', ' + fmt.ml(vp - ph.v0) + ' mL in, ' + flow.toFixed(2) + ' mL/min') + '.'));
     const row = (k2, u, v) => '<tr><td class="k">' + k2 + (u ? ' <span class="un">(' + u + ')</span>' : '') + '</td><td class="v">' + v + '</td></tr>';
     const fl = n && i >= 0 ? R.y.act[i] : NaN, use = n ? A.ruse[i] : NaN;
     const html = '<div class="sysstate">' + esc(sys) + '</div><table class="rv">' +
       row('Fluorescence', 'V·ns', fmt.sig3(fl)) +
-      (imp ? row('UV 280', 'mAU', fmt.mau(K.uv[k])) + row('Conductivity', 'mS/cm', fmt.cond(K.cond[k])) + row('pH', '', fmt.ph(K.ph[k])) : row('ÄKTA traces', '', 'not available')) +
+      (imp ? row('UV 280', 'mAU', fmt.mau(K.uv[k])) + row('Conductivity', 'mS/cm', fmt.cond(K.cond[k])) + row('pH', '', fmt.ph(K.ph[k])) : row('AKTA traces', '', 'not available')) +
       row('Volume', 'mL · CV', fmt.ml(vp) + ' · ' + fmt.cv(vp / R.cv)) +
       '<tr class="sec"><td colspan="2">Signal QC</td></tr>' +
       row('Sensitivity', 'OD ' + st.nd + ', ' + st.range * 1000 + ' mV', A.cur + ' of ' + lad.length) +
@@ -3739,10 +3785,10 @@ const REC = (function () {
       'Instrument: TRIFLE-01 (pulsed UV laser, 10 Hz; PMT; six-position ND filter wheel; PicoScope 6000 series, 8-bit, 0.2 ns sampling). Software: TRIFLE mock-up, simulated data.',
       'Preset: ' + pi.id + ' (PMT ' + s.pmt + ' mV, checksum ' + pi.checksum + '; ' + pi.ladderFile + ', ' + pi.irfFile + ').',
       'Auto-ranging: ' + (s.autorange === 'v20' ? 'v2.0 reference' : 'Proposed (block median input, symmetric no-signal test, baseline not scaled)') + '. Processing: ' + M.procLabel() + '.',
-      'Chromatography: ' + (s.system === 'avant' ? 'ÄKTA avant 150' : 'ÄKTA pure') + '; source ' + ({ import: 'imported UNICORN result export (simulated)', manual: 'manual event marks', standalone: 'none (standalone TRIFLE)' }[s.source]) + '.',
+      'Chromatography: ' + (s.system === 'avant' ? 'AKTA avant 150' : 'AKTA pure') + '; source ' + ({ import: 'imported UNICORN result export (simulated)', manual: 'manual event marks', standalone: 'none (standalone TRIFLE)' }[s.source]) + '.',
       'Column: ' + s.column + ', CV ' + fmt.ml(tpl.cv) + ' mL. Flows: ' + ph.list.map(q => q.short + ' ' + q.flow.toFixed(2)).join(', ') + ' mL/min. Total ' + fmt.ml(ph.totalVol) + ' mL, ' + fmt.min1(ph.totalMin) + ' min.',
       'Delay volumes: V1 (UV to TRIFLE) ' + fmt.ml(s.V1) + ' mL, V2 (TRIFLE to collector) ' + fmt.ml(s.V2) + ' mL, UNICORN fraction delay ' + fmt.ml(p.fracDelay) + ' mL.',
-      'Alignment method: cumulative volume from the integrated ÄKTA flow trace; delay volumes applied in the volume domain. Detector alignment ' + al.detector + '; fraction assignment ' + al.fractions + '.'
+      'Alignment method: cumulative volume from the integrated AKTA flow trace; delay volumes applied in the volume domain. Detector alignment ' + al.detector + '; fraction assignment ' + al.fractions + '.'
     ].join('\n');
     if (R) {
       const st = M.fractionStats(R);
@@ -3852,7 +3898,7 @@ const REC = (function () {
     const R = S.run, s = R ? R.setupSnap : S.setup, p = M.plumbing(), pi = M.presetInfo(s.pmt);
     const base = R ? 'Raw blocks 1 to ' + fmt.int(R.acq.n) + ' (block waveforms regenerated from seed ' + TR.SEED + '); processing ' + M.procLabel() + '; alignment V1 ' + fmt.ml(s.V1) + ' mL, V2 ' + fmt.ml(s.V2) + ' mL, fraction delay ' + fmt.ml(p.fracDelay) + ' mL; fraction scheme load ' + s.frac.loadSize + ' mL, elution ' + s.frac.elSize + ' mL for ' + s.frac.elCollect + ' mL; preset ' + pi.id + '.' : 'No run.';
     $('#recProv').innerHTML = '<table class="tbl"><thead><tr><th>Item</th><th>Derived from</th></tr></thead><tbody>' +
-      '<tr><td>Chromatogram figure</td><td class="wrap small">' + esc(base) + ' ÄKTA traces from the imported UNICORN result export (simulated).</td></tr>' +
+      '<tr><td>Chromatogram figure</td><td class="wrap small">' + esc(base) + ' AKTA traces from the imported UNICORN result export (simulated).</td></tr>' +
       '<tr><td>Fraction table</td><td class="wrap small">' + esc(base) + ' UV statistics over each fraction\'s collected liquid.</td></tr>' +
       '<tr><td>Data quality</td><td class="wrap small">Evidence rules with provisional thresholds (Engineer view); readiness checks; run log.</td></tr>' +
       '<tr><td>Fraction decisions</td><td class="wrap small">Scientist decisions in Fraction review, with notes; audit trail.</td></tr></tbody></table>';
@@ -4082,6 +4128,22 @@ const ENG = (function () {
   return { runTests, results: () => testRes, addTab(k, label) { TABS.push([k, label]); } };
 })();
 
+/* ---------- narrow screens: navigation drawer and full-screen Questions ---------- */
+(function () {
+  const { $, el } = UI;
+  const hdr = $('#hdr');
+  const menu = el('<button class="btn sm m-only" id="mMenu" aria-label="Open navigation" aria-expanded="false">Menu</button>');
+  const qb = el('<button class="btn sm m-only" id="mQ">Questions</button>');
+  const back = el('<div class="m-backdrop" id="mBack"></div>');
+  hdr.prepend(menu); $('.h-right', hdr).append(qb); document.body.append(back);
+  function setNav(open) { document.body.classList.toggle('nav-open', open); menu.setAttribute('aria-expanded', String(open)); }
+  menu.onclick = () => setNav(!document.body.classList.contains('nav-open'));
+  back.onclick = () => setNav(false);
+  $('#rail').addEventListener('click', e => { if (e.target.closest('.nav')) setNav(false); });
+  qb.onclick = () => { setNav(false); Q.collapse(false); };
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') setNav(false); });
+})();
+
 /* ---------- What this prototype is testing ---------- */
 (function () {
   const { $, esc } = UI;
@@ -4116,7 +4178,7 @@ const Q = (function () {
     'pmt': ['PMT', 'The light detector. Its gain is set by a control voltage, with presets of 400 or 800 mV, on a separate supply.'],
     'baseline': ['Baseline', 'The signal before the pulse arrives, subtracted from every waveform. v2.0 uses the mean of the first 100 samples; Proposed uses the median.'],
     'rapid block': ['Rapid block', 'Ten laser pulses captured together, about one second of data.'],
-    'alignment': ['Alignment', 'Matching TRIFLE data to the ÄKTA run by volume, allowing for the tubing volume between the two detectors (V1).'],
+    'alignment': ['Alignment', 'Matching TRIFLE data to the AKTA run by volume, allowing for the tubing volume between the two detectors (V1).'],
     'fraction assignment': ['Fraction assignment', 'Which collected fraction a stretch of TRIFLE signal ended up in. It depends on the tubing volume to the fraction collector (V2) and on the delay volume set in UNICORN.'],
     'low precision': ['Low precision', 'Stretches where the pulse fills under 20 % of the input range (provisional). The v2.0 baseline leverage matters most there.'],
     'evidence level': ['Evidence levels', 'Instrument evidence: findings about the measurement itself. Process observation: a measured change that warrants attention, stated without interpretation. Research hypothesis: a possible process explanation that needs offline confirmation, always linked to the observation it comes from.']
@@ -4499,6 +4561,57 @@ const Q = (function () {
 
   /* ---------- wiring ---------- */
   setTimeout(() => { addFrCols(); S2.initRecord(); UI.emitDirty(); }, 0);
+})();
+
+/* ---------- hosted page: file saves through the viewer, reliable copy feedback ---------- */
+(function () {
+  const hosted = !!(window.claude && typeof window.claude.use === 'function');
+  UI.hosted = hosted;
+  if (hosted) document.body.classList.add('hosted');
+
+  let toastEl = null, toastTimer = 0;
+  function notice(msg, kind) {
+    if (!toastEl) { toastEl = document.createElement('div'); toastEl.id = 'toast'; toastEl.setAttribute('role', 'status'); document.body.append(toastEl); }
+    toastEl.textContent = msg; toastEl.className = 'show' + (kind ? ' ' + kind : '');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { toastEl.className = ''; }, 3200);
+  }
+  UI.notice = notice;
+
+  UI.copyText = function (text, btn) {
+    const show = ok => {
+      if (btn) { const t = btn.dataset.label || btn.textContent; btn.dataset.label = t; btn.textContent = ok ? 'Copied' : 'Not copied'; setTimeout(() => { btn.textContent = t; }, 1400); }
+      if (!ok) notice('Copying is blocked here. Select the text and press Ctrl+C.', 'warn');
+    };
+    const fallback = () => {
+      const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+      document.body.append(ta); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e) { ok = false; } ta.remove(); show(ok);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => show(true), fallback);
+    else fallback();
+  };
+
+  if (!hosted) return;
+  let dl = null;
+  const dlReady = window.claude.use('downloads').then(ns => { dl = ns; return ns; }, () => null);
+  async function save(name, data) {
+    const ns = dl || await dlReady;
+    if (!ns) { notice('Saving files is not available in this view. Use the offline file to export.', 'warn'); return false; }
+    try { await ns.save({ filename: name, data }); notice('Saved ' + name + '.'); return true; }
+    catch (e) {
+      const c = e && e.code;
+      if (c === 'declined') notice('Not saved.');
+      else if (c === 'rate_limited') notice('A save is already waiting for your answer.', 'warn');
+      else notice('Could not save ' + name + '.', 'warn');
+      return false;
+    }
+  }
+  function dataUrlToBlob(url) {
+    const [head, b64] = url.split(','), type = (head.match(/data:([^;]+)/) || [])[1] || 'application/octet-stream';
+    const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    return new Blob([u], { type });
+  }
+  UI.download = (name, text, type) => save(name, text instanceof Blob ? text : new Blob([text], { type: type || 'text/plain' }));
+  UI.downloadDataUrl = (name, url) => save(name, dataUrlToBlob(url));
 })();
 
 /* ---------- boot ---------- */
