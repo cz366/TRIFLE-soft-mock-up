@@ -291,7 +291,8 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
   #scr-record .scr-h { display: none; }
   #scr-record .grid2 { display: block; }
   #scr-record .grid2 > .stack, #scr-record > .panel, #scr-record .scr-h .sp ~ *, #scr-record .btn, #scr-record .rh .btn { display: none !important; }
-  #scr-record textarea { border: 0; resize: none; padding: 0; height: auto; }
+  #scr-record textarea { border: 0; resize: none; padding: 0; height: auto; font-size: 12.5px; }
+  #scr-record .panel, #scr-record .pb, #scr-record .grid2 { margin: 0 !important; padding-bottom: 0 !important; }
   table.tbl { font-size: 8.5pt; }
   .tbl th { position: static; }
   img.rec-fig { max-width: 100%; }
@@ -303,6 +304,11 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 #toast.show { opacity: 1; transform: none; }
 #toast.warn { background: #6B4A12; }
 @media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
+
+/* ---------- Fraction review: keep the Decision column in view ---------- */
+#frTbl td:last-child { position: sticky; right: 0; background: var(--panel); box-shadow: -1px 0 0 var(--border); }
+#frTbl th:last-child { right: 0; z-index: 2; box-shadow: -1px 0 0 var(--border); }
+#frTbl tbody tr.sel td:last-child { background: var(--accent-bg); }
 
 /* ---------- narrow screens (tablet portrait and phone) ---------- */
 .m-only, .m-backdrop { display: none; }
@@ -347,17 +353,22 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 
 /* ---------- hosted page: printing is unavailable ---------- */
 .hosted .offline-only { display: none !important; }
+
+/* ---------- fonts: Arial or Liberation Sans only ---------- */
+code, pre, kbd, samp { font-family: inherit; }
 /* ---------- Engineer view ---------- */
 .eng-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 12px; align-items: start; }
 .eng-align { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
 .eng-align > * { flex: 1 1 400px; min-width: 0; }
 .eng-align > :first-child { flex-grow: 1.6; }
 #arIn { max-width: 640px; }
+#engBody .tbl th { height: auto; vertical-align: bottom; }
+#engBody .tbl th .unit { display: block; }
 .tbl tr.grp td, .tbl tbody tr.grp:hover td { background: var(--band2); color: var(--text2); font-weight: bold; }
 .tbl caption { caption-side: top; text-align: left; padding: 0 0 4px; }
 #discTbl td { vertical-align: top; }
 #discTbl .link { text-align: left; font-weight: bold; }
-.disc-src { color: var(--text2); font-size: 11px; margin-top: 2px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+.disc-src { color: var(--text2); font-size: 11px; margin-top: 2px; }
 .disc-d { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 @media (max-width: 1100px) { .disc-d { grid-template-columns: minmax(0, 1fr); } }
 .disc-b { border: 1px solid var(--border); border-radius: var(--r); padding: 8px 10px; font-size: 12px; min-width: 0; }
@@ -367,12 +378,11 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 .disc-b li + li { margin-top: 4px; }
 .disc-b .tbl { margin-bottom: 6px; }
 .disc-b .btn { margin-top: 2px; }
-.disc-src.plain { font-family: inherit; }
 #discTbl td:nth-child(2) { min-width: 112px; }
 #discTbl td:last-child { min-width: 128px; }
 .disc-foot { margin-top: 8px; }
 .disc-foot + .disc-foot { margin-top: 4px; }
-.disc-foot code { font-size: 11px; }
+.disc-foot code { font: inherit; font-size: 11px; }
 /* Discrepancies table as stacked cards on narrow screens */
 @media (max-width: 820px) {
   #discTbl thead, #discTbl td.dn { display: none; }
@@ -383,6 +393,9 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 }
 /* Record */
 #scr-record .rec-grid { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+#scr-record { container-type: inline-size; }
+@container (max-width: 960px) { #scr-record .rec-grid { grid-template-columns: minmax(0, 1fr); } }
+#exStage2 { display: contents; }
 @media (max-width: 820px) { #scr-record .rec-grid { grid-template-columns: minmax(0, 1fr); } }
 /* Units under the column name, so the fraction table fits the summary panel */
 #recBody .tbl th { height: auto; padding-top: 4px; padding-bottom: 4px; vertical-align: bottom; }
@@ -409,6 +422,8 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 .tbl.phases .flowIn { width: 64px; height: 22px; }
 /* Stage 2 screens: column layouts that stack on narrow screens */
 .cal-grid { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+#scr-calibration { container-type: inline-size; }
+@container (max-width: 1100px) { .cal-grid { grid-template-columns: minmax(0, 1fr); } }
 .cmp-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr); }
 .fit-grid { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
 .form.s2-form { grid-template-columns: 150px minmax(0, 1fr); }
@@ -2081,7 +2096,7 @@ const M = (function () {
     ph(v) { return v == null || !isFinite(v) ? '–' : v.toFixed(2); },
     pct0(v) { return v == null || !isFinite(v) ? '–' : (v * 100).toFixed(0); },
     pct1(v) { return v == null || !isFinite(v) ? '–' : (v * 100).toFixed(1); },
-    mv(v) { return v == null || !isFinite(v) ? '–' : (v * 1000).toFixed(2).replace(/^-/, '−'); },
+    mv(v) { if (v == null || !isFinite(v)) return '–'; const s = (v * 1000).toFixed(2); return (/^-0\.00$/.test(s) ? '0.00' : s).replace(/^-/, '−'); },
     ns(v) { return v == null || !isFinite(v) ? '–' : v.toFixed(1); },
     clock(s) { if (s == null || !isFinite(s)) return '–'; s = Math.max(0, Math.floor(s)); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60; return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(x).padStart(2, '0'); },
     dur(min) { return min == null || !isFinite(min) ? '–' : min.toFixed(1) + ' min'; },
@@ -2195,6 +2210,8 @@ const M = (function () {
   /* ---------- readiness (section 10) ---------- */
   // dark block noise limit in V: the threshold scaled to the preset (10 times at 800 mV)
   function darkLimit(pmt) { return S.th.darkRms * ((pmt || S.setup.pmt) === 800 ? 10 : 1); }
+  // buffer limits scale with PMT gain like the dark limit (800 mV preset: 10 times)
+  function bufLimits(pmt) { const k = (pmt || S.setup.pmt) === 800 ? 10 : 1; return { noise: S.th.bufNoise * k, drift: S.th.bufDrift * k, wander: S.th.bufWander * k }; }
   // limit is a getter where it follows a threshold or the preset, so the table always shows the value in use
   const RD_CHECKS = [
     { key: 'dig', name: 'Digitiser', label: 'E', limit: 'Found on USB', meaning: 'The PicoScope that records each laser pulse is connected and responds.', ifFail: 'Check the USB cable and power, then run the checks again.' },
@@ -2202,7 +2219,7 @@ const M = (function () {
     { key: 'emit', name: 'Laser emitting', label: 'P', get limit() { return '10 of 10 pulses ≥ ' + S.th.i4V + ' V within ' + TR.ACQ.timeoutS + ' s'; }, meaning: 'The beam monitor on channel D sees laser pulses. v2.0 has this check but skips it.', ifFail: 'Check that the laser controller shows emission, the shutter is open and the beam path is clear.' },
     { key: 'pmt', name: 'PMT voltage', label: 'E', limit: 'Set on the separate supply', meaning: 'Detector gain, set by hand on a separate supply. The software cannot read it.', ifFail: 'Set the supply to the preset value and confirm.' },
     { key: 'dark', name: 'Dark block', label: 'P', get limit() { return '≤ ' + fmt.mv(darkLimit()) + ' mV RMS'; }, meaning: 'Electronic noise with the laser blocked. High noise lowers precision at low signal.', ifFail: 'Check cable shielding and grounding; ask the instrument specialist.' },
-    { key: 'buf', name: 'Buffer baseline', label: 'P', limit: 'Noise, drift and wander limits', meaning: 'Fluorescence of running buffer with flow on. Sets the baseline for rule P3.', ifFail: 'Flush the flow cell and repeat. Persistent drift can indicate fouling.' }
+    { key: 'buf', name: 'Buffer baseline', label: 'P', get limit() { const L = bufLimits(); return 'Noise ≤ ' + L.noise + ', drift ±' + L.drift + ' per min, wander ≤ ' + L.wander + ' V·ns'; }, meaning: 'Fluorescence of running buffer with flow on. Sets the baseline for rule P3.', ifFail: 'Flush the flow cell and repeat. Persistent drift can indicate fouling.' }
   ];
   function newReadiness() {
     return { started: false, t0: null, checks: Object.fromEntries(RD_CHECKS.map(c => [c.key, { status: 'pending', value: '', detail: '' }])), pmtConfirmed: false, acq: null, metrics: null, preBaseline: null, override: null, dark: null, emitV: null };
@@ -2254,7 +2271,7 @@ const M = (function () {
     const xs = []; for (let i = 20; i < 320; i++) xs.push(A.t[i] / 60); const fit = TR.linreg(xs, y, null);
     let mx = -Infinity, mn = Infinity; for (let i = 0; i + 30 <= y.length; i++) { let s = 0; for (let k = i; k < i + 30; k++) s += y[k]; s /= 30; if (s > mx) mx = s; if (s < mn) mn = s; }
     const wander = mx - mn, th = S.th;
-    return { noise, drift: fit.b, wander, mean: mu, median: TR.medianOf(y), mode: procLabel(), pass: noise <= th.bufNoise && Math.abs(fit.b) <= th.bufDrift && wander <= th.bufWander, n: y.length };
+    return { noise, drift: fit.b, wander, mean: mu, median: TR.medianOf(y), mode: procLabel(), pass: noise <= bufLimits().noise && Math.abs(fit.b) <= bufLimits().drift && wander <= bufLimits().wander, n: y.length };
   }
   function fluorOf(A, i0, i1) { const k = comboIdx(), out = []; for (let i = i0; i < i1; i++) { if (A.disc[i]) continue; let v = A.F[k][i]; if (S.proc.laser && isFinite(A.bm[i])) v /= A.bm[i]; out.push(v); } return out; }
   function readinessSummary() {
@@ -2383,12 +2400,13 @@ const M = (function () {
     while (R.changesLogged < ch.length) {
       const c = ch[R.changesLogged++], st = TR.LADDERS[R.pmt], to = st[c.to - 1], fr = st[c.from - 1];
       const dir = c.to < c.from ? 'reduced' : 'increased', src = R.setupSnap.autorange === 'prop' ? 'Block median waveform' : 'Last waveform';
+      const ofR = R.setupSnap.rangeMap === 'shift' ? ' % of the stated input range' : ' % of the input range';
       let why;
       if (c.guard) why = 'Nothing below the baseline, treated as no signal (Proposed).';
       else if (c.flat) why = 'Nothing below the baseline, so every step scored the same and step 1 was chosen (v2.0).';
-      else if (c.noSignal) why = 'No signal above 5 SD of the baseline. ' + src + ' used ' + fmt.pct0(c.use) + ' % of the input range.';
+      else if (c.noSignal) why = 'No signal above 5 SD of the baseline. ' + src + ' used ' + fmt.pct0(c.use) + ofR + '.';
       else if (c.noneEligible) why = 'No step could hold the pulse below 90 %; returned to step 1.';
-      else why = src + ' used ' + fmt.pct0(c.use) + ' % of the input range (' + (c.use > TR.ACQ.limit ? 'limit 90 %' : 'target 80 %') + '). Predicted use after change: ' + fmt.pct0(c.pred) + ' %.';
+      else why = src + ' used ' + fmt.pct0(c.use) + ofR + ' (' + (c.use > TR.ACQ.limit ? 'limit 90 %' : 'target 80 %') + '). Predicted use after change: ' + fmt.pct0(c.pred) + ' %.';
       const e = log(R, 'sensitivity', 'Sensitivity ' + dir + ' from step ' + c.from + ' to step ' + c.to + ' (OD ' + to.nd + ', ' + (to.range * 1000) + ' mV). ' + why, { x: R.x.vol[c.i], i: c.i });
       e.t = c.t; e.wall = wall(R.simStart + c.t).time;
     }
@@ -2678,7 +2696,7 @@ const M = (function () {
 
   return {
     S, fmt, wall, stamp, pmtSim, emit, on, audit, TH_INFO, presetInfo, presetCheck, procMode, procLabel, comboIdx, template, plumbing, alignmentState,
-    laserUpdate, laserText, laserDetail, RD_CHECKS, darkLimit, readinessStart, readinessStep, readinessSummary, bufferMetrics, newRun, log, runTimeS, aktaMin, deriveTo, rederive, stepRun, finishRun, pauseRun, continueRun, fastForward,
+    laserUpdate, laserText, laserDetail, RD_CHECKS, darkLimit, bufLimits, readinessStart, readinessStep, readinessSummary, bufferMetrics, newRun, log, runTimeS, aktaMin, deriveTo, rederive, stepRun, finishRun, pauseRun, continueRun, fastForward,
     SAVE_KB, saveStep, LEVELS, RULES, ruleById, ruleHooks, fracHooks, cardRespond, fractionStats, uvPool, flBounds, addNote, tick, rangeIds
   };
 })();
@@ -2927,7 +2945,7 @@ const UI = (function () {
   const $ = (s, r) => (r || document).querySelector(s), $$ = (s, r) => [...(r || document).querySelectorAll(s)];
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
   function el(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
-  const TAGS = { E: 'Existing (v2.0)', P: 'Proposed', F: 'Future (GSK integration)', A: 'assumed', S: 'simulated', H: 'To verify on hardware' };
+  const TAGS = { E: 'Existing (v2.0)', P: 'Proposed', F: 'Future (GSK integration)', A: 'Assumed', S: 'simulated', H: 'To verify on hardware' };
   // Display rule (section 0): engineer-scope tags only in the Engineer view; 'always' tags where a Proposed
   // setting affects displayed data or a card, and on Future controls.
   function tag(k, scope) { return '<span class="tag' + (k === 'F' ? ' fut' : '') + '" data-scope="' + (scope || 'engineer') + '">' + TAGS[k] + '</span>'; }
@@ -3253,8 +3271,8 @@ const UI = (function () {
       '</div></div>' +
       '<div class="panel"><div class="ph"><h3>Plumbing and delay volumes</h3><span class="sp"></span>' + (standalone ? UI.stateHtml('na', 'Not used') : al.i5 ? UI.stateHtml('warn', 'I5 ' + (al.detector === 'Uncertain' ? 'alignment uncertain' : 'fraction assignment uncertain')) : UI.stateHtml('ok', 'Aligned')) + '</div><div class="pb form">' +
       '<label class="l" for="sOrder">Order</label><select id="sOrder"' + dis + '>' + opt('uv-trifle-fc', 'UV monitor, TRIFLE, fraction collector', true) + '</select>' +
-      '<label class="l" for="sV1">V1, UV to TRIFLE (mL)</label><div class="inl"><input id="sV1" type="number" step="0.01" min="0" value="' + (isFinite(s.V1) ? s.V1.toFixed(2) : '') + '" style="width:100px"' + dis + '><span class="note">detector alignment</span></div>' +
-      '<label class="l" for="sV2">V2, TRIFLE to collector (mL)</label><div class="inl"><input id="sV2" type="number" step="0.01" min="0" value="' + (isFinite(s.V2) ? s.V2.toFixed(2) : '') + '" style="width:100px"' + dis + '><span class="note">fraction assignment</span></div>' +
+      '<label class="l" for="sV1">V1, UV to TRIFLE (mL)</label><div class="inl"><input id="sV1" type="number" step="0.01" min="0" value="' + (isFinite(s.V1) ? s.V1.toFixed(2) : '') + '" style="width:100px"' + dis + '><span class="note">detector alignment<span class="eng-only">; simulation value</span></span></div>' +
+      '<label class="l" for="sV2">V2, TRIFLE to collector (mL)</label><div class="inl"><input id="sV2" type="number" step="0.01" min="0" value="' + (isFinite(s.V2) ? s.V2.toFixed(2) : '') + '" style="width:100px"' + dis + '><span class="note">fraction assignment<span class="eng-only">; simulation value</span></span></div>' +
       '<label class="l" for="sFd">UNICORN fraction delay (mL)</label><div class="inl"><input id="sFd" type="number" step="0.01" min="0" value="' + fmt.ml(p.fracDelay) + '" style="width:100px"' + (lock || S.demo.delayNotUpdated ? ' disabled' : '') + '><span class="note">V1 + V2 = ' + fmt.ml(s.V1 + s.V2) + ' mL; tolerance ' + fmt.ml(S.th.i5Tol) + ' mL</span></div>' +
       (al.issues.length && !standalone ? '<div class="full callout warn">' + al.issues.map(esc).join(' ') + (al.fractions === 'Uncertain' ? ' Fraction assignments will be marked Uncertain.' : '') + '</div>' : '<div class="full note">Last checked ' + S.alignChecked + '. Re-check when the tubing changes.</div>') +
       '</div></div>' +
@@ -3313,8 +3331,9 @@ const UI = (function () {
     $('#sEmit').onchange = e => set('laserCheck', e.target.checked, 'Laser emission check');
     $('#sCsv').onchange = e => set('csvJson', e.target.checked, 'CSV plus JSON alongside');
     $('#sTimer').onchange = () => { const v = num('#sTimer'); if (v > 0) set('timerMin', v, 'Experiment timer', 'min'); };
-    $('#sTrained').onchange = e => set('trained', e.target.checked, 'Sign-in: trained user');
-    $('#sIp').onchange = e => set('ip', e.target.checked, 'Sign-in: IP arrangements');
+    const signIn = (k, what) => e => { S.setup[k] = e.target.checked; M.audit('setting', 'Sign-in: ' + what + (e.target.checked ? ' confirmed.' : ' withdrawn.')); render(); UI.emitDirty(); };
+    $('#sTrained').onchange = signIn('trained', 'trained user');
+    $('#sIp').onchange = signIn('ip', 'IP arrangements');
   }
   UI.register('setup', { show() { if (!$('#setupL')) build(); else render(); }, build, render });
   M.on(ev => { if ((ev === 'run' || ev === 'setup') && UI.cur() === 'setup') render(); });
@@ -3401,11 +3420,11 @@ const UI = (function () {
     const ee = $('#enEmit'); if (ee) ee.onclick = () => { S.setup.laserCheck = true; M.audit('setting', 'Laser emission check enabled (Proposed).'); lastKey = ''; };
   }
   function renderBuf() {
-    const R = S.readiness, box = $('#bufBox'), th = S.th;
+    const R = S.readiness, box = $('#bufBox'), L = M.bufLimits();
     if (!R || !R.metrics) { box.innerHTML = '<div class="note">Measured with flow on for 5 min after the dark block.</div>'; return; }
     const m = R.metrics, row = (n, v, lim, ok, u) => '<tr><td>' + n + '</td><td class="num"><b>' + v + '</b></td><td>' + u + '</td><td class="num">' + lim + '</td><td>' + UI.stateHtml(ok ? 'ok' : 'fault', ok ? 'Pass' : 'Fail') + '</td></tr>';
     const html = '<table class="tbl"><thead><tr><th>Measure</th><th class="num">Value</th><th>Unit</th><th class="num">Limit (provisional)</th><th>Status</th></tr></thead><tbody>' +
-      row('Noise, RMS over 60 blocks', fmt.sig3(m.noise), th.bufNoise, m.noise <= th.bufNoise, 'V·ns') + row('Drift, slope over 5 min', fmt.sig3s(m.drift), '±' + th.bufDrift, Math.abs(m.drift) <= th.bufDrift, 'V·ns/min') + row('Wander, peak-to-peak of 30-block mean', fmt.sig3(m.wander), th.bufWander, m.wander <= th.bufWander, 'V·ns') +
+      row('Noise, RMS over 60 blocks', fmt.sig3(m.noise), L.noise, m.noise <= L.noise, 'V·ns') + row('Drift, slope over 5 min', fmt.sig3s(m.drift), '±' + L.drift, Math.abs(m.drift) <= L.drift, 'V·ns/min') + row('Wander, peak-to-peak of 30-block mean', fmt.sig3(m.wander), L.wander, m.wander <= L.wander, 'V·ns') +
       '</tbody></table><div class="note" style="margin-top:6px">Pre-run baseline ' + fmt.sig3(m.median) + ' V·ns (median of ' + m.n + ' blocks), at sensitivity step ' + R.acq.cur + ' of ' + TR.LADDERS[S.setup.pmt].length + '.</div>';
     if (box.innerHTML !== html) box.innerHTML = html;
   }
@@ -3659,7 +3678,7 @@ const RC = (function () {
     const ph = tA < 0 ? null : R.ph.list[TR.phaseIdxAtTime(R.ph, tA)];
     const flow = tA >= 0 && tA <= R.ph.totalMin ? TR.flowAt(R.ph, tA) : 0, vp = TR.pumpVolAt(R.ph, Math.max(0, tA));
     const lad = TR.LADDERS[R.pmt], st = lad[A.cur - 1], al = M.alignmentState(), disc = A.disc.subarray(0, n).reduce((a, b) => a + b, 0);
-    const sys = R.state === 'complete' ? 'Complete. Acquisition ended at ' + fmt.clock(R.endAt) + '.' : R.state === 'paused' ? 'Paused. The AKTA run continues.' : (tA < 0 ? 'Acquiring buffer. AKTA run starts in ' + fmt.min1(-tA) + ' min.' : (tA > R.ph.totalMin ? 'Acquiring after the AKTA method ended.' : 'Acquiring. ' + ph.name + (ph.hold && tA >= ph.tPump ? ', hold, no flow' : ', ' + fmt.ml(vp - ph.v0) + ' mL in, ' + flow.toFixed(2) + ' mL/min') + '.'));
+    const sys = R.state === 'complete' ? 'Complete. Acquisition time ' + fmt.clock(R.endAt) + '.' : R.state === 'paused' ? 'Paused. The AKTA run continues.' : (tA < 0 ? 'Acquiring buffer. AKTA run starts in ' + fmt.min1(-tA) + ' min.' : (tA > R.ph.totalMin ? 'Acquiring after the AKTA method ended.' : 'Acquiring. ' + ph.name + (ph.hold && tA >= ph.tPump ? ', hold, no flow' : ', ' + fmt.ml(vp - ph.v0) + ' mL in, ' + flow.toFixed(2) + ' mL/min') + '.'));
     const row = (k2, u, v) => '<tr><td class="k">' + k2 + (u ? ' <span class="un">(' + u + ')</span>' : '') + '</td><td class="v">' + v + '</td></tr>';
     const fl = n && i >= 0 ? R.y.act[i] : NaN, use = n ? A.ruse[i] : NaN;
     const html = '<div class="sysstate">' + esc(sys) + '</div><table class="rv">' +
@@ -3679,7 +3698,7 @@ const RC = (function () {
     const R = S.run, box = $('#runLog'); if (!R) { if (logN !== 0) { box.innerHTML = '<div class="note">No entries yet.</div>'; logN = 0; } return; }
     if (logN === R.log.length) return;
     const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 30;
-    const start = logN < 0 ? 0 : logN; if (logN < 0) box.innerHTML = '';
+    const start = logN <= 0 ? 0 : logN; if (logN <= 0) box.innerHTML = '';
     const frag = document.createDocumentFragment();
     for (let k = start; k < R.log.length; k++) {
       const e = R.log[k]; if (logFilter !== 'all' && !(e.type === logFilter || (logFilter === 'note' && e.type === 'event') || (logFilter === 'laser' && e.card && /I1|I4|I6/.test(e.text)))) continue;
@@ -3718,7 +3737,7 @@ const RC = (function () {
     const ids = group ? group.map(x => x.id) : [c.id];
     return '<div class="ecard lv-' + c.level + (linked ? ' linked' : '') + (nOpen ? '' : ' done') + '" data-ids="' + ids.join(',') + '">' +
       '<div class="eh"><span class="rid" title="' + esc(M.ruleById(c.rule) ? M.ruleById(c.rule).cond(S.th) : '') + '">' + c.rule + '</span><span class="lvl">' + esc(c.levelName) + (c.linkedTo ? ', from ' + c.linkedTo.split('-')[0] : '') + '</span><span class="lvl">· ' + esc(c.phase) + '</span>' + (group ? '<span class="cnt" title="Repeated in this phase after the condition cleared">' + group.length + '×</span>' : '') + '</div>' +
-      '<div><b>' + esc(c.title) + '.</b> ' + esc(c.obs) + '</div>' +
+      '<div>' + (c.obs && c.obs.indexOf(c.title) === 0 ? '<b>' + esc(c.title) + '</b>' + esc(c.obs.slice(c.title.length)) : '<b>' + esc(c.title) + '.</b> ' + esc(c.obs)) + '</div>' +
       (group ? '<div class="meta">Also at ' + group.slice(0, -1).map(x => fmt.ml(x.x0) + ' mL').join(', ') + '.</div>' : '') +
       '<div class="meta">' + (c.fractions && c.fractions.length ? 'Fractions: ' + esc(M.rangeIds(c.fractions)) + ' · ' : '') + '<button class="link small" data-show="' + c.x0 + ',' + c.x1 + '">Show on chart</button> · Processing: ' + esc(c.mode) + (feats ? ' · Relies on: ' + feats : '') + '</div>' +
       (c.confirm ? '<div class="meta"><b>Suggested confirmation:</b> ' + esc(c.confirm) + '</div>' : '') + (c.action ? '<div class="meta"><b>Suggested action:</b> ' + esc(c.action) + '</div>' : '') +
@@ -3763,7 +3782,7 @@ const RC = (function () {
   function build() {
     const r = $('#scr-fractions'); r.classList.add('fixed'); r.style.overflow = 'auto';
     r.innerHTML = '<div class="scr-h"><h1>Fraction review</h1></div>' +
-      '<div class="run-top"><div class="chips" id="frChips" style="display:none"><span>Ranges one setting larger (what-if)</span></div><div class="toolbar" id="fTools"><div class="seg sm" id="fX"><button data-v="vol">mL</button><button data-v="cv">CV</button><button data-v="min">min</button></div><div class="seg sm" id="fLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div><span class="lab">Drag to</span><div class="seg sm" id="fDrag"><button data-v="select" class="on">Select fractions</button><button data-v="zoom">Zoom</button></div><button class="btn sm" id="fReset">Reset zoom</button></div></div>' +
+      '<div class="run-top"><div class="chips" id="frChips" style="display:none"><span>Ranges one setting larger (what-if)</span></div><div class="toolbar" id="fTools"><div class="seg sm" id="fX"><button data-v="vol">mL</button><button data-v="cv">CV</button><button data-v="min">min</button></div><div class="seg sm" id="fLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div><span class="nowrap" style="display:inline-flex;align-items:center;gap:6px"><span class="lab">Drag to</span><div class="seg sm" id="fDrag"><button data-v="select" class="on">Select fractions</button><button data-v="zoom">Zoom</button></div></span><label class="chk small"><input type="checkbox" id="fRul"> Rulers</label><button class="btn sm" id="fReset">Reset zoom</button></div></div>' +
       '<div id="fEmpty" class="callout" style="display:none"></div>' +
       '<div class="fr-grid" id="frGrid" style="min-height:700px;grid-template-rows:minmax(0,56fr) minmax(0,44fr)">' +
       '<div class="panel" style="grid-column:1;grid-row:1"><div class="pb" style="padding:4px 8px"><div id="frOv" style="height:100%"></div></div></div>' +
@@ -3775,6 +3794,7 @@ const RC = (function () {
     $$('#fLog button').forEach(b => b.onclick = () => { RC.view.log = b.dataset.v === '1'; sync(); ov.invalidate(); zm.invalidate(); });
     $$('#fDrag button').forEach(b => b.onclick = () => { ov.mode = b.dataset.v; $$('#fDrag button').forEach(x => x.classList.toggle('on', x === b)); });
     $('#fReset').onclick = () => ov.resetZoom();
+    $('#fRul').onchange = e => { zm.rulersOn = e.target.checked; if (zm.rulersOn) { const [a, b] = zm.xRange(); zm.rulers = [a + (b - a) * 0.4, a + (b - a) * 0.6]; } zm.invalidateOver(); zm.updateReadout(); };
     $('#frShare').onchange = e => { showShare = e.target.checked; lastKey = ''; };
     $$('#frTabs button').forEach(b => b.onclick = () => { tab = b.dataset.v; $$('#frTabs button').forEach(x => x.classList.toggle('on', x === b)); side(true); });
     ov = new CH.Chart($('#frOv'), {
@@ -3896,12 +3916,12 @@ const RC = (function () {
     const cards = R.rules.cards.filter(c => c.fractions && c.fractions.includes(f.id));
     const shifted = Math.abs(st.ca - f.a) > 0.005 || Math.abs(st.cb - f.b) > 0.005, unc = st.assign === 'Uncertain';
     const sub = [shifted ? 'Collected liquid ' + fmt.ml(st.ca) + ' to ' + fmt.ml(st.cb) + ' mL' : '', unc ? '<span title="' + esc(M.alignmentState().issues.join(' ')) + '">Assignment Uncertain</span>' : ''].filter(Boolean);
-    const bnd = [pool ? 'UV 100 mAU pool ' + fmt.ml(pool.a) + ' to ' + (pool.b != null ? fmt.ml(pool.b) : '…') + ' mL.' : '',
+    const bnd = st.phaseKey !== (R.tpl.fractions.elPhase || 'el') ? [] : [pool ? 'UV 100 mAU pool ' + fmt.ml(pool.a) + ' to ' + (pool.b != null ? fmt.ml(pool.b) : '…') + ' mL.' : '',
       b ? 'Fluorescence ' + S.th.flPct + ' % of peak ' + (b.a != null ? fmt.ml(b.a) : '…') + ' to ' + (b.b != null ? fmt.ml(b.b) : '…') + ' mL (' + (b.manual ? 'moved by hand, ' : '') + 'visual comparison only). <label>Level <input type="number" id="flPct" min="1" max="50" step="1" value="' + S.th.flPct + '" style="width:52px;height:20px"> %</label>' + (flManual ? ' <button class="link small" id="flAuto">Reset to automatic</button>' : '') : ''].filter(Boolean);
     // order: fraction, evidence, decision, then the visual boundary comparison for the zoom chart
     $('#frDet').innerHTML = '<div><b>' + f.id + '</b> · ' + esc(st.phase) + ' · ' + fmt.ml(f.a) + ' to ' + fmt.ml(f.b) + ' mL · ' + fmt.int(st.nBlocks) + ' blocks</div>' +
       (sub.length ? '<div class="muted">' + sub.join(' · ') + '</div>' : '') +
-      (cards.length ? '<div style="margin-top:6px"><b>Linked cards</b> ' + cards.map(c => '<span class="flag" title="' + esc(c.title + (c.obs ? '. ' + c.obs : '')) + '">' + c.rule + (c.status !== 'open' ? ' ' + c.status : '') + '</span>').join('') + '</div>' : '') +
+      (cards.length ? '<div style="margin-top:6px"><b>Linked cards</b> ' + cards.map(c => '<span class="flag" title="' + esc(c.obs && c.obs.indexOf(c.title) === 0 ? c.obs : c.title + (c.obs ? '. ' + c.obs : '')) + '">' + c.rule + (c.status !== 'open' ? ' ' + c.status : '') + '</span>').join('') + '</div>' : '') +
       (cards.filter(c => c.confirm).map(c => '<div class="small">' + c.rule + ': ' + esc(c.confirm) + '</div>').join('')) +
       '<div style="margin-top:6px"><b>Decision</b> <button class="btn sm" id="frDec">' + esc(decText(d)) + '</button>' + (d.note ? '<div class="small">Note: ' + esc(d.note) + '</div>' : '') + '</div>' +
       (bnd.length ? '<div class="muted" style="margin-top:6px">' + bnd.join(' ') + '</div>' : '');
@@ -3931,7 +3951,7 @@ const RC = (function () {
     for (let j = 0; j < 600; j++) { for (let k = 0; k < waves.length; k++) col[k] = waves[k][j]; mp.y[j] = TR.median(col, 0, waves.length); }
     const h = TR.shapeTable(R.pmt).h; let hm = 0, mn = 0; for (let j = 0; j < 600; j++) { if (h[j] < hm) hm = h[j]; if (mp.y[j] < mn) mn = mp.y[j]; }
     for (let j = 0; j < 600; j++) mp.iy[j] = h[j] / hm * mn;
-    mp.n = 600; mp.gen++; pc.cfg.info = () => fmt.int(waves.length) + ' waveforms, ' + fmt.int(idx.length) + ' blocks';
+    mp.n = 600; mp.gen++; pc.cfg.info = () => fmt.int(idx.length) + ' of ' + fmt.int(i1 - i0) + ' blocks sampled';
     pc.series[0].color = M.procMode() === 'v20' ? C.v20 : C.prop; pc.invalidate();
   }
   function picked(k) { return Object.entries(S.decisions).filter(([id, d]) => d[k]).map(([id]) => id).sort(); }
@@ -3967,7 +3987,7 @@ const RC = (function () {
     ov.requestDraw(); if (zm._mounted) zm.requestDraw();
   }
   UI.register('fractions', {
-    show(o) { if (!built) build(); setTimeout(() => { ov.resize(); if (zm._mounted) zm.resize(); if (pc) pc.resize(); }, 0); lastKey = ''; sideKey = ''; zm._mounted = false; if (o && o.anchor === 'samples') { tab = 'samples'; $$('#frTabs button').forEach(x => x.classList.toggle('on', x.dataset.v === 'samples')); } side(true); },
+    show(o) { if (!built) build(); setTimeout(() => { ov.resize(); if (zm._mounted) zm.resize(); if (pc) pc.resize(); }, 0); lastKey = ''; sideKey = ''; zm._mounted = false; tab = o && o.anchor === 'samples' ? 'samples' : 'frac'; $$('#frTabs button').forEach(x => x.classList.toggle('on', x.dataset.v === tab)); side(true); },
     update, samplesText, select(id) { focus = id; sel = new Set([id]); selChanged(); },
     // a beforeKey that no longer exists (the Assignment column was removed) inserts before Cards, so Decision stays last
     addCol(col, beforeKey) { let k = COLS.findIndex(c => c.k === beforeKey); if (k < 0) k = COLS.findIndex(c => c.k === 'cards'); COLS.splice(k < 0 ? COLS.length : k, 0, col); lastKey = ''; },
@@ -4033,13 +4053,13 @@ const REC = (function () {
       const open = cardLines(cards.filter(c => c.status === 'open' && c.level !== 'I'));
       const noted = cardLines(cards.filter(c => c.status !== 'open' && c.note));
       out.quality = [
-        'Blocks: ' + fmt.int(n) + ' recorded, ' + disc + ' discarded (' + (disc === 1 ? 'timeout' : 'timeouts') + '). Waveforms above 90 % of the input range: ' + fmt.int(over) + '. Low-precision blocks (under ' + Math.round(S.th.lowPrec * 100) + ' % of range): ' + (n ? (low / n * 100).toFixed(0) : 0) + ' %.',
+        'Blocks: ' + fmt.int(n - disc) + ' recorded, ' + disc + ' discarded (' + (disc === 1 ? 'timeout' : 'timeouts') + '). Waveforms above 90 % of the input range: ' + fmt.int(over) + '. Low-precision blocks (under ' + Math.round(S.th.lowPrec * 100) + ' % of range): ' + (n ? (low / n * 100).toFixed(0) : 0) + ' %.',
         'Sensitivity changes: ' + R.acq.changes.length + '.',
-        'Laser: ' + (R.laserStableAtStart ? 'stable at run start.' : 'not stable at run start; see I1.') + (R.override ? ' Readiness override: ' + stop(R.override.reason) : ''),
+        'Laser: ' + (R.laserStableAtStart ? 'stable (provisional) at run start.' : 'not stable at run start; see I1.') + (R.override ? ' Readiness override: ' + stop(R.override.reason) : ''),
         'Pre-run buffer baseline: ' + (R.readyAcq ? 'measured at Readiness.' : 'not measured; rule P3 not evaluated.'),
         'Alignment: detector ' + al.detector + ', fraction assignment ' + al.fractions + '.' + (al.issues.length ? ' ' + al.issues.join(' ') : ''),
         'Evidence cards: ' + (cards.length ? cards.length + ', ' + (nOpen || 'none') + ' open. ' + Object.keys(byRule).sort(ruleOrder).map(k => k + (byRule[k] > 1 ? ' ×' + byRule[k] : '')).join(', ') + '.' : 'none.'),
-        'Open items:' + (open.length ? '' : ' none.'), ...open,
+        'Open observations and hypotheses:' + (open.length ? '' : ' none.'), ...open,
         ...(noted.length ? ['Closed with a note:', ...noted] : [])
       ].join('\n');
     } else { out.results = 'No run recorded yet.'; out.quality = 'No run recorded yet.'; out.resultsTable = []; out.resultsHead = resultsHead(false); }
@@ -4196,8 +4216,8 @@ const ENG = (function () {
     return (ok ? '<div class="note" style="margin-bottom:8px">' + about + ' The run is processed by these same functions.</div>'
       : '<div class="callout fault" style="margin-bottom:8px">' + UI.stateHtml('fault', (r.total - r.pass) + ' of ' + r.total + ' reference values fail') + ' A failure means the algorithm differs from v2.0. Do not use processed data until it is resolved. <span class="small">' + about + '</span></div>') +
       '<label class="chk small" style="margin-bottom:6px"><input type="checkbox" id="tCorrupt"' + (corrupt ? ' checked' : '') + '> Show the failure state (demo)</label>' +
-      '<div class="tbl-wrap" style="max-height:520px"><table class="tbl"><thead><tr><th>Case</th><th>Mode</th><th>Value</th><th class="num">Expected</th><th class="num">Computed</th><th class="num">Difference</th><th>Result</th></tr></thead><tbody>' +
-      r.rows.map(x => '<tr><td>' + esc(x.caseId) + '</td><td>' + esc(x.mode) + '</td><td>' + esc(x.key) + '</td><td class="num wrap" style="max-width:260px">' + esc(showVal(x.e)) + '</td><td class="num wrap" style="max-width:260px">' + esc(showVal(x.g)) + '</td><td class="num">' + (typeof x.diff === 'number' ? x.diff.toExponential(1) : esc(x.diff)) + '</td><td class="' + (x.pass ? 'pass' : 'fail') + '">' + (x.pass ? 'Pass' : 'Fail') + '</td></tr>').join('') + '</tbody></table></div>';
+      '<div class="tbl-wrap" style="max-height:520px"><table class="tbl"><thead><tr><th>Case</th><th>Mode</th><th>Value</th><th>Result</th><th class="num">Expected</th><th class="num">Computed</th><th class="num">Difference</th></tr></thead><tbody>' +
+      r.rows.map(x => '<tr><td>' + esc(x.caseId) + '</td><td>' + esc(x.mode) + '</td><td class="wrap" style="overflow-wrap:anywhere;min-width:120px">' + esc(x.key) + '</td><td class="' + (x.pass ? 'pass' : 'fail') + '">' + (x.pass ? 'Pass' : 'Fail') + '</td><td class="num wrap" style="max-width:260px">' + esc(showVal(x.e)) + '</td><td class="num wrap" style="max-width:260px">' + esc(showVal(x.g)) + '</td><td class="num">' + (typeof x.diff === 'number' ? x.diff.toExponential(1) : esc(x.diff)) + '</td></tr>').join('') + '</tbody></table></div>';
   }
   /* ---------- alignment check ---------- */
   function alignData() {
@@ -4318,7 +4338,7 @@ const ENG = (function () {
       ['Laser correction', 'None', 'Divide by beam monitor area relative to run start (simulated; PicoScope configuration is Future work)', on(p.laser), 'Processing'],
       ['Beam monitor capture', 'Start and end of each experiment', 'With every block on channel D', on(s.beamPerBlock), 'Acquisition'],
       ['Saving', 'After every block (loop_measurements.py line 28)', 'At most every 2 s, as configured, and only with new data', on(s.save2s), 'Acquisition'],
-      ['Laser emission check', 'Skipped (laser_state = True, connections.py line 88)', 'At Readiness, 10 of 10 pulses ≥ 0.005 V within 3 s. A timeout fails.', on(s.laserCheck), 'Readiness'],
+      ['Laser emission check', 'Skipped (laser_state = True, connections.py line 88)', 'At Readiness, 10 of 10 pulses ≥ ' + S.th.i4V + ' V within ' + TR.ACQ.timeoutS + ' s. A timeout fails.', on(s.laserCheck), 'Readiness'],
       ['Settings', 'Tab-delimited files, hard-coded paths and serial numbers', 'Versioned presets with ID and checksum, device discovery', UI.stateHtml('ok', 'On (' + M.presetInfo(s.pmt).id + ')'), 'Setup'],
       ['Data format', 'Pickle', 'CSV plus JSON metadata, written alongside', on(s.csvJson), 'Record'],
       ['Laser controller log', 'Not read', 'Read for warm-up and monitoring', UI.stateHtml('ok', 'On'), 'Readiness, Run']
@@ -4377,10 +4397,15 @@ const ENG = (function () {
     if (flatCheck.c) return flatCheck.c;
     const med = { arMedian: true, arSymmetric: true, arUnscaled: true };
     flatCheck.c = [['v2.0', {}], ['v2.0, ranges one setting larger (item 2)', { rangeMap: 'shift' }], ['Block median, no guard', med], ['Proposed', { ...med, arFlatGuard: true }]].map(([label, o]) => {
-      const A = TR.createAcq({ seed: TR.SEED, stream: 60, pmt: 800, ...M.pmtSim(800), cap: 120, ...o, signalAt: () => ({ S: 0.0080, tau: 3.5, E: 1, u: 0, vp: 0, phase: 0 }) });
-      TR.acqStep(A, 1e6);
-      let at1 = 0; for (let i = 0; i < A.n; i++) if (A.step[i] === 1) at1++;
-      return { label, at1, back: A.changes.filter(c => c.to === 1 && c.from > 1).length, last: A.step[A.n - 1], n: A.n };
+      let at1 = 0, back = 0, end1 = 0, n = 0; const runs = 10;
+      for (let k = 0; k < runs; k++) {
+        const A = TR.createAcq({ seed: TR.SEED, stream: 60 + k, pmt: 800, ...M.pmtSim(800), cap: 120, ...o, signalAt: () => ({ S: 0.0080, tau: 3.5, E: 1, u: 0, vp: 0, phase: 0 }) });
+        TR.acqStep(A, 1e6); n = A.n;
+        for (let i = 0; i < A.n; i++) if (A.step[i] === 1) at1++;
+        if (A.changes.some(c => c.to === 1 && c.from > 1)) back++;
+        if (A.step[A.n - 1] === 1) end1++;
+      }
+      return { label, at1: Math.round(at1 / runs), back, end1, runs, n };
     });
     return flatCheck.c;
   }
@@ -4402,7 +4427,7 @@ const ENG = (function () {
         v20: p('Not in v2.0, which has no rule IDs. The Stage 2 prompt (section 1) gives I6 to Calibration not applicable. Stage 1 (section 11) already uses I6 for Laser output changed.'),
         effect: p('Rule IDs are stored in card IDs (for example I6-load-1), responses, the audit trail and the JSON and CSV exports. One ID for two rules would make those records ambiguous.'),
         res: p('Calibration not applicable is I7; P6, P7 and H3 are unchanged. The Stage 2 prompt is to be corrected.') + '<button class="btn sm" id="discGoTh">Open Rules and thresholds</button>',
-        check: p('None on the instrument.')
+        check: p('None needed.')
       })
     },
     {
@@ -4443,7 +4468,7 @@ const ENG = (function () {
           v20: p('The baseline is the mean of the first 100 samples, 0 to 20 ns (signal_class.py, line 52). It is subtracted across all 600 samples, 119.8 ns (lines 55 to 61), so an error of 0.1 count in the baseline moves the area by 12 counts·ns.'),
           effect: '<div class="tbl-wrap"><table class="tbl" id="levTbl"><thead><tr><th></th><th class="num">v2.0</th><th class="num">Median baseline</th><th class="num">30 to 70 ns window</th><th class="num">Both (Proposed)</th></tr></thead><tbody>' +
             lr.map(t => '<tr><td class="wrap">' + esc(t.id) + ', step ' + t.steps[1] + ' against step ' + t.steps[0] + '</td>' + t.r.map(x => '<td class="num">' + x.toFixed(3) + '</td>').join('') + '</tr>').join('') +
-            runRow('This run, blocks under ' + lp + ' % of range: median error (%)', sc && sc.lo) + runRow('This run, other blocks: median error (%)', sc && sc.hi) + '</tbody></table></div>' +
+            runRow('This run, ' + (sc ? fmt.int(sc.nLo) + ' ' : '') + 'blocks under ' + lp + ' % of range: median error (%)', sc && sc.lo) + runRow('This run, ' + (sc ? fmt.int(sc.nHi) + ' ' : '') + 'other blocks: median error (%)', sc && sc.hi) + '</tbody></table></div>' +
             p('Ratios should be 1. Each reference step is one synthetic waveform with 1 count RMS noise, so a few per cent either way is noise. At step 4 the first 100 samples average −0.24 counts, which over 119.8 ns removes 29 of the pulse\'s 102 counts·ns.') +
             p('Run rows: median absolute error per block against the simulated signal, leaving out blocks with a waveform above 90 %.'),
           res: p('The median baseline and the 30 to 70 ns window are under Processing on Run and Fraction review, off by default. Compare overlays v2.0 and Proposed with a difference trace.'),
@@ -4461,8 +4486,8 @@ const ENG = (function () {
         return {
           v20: p('If the first 100 samples of the latest waveform sit on one count (s = 0) and nothing lies below them (m = 0), the no-signal band (b − 5s)/T to (b + 5s)/T is empty, because its bounds are strict (signal_attenuation.py, lines 74 to 79). The test m > 0 (line 155) can never pass. Every allowed step then scores 0.64 and step 1 wins (line 164), from whatever step v2.0 is on.'),
           effect: p('A waveform with no visible pulse is flat in 74 % of cases at 0.15 counts RMS noise, 1 % at 0.2 counts and almost never from 0.25 counts. Assumed noise at 500 mV on the 800 mV preset is 0.30 counts, or 0.15 counts if ranges are one setting larger (item 2). A median of 10 waveforms has far less noise, so a block median input is flat in about 95 % of such blocks.') +
-            '<div class="tbl-wrap"><table class="tbl" id="flatTbl"><caption class="note">Simulated buffer, PMT 800 mV preset, assumed noise, ' + n + ' blocks from step 1.</caption><thead><tr><th>Auto-ranging</th><th class="num">Blocks at step 1</th><th class="num">Returns to step 1</th><th class="num">Step at block ' + n + '</th></tr></thead><tbody>' +
-            fc.map(r => '<tr><td>' + esc(r.label) + '</td><td class="num">' + r.at1 + '</td><td class="num">' + r.back + '</td><td class="num">' + r.last + '</td></tr>').join('') + '</tbody></table></div>',
+            '<div class="tbl-wrap"><table class="tbl" id="flatTbl"><caption class="note">Simulated buffer, PMT 800 mV preset, assumed noise: ' + fc[0].runs + ' runs of ' + n + ' blocks from step 1.</caption><thead><tr><th>Auto-ranging</th><th class="num">Blocks at step 1 (mean)</th><th class="num">Runs that return to step 1</th><th class="num">Runs ending at step 1</th></tr></thead><tbody>' +
+            fc.map(r => '<tr><td>' + esc(r.label) + '</td><td class="num">' + r.at1 + '</td><td class="num">' + r.back + ' of ' + r.runs + '</td><td class="num">' + r.end1 + ' of ' + r.runs + '</td></tr>').join('') + '</tbody></table></div>',
           res: p('Proposed auto-ranging also counts a waveform with nothing below its baseline (m = 0) as no signal and moves two steps more sensitive. Every reference case has m below 0, so no reference value changes.'),
           check: ol(['In existing v2.0 records, opened in a trusted environment, count waveforms whose first 100 samples sit on one count with nothing below, and look for drops to step 1 that clipping does not explain.',
             'On each preset, at step 1, block the beam to the flow cell and keep the beam monitor lit. Record 100 blocks and report the noise in counts. Under 0.25 counts RMS means v2.0 is exposed. Repeat once item 2 is settled.'])
@@ -4489,7 +4514,7 @@ const ENG = (function () {
             p('A crash during a save can leave an unreadable file. Save time is not simulated, so the block rate does not slow.');
         }
         return {
-          v20: p('v2.0 behaviour: saves after every block; configured interval 2 s not applied. The save test ORs the interval with the loop\'s own running condition, so the whole record is pickled again after every block, timed-out blocks included.') + src('loop_measurements.py, line 28; pickle_functions.py, lines 5 to 8; acquisition.txt, line 8'),
+          v20: p('Saves after every block; the configured 2 s interval is not applied. The save test ORs the interval with the loop\'s own running condition, so the whole record is pickled again after every block, timed-out blocks included.') + src('loop_measurements.py, line 28; pickle_functions.py, lines 5 to 8; acquisition.txt, line 8'),
           effect: eff,
           res: p('Save at most every 2 s, and only when new waveforms have arrived. Appending only new blocks to the file would stop the growth (not simulated).') + '<button class="btn sm" id="discGoSetup">Open Setup</button>',
           check: p('Log the time and file size of each save over a 95 min experiment, and compare the block interval at the start and the end.')
@@ -4498,7 +4523,7 @@ const ENG = (function () {
     },
     {
       n: 6, title: 'Timed-out blocks', v20: 'No waveforms. Auto-ranging re-runs on the previous waveform, and nothing is logged.', src: 'loop_measurements.py 22 to 37',
-      effect: R => { const k = R ? timeouts(R).length : -1; return 'None on data or range; about 3 s lost each.' + (k < 0 ? '' : ' This run: ' + k + (k === 1 ? ' timeout.' : ' timeouts.')); }, res: 'No change needed. Each timeout is logged in the Run log.',
+      effect: R => { const k = R ? timeouts(R).length : -1; return 'None on data or range; about 3 s lost each.' + (k < 0 ? '' : ' This run: ' + k + (k === 1 ? ' timeout.' : ' timeouts.')); }, res: 'Auto-ranging needs no change. Proposed: log each timeout in the Run log.',
       status: () => UI.stateHtml('ok', 'Resolved'), e: true, p: true, h: true,
       detail: R => {
         let eff = p('The inputs are those of the previous decision, so it returns the step already in use and the range does not change. Each timeout costs about 3 s and leaves no record.');
@@ -4507,7 +4532,7 @@ const ENG = (function () {
         return {
           v20: p('After 3 s without a complete block the scope returns no waveforms (scope_class.py, lines 230 to 235 and 331 to 333). The loop still saves and runs auto-ranging (loop_measurements.py, lines 28 to 37). Auto-ranging reads the last stored waveform, from the previous block, with that waveform\'s step (signal_modelling.py, line 81; signal_attenuation.py, lines 56 to 62).'),
           effect: eff,
-          res: p('Auto-ranging needs no change. Each timeout is logged in the Run log. The block CSV already flags it as discarded, and rule I3 fires above ' + S.th.i3Count + ' in a minute.'),
+          res: p('Auto-ranging needs no change. Proposed: each timeout is logged in the Run log; v2.0 logs nothing. The block CSV already flags it as discarded, and rule I3 fires above ' + S.th.i3Count + ' in a minute.'),
           check: p('Early in a buffer run, unplug the channel D cable for 15 s. Expect 4 or 5 timeouts and no range change. Later in a run fewer fit, because v2.0 re-saves the whole record after every block (item 5).')
         };
       }
@@ -4532,7 +4557,7 @@ const ENG = (function () {
       DISC.map(x => '<tr' + (x.n === it.n ? ' class="sel"' : '') + '><td class="num dn">' + x.n + '</td><td class="wrap" data-h="Item ' + x.n + '"><button class="link" data-n="' + x.n + '"' + (x.n === it.n ? ' aria-current="true"' : '') + '>' + esc(x.title) + '</button></td><td class="wrap" data-h="v2.0 behaviour and source">' + esc(x.v20) + src(esc(x.src), x.plain) + '</td><td class="wrap" data-h="Effect">' + esc(x.effect(R)) + '</td><td class="wrap" data-h="Resolution">' + esc(x.res) + '</td><td data-h="Status">' + x.status(R) + '</td></tr>').join('') + '</tbody></table></div>' +
       '<div id="discDetail" class="panel" style="margin-top:12px"><div class="ph"><h3>' + it.n + '. ' + esc(it.title) + '</h3></div><div class="pb"><div class="disc-d">' +
       blk('v2.0 behaviour', it.e ? tag('E', 'always') : '', d.v20) + blk('Effect', '', d.effect) + blk('Resolution', it.p ? tag('P', 'always') : '', d.res) + blk('Check on the instrument', it.h ? H() : '', d.check) + '</div></div></div>' +
-      '<div class="note disc-foot"><b>Trigger threshold.</b> v2.0 sends 150 with the comment <code>Threshold is in mV</code> (scope_class.py, line 109). The ps6000a programmer\'s guide reads the value as ADC counts, about 2.3 mV on ±500 mV, not 0.15 V. ' + H() + '</div>' +
+      '<div class="note disc-foot"><b>Trigger threshold.</b> v2.0 sends 150 with the comment <code>Threshold is in mV</code> (scope_class.py, lines 108 to 109). The ps6000a programmer\'s guide reads the value as ADC counts, about 2.3 mV on ±500 mV, not 0.15 V. ' + H() + '</div>' +
       '<div class="note disc-foot">A quadratic fit of recent pulse minima was abandoned during v2.0 development because it failed when the signal changed by orders of magnitude. It is not reintroduced.</div>';
   }
   /* ---------- faults and reproducibility ---------- */
@@ -4574,7 +4599,7 @@ const ENG = (function () {
       if (l) l.onchange = () => { S.setup.ladderFile = +l.value; M.audit('engineer', 'Ladder file set to od_filters_and_ranges_' + l.value + '_mV.txt.'); render(); };
       if (rm) rm.onchange = () => { if (S.run) return; S.setup.rangeMap = rm.value === 'shift' ? 'shift' : 'stated'; M.audit('engineer', S.setup.rangeMap === 'shift' ? 'Real input range set to one setting larger (what-if).' : 'Real input range set back to as stated.'); UI.renderChips(); UI.emitDirty(); render(); };
     }
-    if (tab === 'th') $$('[data-th]').forEach(inp => inp.onchange = () => { const k = inp.dataset.th, v = parseFloat(inp.value); if (!isFinite(v)) { inp.value = S.th[k]; return; } const old = S.th[k]; S.th[k] = v; M.audit('threshold', M.TH_INFO[k][0] + ' changed from ' + old + ' to ' + v + ' ' + M.TH_INFO[k][1] + '.'); if (S.run) { M.rederive(S.run); } S.laser = null; M.laserUpdate(); UI.emitDirty(); const rr = $('#ruleRows'); if (rr) rr.innerHTML = ruleRows(); });
+    if (tab === 'th') $$('[data-th]').forEach(inp => inp.onchange = () => { const k = inp.dataset.th, v = parseFloat(inp.value); if (!isFinite(v)) { inp.value = S.th[k]; return; } const old = S.th[k]; S.th[k] = v; M.audit('threshold', M.TH_INFO[k][0] + ' ' + v + ' ' + M.TH_INFO[k][1] + ' (was ' + old + ').'); if (S.run) { M.rederive(S.run); } S.laser = null; M.laserUpdate(); UI.emitDirty(); const rr = $('#ruleRows'); if (rr) rr.innerHTML = ruleRows(); });
     if (tab === 'disc') {
       $$('#discTbl [data-n]').forEach(b => b.onclick = () => { discSel = +b.dataset.n; render(); });
       const go = (id, f) => { const b = $(id); if (b) b.onclick = f; };
@@ -4660,7 +4685,7 @@ const Q = (function () {
     'input range use': ['Input range use', 'How much of the digitiser\'s measuring window the latest pulse fills. Above 90 % risks clipping. Under 20 % is shaded as low precision.'],
     'fluorescence': ['Fluorescence (V·ns, ND-corrected)', 'Light emitted mainly by tryptophan in proteins after each laser pulse, integrated over the pulse and corrected for the filter in use. It is relative and gives no concentration without calibration.'],
     'beam monitor': ['Beam monitor', 'TRIFLE\'s own photodiode reading of each laser pulse. It is separate from the laser controller\'s internal reading.'],
-    'laser warm-up': ['Laser warm-up', 'The period after switch-on during which the laser controller\'s reading can change. Wait until the laser is reported stable before starting a run. The software keeps watching afterwards.'],
+    'laser warm-up': ['Laser warm-up', 'The period after switch-on during which the laser controller\'s reading can change. Wait for \"stable (provisional)\" before starting a run. The software keeps watching afterwards.'],
     'instrument response': ['Instrument response (IRF)', 'The shape the detector records for an extremely short flash. It is drawn as a dashed reference on pulse views.'],
     'inner-filter': ['Inner-filter effect', 'At high concentration the sample absorbs so much light that fluorescence stops rising in proportion to concentration.'],
     'pmt': ['PMT', 'The light detector. Its gain is set by a control voltage, with presets of 400 or 800 mV, on a separate supply.'],
@@ -4697,7 +4722,7 @@ const Q = (function () {
     const rm = q.match(/\b([iph])([1-9])\b/), id = rm ? (rm[1] + rm[2]).toUpperCase() : null, rule = id && M.ruleById(id);
     if (rule) {
       const cs = R ? R.rules.cards.filter(c => c.rule === id) : [], last = cs[cs.length - 1];
-      const fired = last ? ' It fired ' + (cs.length > 1 ? cs.length + ' times' : 'once') + ' in this run. Latest card: ' + [last.title, last.obs].filter(Boolean).map(t => t.replace(/\.?$/, '.')).join(' ') : ' It has not fired in this run.';
+      const fired = last ? ' It fired ' + (cs.length > 1 ? cs.length + ' times' : 'once') + ' in this run. Latest card: ' + (last.obs && last.obs.indexOf(last.title) === 0 ? [last.obs] : [last.title, last.obs]).filter(Boolean).map(t => t.replace(/\.?$/, '.')).join(' ') : ' It has not fired in this run.';
       return A('Rule ' + id + '. ' + rule.cond(S.th) + (rule.note ? ' ' + rule.note : '') + fired, 'Rule catalogue, ' + id + (last ? '; card ' + last.id : ''));
     }
     if (/sensitiv|\bstep\b|filter change|range change/.test(q) && /why|when|chang/.test(q)) {
@@ -4744,7 +4769,7 @@ const Q = (function () {
       const desc = st.slice(0, 10).map(f => f.id + ' (' + [f.over ? f.over + ' over 90 %' : '', f.chg ? f.chg + ' sensitivity change' + (f.chg > 1 ? 's' : '') : '', f.disc ? f.disc + ' discarded' : '', f.laser ? 'laser change' : '', f.lowShare > 0.5 ? 'low precision' : '', f.assign === 'Uncertain' ? 'assignment uncertain' : ''].filter(Boolean).join(', ') + ')');
       return A(st.length + ' fractions have flags: ' + desc.join('; ') + (st.length > 10 ? '; and ' + (st.length - 10) + ' more' : '') + '.', 'Fraction table QC (' + M.procLabel() + ')');
     }
-    if (/hypothesis|evidence level|process observation|instrument evidence/.test(q)) return A(GLOSSARY['evidence level'][1] + ' A hypothesis card always names the offline confirmation, for example Protein A HPLC for H1. The software advises only; you decide.', 'Evidence levels (rules section)');
+    if (/hypothesis|evidence level|process observation|instrument evidence/.test(q)) return A(GLOSSARY['evidence level'][1] + ' A hypothesis card always names the offline confirmation, for example Protein A HPLC for H1. The software advises only; you decide.', 'Glossary: Evidence levels');
     if (/notebook|e-?workbook|idbs|record this|export|attach/.test(q)) return A('Open Record. Copy the six sections (purpose, methods, results, data quality, fraction decisions, attachments) into your E-WorkBook experiment, or use Copy all. Export the CSV per block, CSV per fraction, JSON metadata and the chromatogram PNG, and attach them with the UNICORN report and the offline results. Direct transfer to IDBS is Future (GSK integration).', 'Procedure: Record');
     if (/\bv1\b|\bv2\b|delay volume|fraction delay|align/.test(q)) {
       const al = M.alignmentState(), s = S.setup;
@@ -4756,7 +4781,7 @@ const Q = (function () {
     for (const k in GLOSSARY) { const words2 = k.split(' '); if (q.includes(k) || (words2.length === 1 && new RegExp('\\b' + k).test(q)) || (k === 'instrument response' && /\birf\b/.test(q)) || (k === 'inner-filter' && /inner.?filter/.test(q))) return A(GLOSSARY[k][0] + ': ' + GLOSSARY[k][1], 'Glossary: ' + GLOSSARY[k][0]); }
     if (/(what|how).*(happening|status|doing)|where are we/.test(q)) {
       if (!R) return A('No run yet. ' + M.readinessSummary().text, 'Run state');
-      return A(R.id + ' is ' + R.state + ' at ' + fmt.clock(M.runTimeS(R)) + ', sensitivity step ' + R.acq.cur + '. Open evidence cards: ' + R.rules.cards.filter(c => c.status === 'open').length + '.', 'Run state');
+      return A(R.id + ' is ' + R.state + (R.state === 'complete' ? '. Acquisition time ' + fmt.clock(R.endAt) : ' at ' + fmt.clock(M.runTimeS(R))) + ', sensitivity step ' + R.acq.cur + '. Open evidence cards: ' + R.rules.cards.filter(c => c.status === 'open').length + '.', 'Run state');
     }
     return A(OUT, 'Scope of the Questions panel');
   }
@@ -4841,7 +4866,7 @@ const Q = (function () {
       series: [
         { key: 'fit', label: 'Fit over the linear range', color: C.v20, width: 1.25, panel: 'main', src: () => fitLine, fmt: v => fmt.sig3(v) + ' V·ns' },
         { key: 'ext', label: 'Fit extended (outside range)', color: C.v20, dash: 'dot', width: 1, panel: 'main', src: () => extLine, fmt: v => fmt.sig3(v) + ' V·ns' },
-        { key: 'pts', label: 'Plateau mean ± SD', color: C.text, mode: 'points', panel: 'main', src: () => pts },
+        { key: 'pts', label: 'Plateau mean ± SD (open markers outside the linear range)', color: C.text, mode: 'points', panel: 'main', src: () => pts },
         { key: 'res', label: 'Residual', color: C.text, mode: 'points', panel: 'res', src: () => res, legend: false },
         { key: 'bp', label: 'Criterion', color: C.irf, dash: 'dash', width: 1, panel: 'res', src: () => ({ x: band.x, y: band.yp, n: 2 }), legend: false },
         { key: 'bm', label: 'Criterion', color: C.irf, dash: 'dash', width: 1, panel: 'res', src: () => ({ x: band.x, y: band.ym, n: 2 }), legend: false }
@@ -4887,8 +4912,8 @@ const Q = (function () {
     $('#calSave').onclick = () => { const rec = S2.makeRecord(cur, S2.today()); S.cal.activeId = rec.id; M.audit('calibration', 'Calibration record ' + rec.id + ' saved (' + rec.materialName + ', ' + rec.presetId + ', ' + rec.mode + ', linear ' + rec.fit.lo + ' to ' + rec.fit.hi + ' mg/mL) and made active.'); calChanged(); };
   }
   const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
-  function calChanged() { calKey = ''; const R = S.run; if (R) { R.rules.s2.i7At = R.derivedN; R.rules.replay(); } M.emit('cards'); UI.emitDirty(); const fr = UI.screen('fractions'); if (fr && fr.refresh) fr.refresh(); }
-  M.on(ev => { if (ev === 'proc') { calKey = ''; if (S.run) { S.run.rules.s2.i7At = S.run.derivedN; } } });
+  function calChanged() { calKey = ''; const R = S.run; if (R) { if (R.state !== 'complete') R.rules.s2.i7At = R.derivedN; R.rules.replay(); } M.emit('cards'); UI.emitDirty(); const fr = UI.screen('fractions'); if (fr && fr.refresh) fr.refresh(); }
+  M.on(ev => { if (ev === 'proc') { calKey = ''; if (S.run && S.run.state !== 'complete') { S.run.rules.s2.i7At = S.run.derivedN; } } });
   UI.register('calibration', { show() { if (!calBuilt) calBuild(); setTimeout(() => { cAcq.resize(); cFit.resize(); }, 0); calKey = ''; calRender(); }, update() { calRender(); } });
 
   /* ---------- Run comparison (Proposed) ---------- */
@@ -4969,8 +4994,8 @@ const Q = (function () {
     const diffPct = (a, b) => isFinite(a) && isFinite(b) && b ? ' <span class="muted">(' + S2.sgn((a / b - 1) * 100, 1) + ' %)</span>' : '';
     $('#cmpTbl').innerHTML = !vs.length ? '<div class="pb note">Select runs to compare.</div>' : '<table class="tbl"><thead><tr><th>Fraction</th>' + fc.map(x => '<th class="num">' + esc(x.id) + ' share <span class="unit">(%)</span></th><th>' + esc(x.id) + ' QC</th>').join('') + '</tr></thead><tbody>' +
       ids.map(id => '<tr><td>' + id + '</td>' + fc.map(x => { const q = x.fc[id]; return q ? '<td class="num">' + (q.share * 100).toFixed(1) + '</td><td>' + flag(q) + '</td>' : '<td class="num">–</td><td></td>'; }).join('') + '</tr>').join('') +
-      '<tr><td><b>Elution integrated fluorescence</b> <span class="unit muted">(V·ns·mL)</span></td>' + fc.map(x => '<td class="num" colspan="2">' + (rel ? '<span class="muted">relative mode</span>' : fmt.sig3(x.el) + (x.id !== refId && refFc ? diffPct(x.el, refFc.el) : '')) + '</td>').join('') + '</tr>' +
-      '<tr><td><b>Load plateau, median</b> <span class="unit muted">(V·ns)</span></td>' + fc.map(x => '<td class="num" colspan="2">' + (rel ? '<span class="muted">relative mode</span>' : fmt.sig3(x.lp) + (x.id !== refId && refFc ? diffPct(x.lp, refFc.lp) : '')) + '</td>').join('') + '</tr></tbody></table>';
+      (rel ? '' : '<tr><td><b>Elution integrated fluorescence</b> <span class="unit muted">(V·ns·mL)</span></td>' + fc.map(x => '<td class="num">' + fmt.sig3(x.el) + '</td><td>' + (x.id !== refId && refFc ? diffPct(x.el, refFc.el) : '') + '</td>').join('') + '</tr>' +
+      '<tr><td><b>Load plateau, median</b> <span class="unit muted">(V·ns)</span></td>' + fc.map(x => '<td class="num">' + fmt.sig3(x.lp) + '</td><td>' + (x.id !== refId && refFc ? diffPct(x.lp, refFc.lp) : '') + '</td>').join('') + '</tr>') + '</tbody></table>';
   }
   UI.register('comparison', { show() { if (!cmpBuilt) cmpBuild(); setTimeout(() => cmpChart.resize(), 0); cmpKey = ''; cmpRender(); }, update() { cmpRender(); } });
 

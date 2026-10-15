@@ -36,7 +36,7 @@ Other demo controls start the AKTA run before the laser is stable (rule I1) and 
 | Existing (v2.0) | Implemented in the current TRIFLE Python control software, version 2.0 |
 | Proposed | Designed here, not yet built or experimentally verified |
 | Future (GSK integration) | Needs further development and access to GSK systems |
-| assumed | An inference the instrument team has not confirmed |
+| Assumed | An inference the instrument team has not confirmed |
 | Development assumption, not validated | A Stage 2 modelling choice, such as a fit weighting or linearity limit |
 | To verify on hardware | A v2.0 behaviour or fix that needs a bench check on the instrument |
 
