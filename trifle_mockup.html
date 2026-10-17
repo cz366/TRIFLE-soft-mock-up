@@ -11,53 +11,53 @@
   --bg: #F5F6F7; --panel: #FFFFFF; --border: #D9DDE1; --border2: #C5CBD1; --text: #1F2933; --text2: #5B6670; --muted: #8C96A0;
   --accent: #1B365D; --accent-bg: #E8EDF4; --accent-bg2: #F1F4F8;
   --ok: #2F7D4F; --warn: #B7791F; --fault: #B42318;
-  --band1: #EEF0F2; --band2: #F7F8F9; --row-h: 24px; --ctl-h: 28px; --r: 4px;
+  --band1: #EEF0F2; --band2: #F7F8F9; --row-h: 30px; --ctl-h: 34px; --r: 4px;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
-body { font: 13px/1.38 Arial, "Liberation Sans", sans-serif; color: var(--text); background: var(--bg); font-variant-numeric: tabular-nums; overflow: hidden; }
+body { font: 15px/1.45 Arial, "Liberation Sans", sans-serif; color: var(--text); background: var(--bg); font-variant-numeric: tabular-nums; overflow: hidden; }
 button, input, select, textarea { font: inherit; color: inherit; font-variant-numeric: tabular-nums; }
 h1, h2, h3, h4 { margin: 0; font-weight: bold; }
-h1 { font-size: 20px; } h2 { font-size: 16px; } h3 { font-size: 13px; } h4 { font-size: 12px; }
+h1 { font-size: 24px; } h2 { font-size: 19px; } h3 { font-size: 15px; } h4 { font-size: 13.5px; }
 p { margin: 0 0 8px; }
 a, .link { color: var(--accent); text-decoration: underline; cursor: pointer; background: none; border: 0; padding: 0; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .muted { color: var(--text2); }
-.small { font-size: 12px; }
+.small { font-size: 13.5px; }
 .num { text-align: right; }
 .nowrap { white-space: nowrap; }
 .hidden { display: none !important; }
 
 /* ---------- frame (14.4) ---------- */
-#app { display: grid; grid-template-columns: 200px minmax(0, 1fr) auto; grid-template-rows: 48px minmax(0, 1fr) 24px; height: 100%; }
+#app { display: grid; grid-template-columns: 216px minmax(0, 1fr) auto; grid-template-rows: 54px minmax(0, 1fr) 30px; height: 100%; }
 #hdr { grid-column: 1 / 4; display: flex; align-items: center; gap: 16px; padding: 0 12px; background: var(--panel); border-bottom: 1px solid var(--border); min-width: 0; }
 .h-id { display: flex; align-items: baseline; gap: 10px; flex: none; }
-.h-name { font-weight: bold; font-size: 16px; letter-spacing: 0.04em; }
-.h-inst { color: var(--text2); font-size: 12px; }
+.h-name { font-weight: bold; font-size: 19px; letter-spacing: 0.04em; }
+.h-inst { color: var(--text2); font-size: 13.5px; }
 .h-conn { display: flex; gap: 12px; align-items: center; min-width: 0; overflow: hidden; flex: 1; padding-left: 12px; border-left: 1px solid var(--border); height: 28px; }
-.ind { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-size: 12px; }
+.ind { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-size: 13.5px; }
 .ind .lab { color: var(--text2); }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--muted); flex: none; }
 .dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.fault { background: var(--fault); } .dot.off { background: #fff; border: 1px solid var(--muted); }
-.h-right { display: flex; align-items: center; gap: 10px; flex: none; font-size: 12px; }
+.h-right { display: flex; align-items: center; gap: 10px; flex: none; font-size: 13.5px; }
 .h-state { font-weight: bold; }
-.h-mock { border: 1px solid var(--border2); color: var(--text2); padding: 1px 6px; border-radius: 3px; font-size: 11px; }
+.h-mock { border: 1px solid var(--border2); color: var(--text2); background: none; cursor: pointer; padding: 2px 8px; border-radius: 3px; font-size: 12.5px; }
 
 #rail { grid-row: 2; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; }
 .rail-group { padding: 10px 0 2px; }
-.rail-h { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; padding: 0 14px 4px; }
-.nav { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 28px; padding: 0 12px 0 14px; border: 0; border-left: 3px solid transparent; background: none; text-align: left; cursor: pointer; color: var(--text); }
+.rail-h { font-size: 12.5px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; padding: 0 14px 4px; }
+.nav { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 36px; padding: 0 12px 0 14px; border: 0; border-left: 3px solid transparent; background: none; text-align: left; cursor: pointer; color: var(--text); }
 .nav:hover { background: var(--accent-bg2); }
 .nav.active { border-left-color: var(--accent); background: var(--accent-bg); color: var(--accent); font-weight: bold; }
 .rail-foot { margin-top: auto; padding: 10px 12px 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
-.switch { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; }
+.switch { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13.5px; }
 .switch input { width: 28px; height: 16px; appearance: none; background: #C5CBD1; border-radius: 8px; position: relative; cursor: pointer; flex: none; margin: 0; }
 .switch input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: left 80ms; }
 .switch input:checked { background: var(--accent); }
 .switch input:checked::after { left: 14px; }
 .demo-box { border: 1px dashed var(--border2); border-radius: var(--r); padding: 6px 8px 8px; display: flex; flex-direction: column; gap: 6px; }
-.demo-box .demo-h { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; }
-.demo-box label { font-size: 12px; display: flex; gap: 6px; align-items: flex-start; }
+.demo-box .demo-h { font-size: 12.5px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; }
+.demo-box label { font-size: 13.5px; display: flex; gap: 6px; align-items: flex-start; }
 .demo-box input[type=checkbox] { margin: 2px 0 0; }
 
 #work { grid-row: 2; grid-column: 2; overflow: hidden; position: relative; min-width: 0; }
@@ -66,12 +66,12 @@ a, .link { color: var(--accent); text-decoration: underline; cursor: pointer; ba
 .screen.fixed { overflow: hidden; display: none; flex-direction: column; gap: 8px; }
 .screen.fixed.active { display: flex; }
 .scr-h { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; min-height: 28px; }
-.scr-h h1 { font-size: 20px; }
-.scr-h .seq { color: var(--text2); font-size: 12px; }
+.scr-h h1 { font-size: 24px; }
+.scr-h .seq { color: var(--text2); font-size: 13.5px; }
 .scr-h .sp { flex: 1; }
 .screen.fixed .scr-h { margin-bottom: 0; flex: none; }
 
-#qpanel { grid-row: 2; grid-column: 3; width: 360px; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
+#qpanel { grid-row: 2; grid-column: 3; width: 380px; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
 #qpanel.collapsed { width: 32px; }
 #qpanel.collapsed .q-body { display: none; }
 .q-tab { display: none; writing-mode: vertical-rl; transform: rotate(180deg); border: 0; background: none; cursor: pointer; padding: 12px 0; width: 31px; color: var(--accent); font-weight: bold; }
@@ -79,19 +79,19 @@ a, .link { color: var(--accent); text-decoration: underline; cursor: pointer; ba
 .q-body { display: flex; flex-direction: column; min-height: 0; height: 100%; }
 .q-head { padding: 10px 12px 8px; border-bottom: 1px solid var(--border); }
 .q-head .row { display: flex; align-items: center; justify-content: space-between; }
-.q-cap { color: var(--text2); font-size: 12px; margin-top: 4px; }
+.q-cap { color: var(--text2); font-size: 13.5px; margin-top: 4px; }
 .q-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
-.chip { border: 1px solid var(--border2); background: #fff; border-radius: 12px; padding: 2px 8px; font-size: 12px; cursor: pointer; text-align: left; }
+.chip { border: 1px solid var(--border2); background: #fff; border-radius: 12px; padding: 2px 8px; font-size: 13.5px; cursor: pointer; text-align: left; }
 .chip:hover { border-color: var(--accent); color: var(--accent); }
 .q-log { flex: 1; overflow-y: auto; padding: 8px 12px; display: flex; flex-direction: column; gap: 10px; }
-.q-msg { font-size: 12.5px; }
+.q-msg { font-size: 14px; }
 .q-msg.q { align-self: flex-end; background: var(--accent-bg); padding: 4px 8px; border-radius: var(--r); max-width: 90%; }
 .q-msg.a { border-left: 2px solid var(--border2); padding-left: 8px; }
-.q-msg .src { color: var(--text2); font-size: 11.5px; margin-top: 4px; }
+.q-msg .src { color: var(--text2); font-size: 13px; margin-top: 4px; }
 .q-form { display: flex; gap: 6px; padding: 8px 12px 12px; border-top: 1px solid var(--border); }
 .q-form input { flex: 1; }
 
-#status { grid-column: 1 / 4; grid-row: 3; display: flex; align-items: center; gap: 0; background: var(--panel); border-top: 1px solid var(--border); font-size: 12px; padding: 0 8px; white-space: nowrap; overflow: hidden; }
+#status { grid-column: 1 / 4; grid-row: 3; display: flex; align-items: center; gap: 0; background: var(--panel); border-top: 1px solid var(--border); font-size: 13.5px; padding: 0 8px; white-space: nowrap; overflow: hidden; }
 #status > span { padding: 0 10px; border-right: 1px solid var(--border); }
 #status > span:last-child { border-right: 0; }
 #status .st-warn { color: var(--warn); font-weight: bold; overflow: hidden; text-overflow: ellipsis; flex: 1; border-right: 0; }
@@ -102,13 +102,13 @@ a, .link { color: var(--accent); text-decoration: underline; cursor: pointer; ba
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: bold; }
 .btn.primary:hover:not(:disabled) { background: #142A49; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.btn.sm { height: 22px; padding: 0 7px; font-size: 12px; }
+.btn.sm { height: 28px; padding: 0 9px; font-size: 13.5px; }
 .btn.danger { color: var(--fault); }
 .seg { display: inline-flex; border: 1px solid var(--border2); border-radius: var(--r); overflow: hidden; height: var(--ctl-h); flex: none; }
-.seg button { border: 0; border-right: 1px solid var(--border2); background: #fff; padding: 0 8px; cursor: pointer; font-size: 12px; white-space: nowrap; }
+.seg button { border: 0; border-right: 1px solid var(--border2); background: #fff; padding: 0 8px; cursor: pointer; font-size: 13.5px; white-space: nowrap; }
 .seg button:last-child { border-right: 0; }
 .seg button.on { background: var(--accent-bg); color: var(--accent); font-weight: bold; }
-.seg.sm { height: 22px; } .seg.sm button { padding: 0 6px; }
+.seg.sm { height: 28px; } .seg.sm button { padding: 0 6px; }
 input[type=text], input[type=number], select, textarea { height: var(--ctl-h); border: 1px solid var(--border2); border-radius: var(--r); padding: 0 6px; background: #fff; min-width: 0; }
 textarea { height: auto; padding: 4px 6px; resize: vertical; }
 input[type=number] { text-align: right; }
@@ -120,35 +120,35 @@ input[type=checkbox], input[type=radio] { accent-color: var(--accent); }
 .opt input { margin: 2px 0 0; flex: none; }
 .opt .note { display: block; }
 .opt.dis { cursor: default; color: var(--text2); }
-.tag { display: inline-block; border: 1px solid #B8C0C8; color: var(--text2); background: #fff; font-size: 10.5px; line-height: 14px; padding: 0 4px; border-radius: 3px; white-space: nowrap; vertical-align: 1px; font-weight: normal; }
+.tag { display: inline-block; border: 1px solid #B8C0C8; color: var(--text2); background: #fff; font-size: 12px; line-height: 17px; padding: 0 4px; border-radius: 3px; white-space: nowrap; vertical-align: 1px; font-weight: normal; }
 .tag.fut { border-style: dashed; }
 body:not(.eng) .tag[data-scope="engineer"] { display: none; }
 body:not(.eng) .eng-only { display: none !important; }
 .state { display: inline-flex; align-items: center; gap: 5px; font-weight: bold; white-space: nowrap; }
 .state.ok { color: var(--ok); } .state.warn { color: var(--warn); } .state.fault { color: var(--fault); } .state.na { color: var(--text2); font-weight: normal; }
-.kbd { border: 1px solid var(--border2); border-radius: 3px; padding: 0 4px; font-size: 11px; }
+.kbd { border: 1px solid var(--border2); border-radius: 3px; padding: 0 4px; font-size: 12.5px; }
 
 /* ---------- panels and tables ---------- */
 .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r); min-width: 0; }
-.panel > .ph { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border-bottom: 1px solid var(--border); }
-.panel > .ph h3 { font-size: 13px; white-space: nowrap; }
+.panel > .ph { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-bottom: 1px solid var(--border); }
+.panel > .ph h3 { font-size: 15px; white-space: nowrap; }
 .panel > .ph .sp { flex: 1; }
-.panel > .pb { padding: 10px; }
+.panel > .pb { padding: 12px; }
 .panel.flex { display: flex; flex-direction: column; min-height: 0; }
 .panel.flex > .pb { flex: 1; min-height: 0; overflow: auto; }
 .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: start; }
 .stack { display: flex; flex-direction: column; gap: 12px; }
-.form { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 6px 10px; align-items: center; }
+.form { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 8px 12px; align-items: center; }
 .form .full { grid-column: 1 / 3; }
-.form label.l { color: var(--text2); font-size: 12px; }
+.form label.l { color: var(--text2); font-size: 13.5px; }
 .form .inl { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.note { font-size: 12px; color: var(--text2); }
-.callout { border-left: 3px solid var(--border2); padding: 4px 8px; font-size: 12px; background: #FAFBFB; }
+.note { font-size: 13.5px; color: var(--text2); }
+.callout { border-left: 3px solid var(--border2); padding: 4px 8px; font-size: 13.5px; background: #FAFBFB; }
 .callout.warn { border-left-color: var(--warn); }
 .callout.fault { border-left-color: var(--fault); }
 .callout.ok { border-left-color: var(--ok); }
 .tbl-wrap { overflow: auto; min-height: 0; }
-table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 12px; }
+table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13.5px; }
 .tbl th, .tbl td { height: var(--row-h); padding: 0 8px; border-bottom: 1px solid #E7EAED; white-space: nowrap; text-align: left; }
 .tbl th { position: sticky; top: 0; background: #F7F8F9; color: var(--text2); font-weight: bold; z-index: 1; border-bottom: 1px solid var(--border); }
 .tbl th.sortable { cursor: pointer; }
@@ -161,14 +161,14 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 .tbl tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .tbl tr.clickable { cursor: pointer; }
 .tbl .pass { color: var(--ok); font-weight: bold; } .tbl .fail { color: var(--fault); font-weight: bold; }
-.flag { display: inline-block; font-size: 11px; padding: 0 4px; border-radius: 3px; border: 1px solid var(--border2); color: var(--text2); margin-right: 3px; line-height: 15px; }
+.flag { display: inline-block; font-size: 12.5px; padding: 0 4px; border-radius: 3px; border: 1px solid var(--border2); color: var(--text2); margin-right: 3px; line-height: 15px; }
 .flag.w { border-color: var(--warn); color: #8A5A12; }
 .flag.f { border-color: var(--fault); color: var(--fault); }
 
 /* ---------- charts ---------- */
 .chart { display: flex; flex-direction: column; min-height: 0; height: 100%; }
 .ch-legend:empty { display: none; }
-.ch-legend { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 12px; min-height: 20px; align-items: center; padding: 0 2px; }
+.ch-legend { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 13.5px; min-height: 20px; align-items: center; padding: 0 2px; }
 .ch-li { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap; user-select: none; }
 .ch-li.static { cursor: default; }
 .ch-li.off { opacity: 0.4; }
@@ -178,19 +178,19 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 .ch-sw.dash { border-top-style: dashed; } .ch-sw.dot { border-top-style: dotted; } .ch-sw.dashdot { border-top-style: dashed; }
 .ch-sw.pt { width: 7px; height: 7px; border: 0; }
 .ch-sw.box { width: 12px; height: 10px; border: 0; }
-.ch-info { font-size: 11.5px; color: var(--text2); min-height: 16px; padding: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ch-info { font-size: 13px; color: var(--text2); min-height: 16px; padding: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ch-plot { position: relative; flex: 1; min-height: 60px; }
 .ch-plot canvas { position: absolute; left: 0; top: 0; }
 .ch-plot canvas.ch-over { cursor: crosshair; }
 .ch-plot canvas.ch-over:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .toolbar .sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
-.toolbar .lab { font-size: 12px; color: var(--text2); }
+.toolbar .lab { font-size: 13.5px; color: var(--text2); }
 
 /* ---------- run screen ---------- */
 .run-top { display: flex; align-items: center; gap: 8px; flex: none; flex-wrap: wrap; }
-.chips { display: flex; gap: 0; align-items: center; flex-wrap: wrap; border: 1px solid var(--border); border-radius: var(--r); background: #fff; height: 24px; overflow: hidden; }
-.chips span { padding: 0 8px; font-size: 12px; border-right: 1px solid var(--border); line-height: 22px; white-space: nowrap; }
+.chips { display: flex; gap: 0; align-items: center; flex-wrap: wrap; border: 1px solid var(--border); border-radius: var(--r); background: #fff; height: 30px; overflow: hidden; }
+.chips span { padding: 0 8px; font-size: 13.5px; border-right: 1px solid var(--border); line-height: 28px; white-space: nowrap; }
 .chips span:last-child { border-right: 0; }
 .run-chart { flex: 1 1 58%; min-height: 0; display: flex; flex-direction: column; }
 .run-chart > .pb { flex: 1; min-height: 0; padding: 4px 8px 4px; display: flex; flex-direction: column; }
@@ -200,46 +200,46 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 .run-bottom > .panel > .ph { height: 28px; }
 .run-bottom.narrow { grid-template-columns: minmax(220px, 33fr) minmax(150px, 21fr) minmax(220px, 46fr); }
 .run-bottom.narrow .logcards-tabbed { display: flex; }
-.rv { width: 100%; border-collapse: collapse; font-size: 12px; }
-.rv td { padding: 0; height: 17px; white-space: nowrap; }
+.rv { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.rv td { padding: 0; height: 22px; white-space: nowrap; }
 .rv td.k { color: var(--text2); padding-right: 6px; }
-.rv td.k .un { font-size: 11px; }
+.rv td.k .un { font-size: 12.5px; }
 .rv td.v { text-align: right; font-weight: bold; white-space: normal; }
 .rv td.u { color: var(--text2); padding-left: 4px; width: 1%; }
-.rv tr.sec td { padding-top: 3px; font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #E7EAED; }
-.sysstate { font-size: 12px; margin-bottom: 2px; line-height: 1.3; }
+.rv tr.sec td { padding-top: 3px; font-size: 12.5px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #E7EAED; }
+.sysstate { font-size: 13.5px; margin-bottom: 2px; line-height: 1.3; }
 .rangebar { position: relative; height: 9px; background: #EEF0F2; border: 1px solid var(--border2); border-radius: 2px; margin: 0; flex: 1; min-width: 50px; }
 .rbwrap { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
 .rangebar .fill { position: absolute; left: 0; top: 0; bottom: 0; background: #6B7785; }
 .rangebar .fill.over { background: var(--fault); }
 .rangebar .mk { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text); }
 .rangebar .mk.lim { background: var(--fault); }
-.rb-lab { display: flex; justify-content: space-between; font-size: 11px; color: var(--text2); }
-.log { font-size: 12px; }
-.log-e { padding: 3px 0; border-bottom: 1px solid #EEF0F2; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 6px; }
+.rb-lab { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--text2); }
+.log { font-size: 13.5px; }
+.log-e { padding: 4px 0; border-bottom: 1px solid #EEF0F2; display: grid; grid-template-columns: 66px minmax(0, 1fr); gap: 8px; }
 .log-e .t { color: var(--text2); }
-.log-e .k { font-size: 10.5px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.04em; margin-right: 4px; }
+.log-e .k { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.04em; margin-right: 4px; }
 .cards { display: flex; flex-direction: column; gap: 6px; }
-.ecard { border: 1px solid var(--border); border-left: 3px solid #8C96A0; border-radius: var(--r); padding: 6px 8px; font-size: 12px; background: #fff; }
+.ecard { border: 1px solid var(--border); border-left: 3px solid #8C96A0; border-radius: var(--r); padding: 6px 8px; font-size: 13.5px; background: #fff; }
 .ecard.lv-I { border-left-color: #4F5B66; } .ecard.lv-P { border-left-color: #8C96A0; } .ecard.lv-H { border-left-color: #8C96A0; border-left-style: dashed; }
 .ecard.done { opacity: 0.72; }
 .ecard .eh { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; margin-bottom: 3px; }
 .ecard .rid { font-weight: bold; }
-.ecard .lvl { font-size: 11px; color: var(--text2); }
+.ecard .lvl { font-size: 12.5px; color: var(--text2); }
 .ecard .obs { margin-bottom: 3px; }
-.ecard .meta { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+.ecard .meta { font-size: 12.5px; color: var(--text2); margin-bottom: 4px; }
 .ecard .acts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.ecard .acts input { height: 22px; font-size: 12px; flex: 1; min-width: 80px; }
-.ecard .resp { font-size: 11px; color: var(--text2); }
+.ecard .acts input { height: 28px; font-size: 13.5px; flex: 1; min-width: 80px; }
+.ecard .resp { font-size: 12.5px; color: var(--text2); }
 .ecard.linked { margin-left: 14px; }
 .ecard.flash { box-shadow: 0 0 0 2px var(--accent); }
 .subtabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 8px; flex-wrap: wrap; }
 .subtabs button { border: 0; border-bottom: 2px solid transparent; background: none; padding: 6px 10px; cursor: pointer; color: var(--text2); white-space: nowrap; }
 .subtabs button.on { border-bottom-color: var(--accent); color: var(--accent); font-weight: bold; }
 .ptabs { display: flex; gap: 4px; }
-.ptabs button { border: 1px solid transparent; background: none; padding: 0 6px; height: 22px; cursor: pointer; color: var(--text2); border-radius: 3px; font-size: 12px; }
+.ptabs button { border: 1px solid transparent; background: none; padding: 0 6px; height: 28px; cursor: pointer; color: var(--text2); border-radius: 3px; font-size: 13.5px; }
 .ptabs button.on { border-color: var(--border2); color: var(--text); font-weight: bold; background: #fff; }
-.cnt { display: inline-block; min-width: 16px; padding: 0 4px; border-radius: 8px; background: #E7EAED; font-size: 11px; text-align: center; color: var(--text); font-weight: bold; }
+.cnt { display: inline-block; min-width: 16px; padding: 0 4px; border-radius: 8px; background: #E7EAED; font-size: 12.5px; text-align: center; color: var(--text); font-weight: bold; }
 
 /* expanded chart */
 #work.expanded .screen.active > *:not(.expand-target) { display: none !important; }
@@ -247,7 +247,7 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 
 /* ---------- readiness ---------- */
 .ready-banner { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--r); background: #fff; }
-.ready-banner .big { font-size: 16px; font-weight: bold; }
+.ready-banner .big { font-size: 19px; font-weight: bold; }
 
 /* ---------- fraction review ---------- */
 .fr-grid { display: grid; grid-template-columns: minmax(0, 58fr) minmax(0, 42fr); grid-template-rows: minmax(0, 44fr) minmax(0, 56fr); gap: 8px; flex: 1; min-height: 0; }
@@ -257,22 +257,22 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 .fr-side { overflow: hidden; }
 .fr-side > .pb { overflow: auto; }
 .dec { display: inline-flex; gap: 6px; align-items: center; }
-.dec label { display: inline-flex; gap: 2px; align-items: center; font-size: 11.5px; cursor: pointer; }
+.dec label { display: inline-flex; gap: 2px; align-items: center; font-size: 13px; cursor: pointer; }
 
 /* ---------- record ---------- */
 .rec-sec { border-top: 1px solid var(--border); padding: 10px 0; }
 .rec-sec:first-child { border-top: 0; }
 .rec-sec .rh { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .rec-sec .rh .sp { flex: 1; }
-.rec-text { white-space: pre-wrap; font-size: 12.5px; }
+.rec-text { white-space: pre-wrap; font-size: 14px; }
 
 /* ---------- modal (blocking faults and End only) ---------- */
 #modal-root .backdrop { position: fixed; inset: 0; background: rgba(31,41,51,0.32); display: flex; align-items: center; justify-content: center; z-index: 50; }
 .modal { background: #fff; border: 1px solid var(--border2); border-radius: var(--r); box-shadow: 0 1px 3px rgba(0,0,0,0.18); width: min(520px, 92vw); max-height: 86vh; display: flex; flex-direction: column; }
-.modal .mh { padding: 10px 14px; border-bottom: 1px solid var(--border); font-weight: bold; font-size: 14px; }
+.modal .mh { padding: 10px 14px; border-bottom: 1px solid var(--border); font-weight: bold; font-size: 16px; }
 .modal .mb { padding: 12px 14px; overflow: auto; }
 .modal .mf { padding: 10px 14px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
-.popover { position: fixed; background: #fff; border: 1px solid var(--border2); border-radius: var(--r); box-shadow: 0 1px 3px rgba(0,0,0,0.18); padding: 8px; z-index: 40; font-size: 12px; }
+.popover { position: fixed; background: #fff; border: 1px solid var(--border2); border-radius: var(--r); box-shadow: 0 1px 3px rgba(0,0,0,0.18); padding: 8px; z-index: 40; font-size: 13.5px; }
 
 /* ---------- print: notebook-ready summary on A4 ---------- */
 @media print {
@@ -299,8 +299,14 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 }
 .rec-print-only { display: none; }
 
+.h-mock:hover { border-color: var(--accent); color: var(--accent); }
+.demo-box .demo-sel { display: flex; flex-direction: column; gap: 3px; }
+.demo-box .demo-sel select { height: 30px; }
+.demo-box .demo-btns { display: flex; gap: 6px; }
+.demo-box .demo-btns .btn { flex: 1; justify-content: center; }
+
 /* ---------- transient notices (file saves, copy) ---------- */
-#toast { position: fixed; right: 16px; bottom: calc(32px + env(safe-area-inset-bottom, 0px)); max-width: min(420px, calc(100vw - 32px)); background: var(--text); color: #fff; font-size: 12.5px; padding: 8px 12px; border-radius: var(--r); box-shadow: 0 1px 3px rgba(0,0,0,0.25); z-index: 70; opacity: 0; transform: translateY(6px); transition: opacity 120ms, transform 120ms; pointer-events: none; }
+#toast { position: fixed; right: 16px; bottom: calc(32px + env(safe-area-inset-bottom, 0px)); max-width: min(420px, calc(100vw - 32px)); background: var(--text); color: #fff; font-size: 14px; padding: 8px 12px; border-radius: var(--r); box-shadow: 0 1px 3px rgba(0,0,0,0.25); z-index: 70; opacity: 0; transform: translateY(6px); transition: opacity 120ms, transform 120ms; pointer-events: none; }
 #toast.show { opacity: 1; transform: none; }
 #toast.warn { background: #6B4A12; }
 @media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
@@ -368,10 +374,10 @@ code, pre, kbd, samp { font-family: inherit; }
 .tbl caption { caption-side: top; text-align: left; padding: 0 0 4px; }
 #discTbl td { vertical-align: top; }
 #discTbl .link { text-align: left; font-weight: bold; }
-.disc-src { color: var(--text2); font-size: 11px; margin-top: 2px; }
+.disc-src { color: var(--text2); font-size: 12.5px; margin-top: 2px; }
 .disc-d { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 @media (max-width: 1100px) { .disc-d { grid-template-columns: minmax(0, 1fr); } }
-.disc-b { border: 1px solid var(--border); border-radius: var(--r); padding: 8px 10px; font-size: 12px; min-width: 0; }
+.disc-b { border: 1px solid var(--border); border-radius: var(--r); padding: 8px 10px; font-size: 13.5px; min-width: 0; }
 .disc-b h4 { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
 .disc-b p { margin: 0 0 6px; }
 .disc-b ol { margin: 0; padding-left: 18px; }
@@ -382,14 +388,14 @@ code, pre, kbd, samp { font-family: inherit; }
 #discTbl td:last-child { min-width: 128px; }
 .disc-foot { margin-top: 8px; }
 .disc-foot + .disc-foot { margin-top: 4px; }
-.disc-foot code { font: inherit; font-size: 11px; }
+.disc-foot code { font: inherit; font-size: 12.5px; }
 /* Discrepancies table as stacked cards on narrow screens */
 @media (max-width: 820px) {
   #discTbl thead, #discTbl td.dn { display: none; }
   #discTbl, #discTbl tbody, #discTbl tr, #discTbl td { display: block; }
   #discTbl tr { border-bottom: 1px solid var(--border); padding: 6px 0; }
   #discTbl td { border: 0; height: auto; padding: 2px 8px; min-width: 0; }
-  #discTbl td[data-h]::before { content: attr(data-h); display: block; font-size: 11px; color: var(--text2); }
+  #discTbl td[data-h]::before { content: attr(data-h); display: block; font-size: 12.5px; color: var(--text2); }
 }
 /* Record */
 #scr-record .rec-grid { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
@@ -403,17 +409,21 @@ code, pre, kbd, samp { font-family: inherit; }
 @media print { #scr-record .rec-grid > .panel > .ph { display: none; } }
 /* ---------- Run screen ---------- */
 #scr-run .scr-h .sep { width: 1px; height: 20px; background: var(--border); }
-/* the chart toolbar keeps its own row, so the chart height does not jump when chip text changes */
-#scr-run .run-top > .toolbar { flex: 1 1 100%; }
-#rCtlNote { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* acquisition chips sit in the title row; the toolbar row carries the control note */
+#scr-run .scr-h { flex-wrap: wrap; row-gap: 6px; }
+#scr-run .scr-h .acq-chips { margin-left: 8px; }
+#scr-run .run-top { flex-wrap: nowrap; }
+#rCtlNote { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+/* Scientist view: Run values, Run log and Evidence (Pulse is in the Engineer view) */
+body:not(.eng) .run-bottom { grid-template-columns: minmax(290px, 33fr) minmax(260px, 33fr) minmax(260px, 34fr); }
+body:not(.eng) .run-bottom.narrow { grid-template-columns: minmax(220px, 40fr) minmax(240px, 60fr); }
 .run-bottom > .panel > #runValues { padding-top: 3px; }
 #runValues .sysstate { margin-bottom: 1px; }
-#runValues .rv td { height: 15px; line-height: 15px; }
-#runValues .rv tr.sec td { height: 14px; line-height: 12px; padding-top: 2px; }
+#runValues .rv td { height: 22px; line-height: 20px; }
 /* evidence card rule ID: the title shows the rule condition */
 .ecard .rid[title]:not([title=""]) { cursor: help; }
 #runValues .rv td.v .state { white-space: normal; text-align: right; }
-#runValues .rv .flag { font-size: 10.5px; line-height: 13px; margin: 0 0 0 4px; }
+#runValues .rv .flag { font-size: 13.5px; line-height: 16px; margin: 0 0 0 4px; }
 @media (max-width: 820px) { #rCtlNote { flex-basis: 100%; white-space: normal; } #scr-run .scr-h .sep { display: none; } }
 /* Setup: the method phases table fits a half-width panel at 1280 px */
 .tbl.phases th { white-space: normal; vertical-align: bottom; line-height: 1.25; padding-top: 3px; padding-bottom: 3px; }
@@ -442,9 +452,9 @@ code, pre, kbd, samp { font-family: inherit; }
 <body>
 <div id="app">
   <header id="hdr">
-    <div class="h-id"><span class="h-name">TRIFLE</span><span class="h-inst">TRIFLE-01</span></div>
+    <div class="h-id"><span class="h-name">TRIFLE</span></div>
     <div class="h-conn" id="hConn" aria-label="Connections"></div>
-    <div class="h-right"><span id="hState"></span><span id="hElapsed"></span><span id="hUser"></span><span class="h-mock">Mock-up · simulated data</span></div>
+    <div class="h-right"><span id="hState"></span><span id="hElapsed"></span><span id="hUser"></span><button class="h-mock" id="hMock" data-go="testing" title="About this mock-up">Mock-up · simulated data</button></div>
   </header>
   <nav id="rail" aria-label="Workflow"></nav>
   <main id="work">
@@ -454,10 +464,9 @@ code, pre, kbd, samp { font-family: inherit; }
     <section class="screen fixed" id="scr-fractions" aria-label="Fraction review"></section>
     <section class="screen" id="scr-calibration" aria-label="Calibration"></section>
     <section class="screen" id="scr-comparison" aria-label="Run comparison"></section>
-    <section class="screen" id="scr-integrations" aria-label="Integrations"></section>
     <section class="screen" id="scr-record" aria-label="Record"></section>
     <section class="screen" id="scr-engineer" aria-label="Engineer diagnostics"></section>
-    <section class="screen" id="scr-testing" aria-label="What this prototype is testing"></section>
+    <section class="screen" id="scr-testing" aria-label="About this mock-up"></section>
   </main>
   <aside id="qpanel" aria-label="Questions"></aside>
   <footer id="status" aria-live="polite"></footer>
@@ -1646,7 +1655,7 @@ const CH = (function () {
     grid: '#E6E9EC', axis: '#9AA3AC', text: '#1F2933', text2: '#5B6670', band1: '#EEF0F2', band2: '#F7F8F9', frac: '#B8C0C8',
     accent: '#1B365D', ok: '#2F7D4F', warn: '#B7791F', fault: '#B42318', diff: '#5B6670', decay: '#6B5B3E'
   };
-  const FONT = '11px Arial, "Liberation Sans", sans-serif', FONT_S = '10px Arial, "Liberation Sans", sans-serif';
+  const FONT = '13px Arial, "Liberation Sans", sans-serif', FONT_S = '12px Arial, "Liberation Sans", sans-serif';
   function nice(span, n) { const raw = span / Math.max(1, n), p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p; return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p; }
   function ticks(a, b, n) { if (!(b > a)) return []; const st = nice(b - a, n), out = []; for (let v = Math.ceil(a / st - 1e-9) * st; v <= b + st * 1e-9; v += st) out.push(Math.abs(v) < st * 1e-9 ? 0 : v); return out; }
   // y ticks for a panel h px tall: fewer ticks until labels sit at least 16 px apart
@@ -1706,7 +1715,7 @@ const CH = (function () {
     }
     layout() {
       const cfg = this.cfg, W = this.W, H = this.H, gap = 6;
-      const ml = cfg.marginLeft || 60, mr = cfg.panels.some(p => p.yr) ? (cfg.marginRight || 54) : 12, top = cfg.topBand != null ? cfg.topBand : 28, bottom = cfg.bottom || 30;
+      const ml = cfg.marginLeft || 70, mr = cfg.panels.some(p => p.yr) ? (cfg.marginRight || 62) : 14, top = cfg.topBand != null ? cfg.topBand : 32, bottom = cfg.bottom || 36;
       const vis = cfg.panels.filter(p => !(p.hidden && p.hidden()));
       const fixedSum = vis.filter(p => p.px).reduce((s, p) => s + p.px, 0), gaps = Math.max(0, vis.length - 1) * gap;
       const mainH = Math.max(40, H - top - bottom - fixedSum - gaps);
@@ -1823,12 +1832,13 @@ const CH = (function () {
       ctx.font = FONT_S; ctx.textBaseline = 'middle';
       // phase labels in the top band
       if (this.top >= 14) {
-        let lastEnd = -1e9;
+        let lastEnd = -1e9; ctx.textAlign = 'left';
         bands.forEach(bd => {
           const x0 = Math.max(this.px0, this.xToPx(bd.x0)), x1 = Math.min(this.px0 + this.pw, this.xToPx(bd.x1)); if (x1 - x0 < 6) return;
-          let t = bd.label; let w = ctx.measureText(t).width; if (w > x1 - x0 - 4 && bd.short) { t = bd.short; w = ctx.measureText(t).width; }
-          if (w > x1 - x0 - 8 || x0 + 3 < lastEnd) return;
-          ctx.fillStyle = C.text2; ctx.fillText(t, x0 + 3, 7); lastEnd = x0 + 3 + w + 8;
+          let t = bd.label; let w = ctx.measureText(t).width; if (w > x1 - x0 - 6 && bd.short) { t = bd.short; w = ctx.measureText(t).width; }
+          if (w > x1 - x0 - 6) return;
+          const lx = Math.max(x0 + 3, (x0 + x1) / 2 - w / 2); if (lx < lastEnd) return;
+          ctx.fillStyle = C.text2; ctx.fillText(t, lx, 8); lastEnd = lx + w + 10;
         });
       }
       // grid and axes per panel
@@ -1846,9 +1856,9 @@ const CH = (function () {
         if (s.l) {
           const n = p.cfg.px ? 2 : Math.max(3, Math.floor(p.h / 45)), yt = s.l.lin ? yTicks(s.l.a, s.l.b, n, p.h) : logTicks(s.l.a, s.l.b), st = yt.length > 1 ? yt[1] - yt[0] : 1;
           ctx.textAlign = 'right';
-          for (const v of yt) { const y = p.y + p.h - (v - s.l.a) / (s.l.b - s.l.a) * p.h; if (p.cfg.px && y < p.y + 22) continue; ctx.fillText(s.l.lin ? (s.l.ax.tickFmt ? s.l.ax.tickFmt(v) : tickFmt(v, st)) : supExp(v), p.x - 4, Math.min(p.y + p.h - 5, Math.max(p.y + 5, y))); }
+          for (const v of yt) { const y = p.y + p.h - (v - s.l.a) / (s.l.b - s.l.a) * p.h; if (p.cfg.px && y < p.y + 6) continue; ctx.fillText(s.l.lin ? (s.l.ax.tickFmt ? s.l.ax.tickFmt(v) : tickFmt(v, st)) : supExp(v), p.x - 4, Math.min(p.y + p.h - 5, Math.max(p.y + 5, y))); }
           ctx.save(); ctx.fillStyle = C.text; ctx.textAlign = 'center';
-          if (p.cfg.px) { ctx.textAlign = 'right'; ctx.fillStyle = C.text2; ctx.fillText(s.l.ax.short || s.l.ax.title, p.x - 4, p.y + 5); if (s.l.ax.unit) ctx.fillText('(' + s.l.ax.unit + ')', p.x - 4, p.y + 15); }
+          if (p.cfg.px) { const t = (s.l.ax.short || s.l.ax.title) + (s.l.ax.unit ? ' (' + s.l.ax.unit + ')' : ''); ctx.font = FONT_S; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; const tw = ctx.measureText(t).width; ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(p.x + 2, p.y + 2, tw + 8, 16); ctx.fillStyle = C.text2; ctx.fillText(t, p.x + 6, p.y + 4); ctx.textBaseline = 'middle'; }
           else { ctx.translate(12, p.y + p.h / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(s.l.ax.title + (s.l.ax.unit ? ' (' + s.l.ax.unit + ')' : '') + (s.l.lin ? '' : ', log'), 0, 0); }
           ctx.restore();
         }
@@ -2968,10 +2978,8 @@ const UI = (function () {
   // One lit rail item. Fraction review and Samples to send share a screen; its side tab decides which is lit.
   let navKey = '';
   function markNav() {
-    let a = '';
-    if (current === 'fractions') { const t = document.querySelector('#frTabs button.on'); if (t && t.dataset.v === 'samples') a = 'samples'; }
-    const k = current + '|' + a; if (k === navKey) return; navKey = k;
-    $$('.nav').forEach(n => n.classList.toggle('active', n.dataset.go === current && (n.dataset.anchor || '') === a));
+    if (current === navKey) return; navKey = current;
+    $$('#rail .nav').forEach(n => n.classList.toggle('active', n.dataset.go === current));
   }
   function cur() { return current; }
   function screen(k) { return screens[k]; }
@@ -2982,6 +2990,7 @@ const UI = (function () {
   function frame() {
     try {
       renderHeader(); renderStatus(); markNav();
+      const ak = document.getElementById('demoAkta'); if (ak) ak.disabled = !!S.run;
       if (current && screens[current].update) screens[current].update(dirty);
       if (current) sortAll(document.getElementById('scr-' + current));
       for (const k in dirty) delete dirty[k];
@@ -3002,8 +3011,6 @@ const UI = (function () {
     const wheelOd = R && R.acq.n && R.state !== 'complete' ? TR.LADDERS[R.pmt][R.acq.cur - 1].nd : 4;
     out.push(['Filter wheel', f === 'wheel' ? ['fault', 'Not responding'] : ['ok', 'OD ' + wheelOd + ', position ' + TR.WHEEL_POS[String(wheelOd)]]]);
     out.push(['Digitiser', f === 'digitiser' ? ['fault', 'Not found'] : ['ok', 'Connected']]);
-    const src = { import: ['ok', 'UNICORN import'], manual: ['warn', 'Manual event marks'], standalone: ['off', 'None (standalone)'] }[s.source];
-    out.push(['Chromatography', src]);
     return out;
   }
   function renderHeader() {
@@ -3016,7 +3023,7 @@ const UI = (function () {
     $('#hConn').innerHTML = ind.map(([lab, [k, t]]) => '<span class="ind" title="' + esc(lab + ': ' + t) + '"><span class="dot ' + k + '"></span><span class="lab">' + esc(compact && SHORT[lab] ? SHORT[lab] : lab) + '</span> ' + esc(compact ? (SHORT[t] || t.replace(/, position \d/, '')) : t) + '</span>').join('');
     $('#hState').innerHTML = '<span class="muted">Run</span> <span class="h-state">' + st + '</span>';
     $('#hElapsed').innerHTML = '<span class="muted" title="Elapsed acquisition time">Elapsed</span> ' + el2;
-    $('#hUser').innerHTML = esc(S.setup.operator) + ' <span class="muted">' + (S.engineer ? 'Engineer' : 'Scientist') + '</span>';
+    $('#hUser').textContent = S.setup.operator;
   }
 
   /* ---------- status line ---------- */
@@ -3047,7 +3054,7 @@ const UI = (function () {
   function renderChips() {
     const R = S.run, s = S.setup, lad = TR.LADDERS[s.pmt], step = R && R.acq.n ? R.acq.cur : 1, st = lad[step - 1];
     const rangeMap = R ? R.setupSnap.rangeMap : s.rangeMap; // discrepancy 2 what-if, fixed for the run
-    const html = '<span>PMT ' + s.pmt + ' mV</span><span>10 Hz</span><span>Step ' + step + ' of ' + lad.length + ' (OD ' + st.nd + ', ' + st.range * 1000 + ' mV)</span><span>Auto-range ' + (s.autorange === 'v20' ? 'v2.0' : 'Proposed') + '</span>' +
+    const html = '<span>PMT ' + s.pmt + ' mV</span><span>10 Hz</span><span>Auto-range ' + (s.autorange === 'v20' ? 'v2.0' : 'Proposed') + '</span>' +
       (rangeMap === 'shift' ? '<span>Ranges one setting larger (what-if)</span>' : '');
     $$('.acq-chips').forEach(e => { if (e.innerHTML !== html) e.innerHTML = html; });
   }
@@ -3132,35 +3139,35 @@ const UI = (function () {
     const rail = $('#rail'); rail.innerHTML = '';
     let group = null;
     for (const it of items) {
-      if (it.group) { group = el('<div class="rail-group' + (it.eng ? ' eng-only' : '') + '"><div class="rail-h">' + esc(it.group) + '</div></div>'); rail.append(group); continue; }
+      if (it.group != null) { group = el('<div class="rail-group' + (it.eng ? ' eng-only' : '') + '">' + (it.group ? '<div class="rail-h">' + esc(it.group) + '</div>' : '') + '</div>'); rail.append(group); continue; }
       const b = el('<button class="nav' + (it.eng ? ' eng-only' : '') + '" data-go="' + it.key + '"' + (it.anchor ? ' data-anchor="' + it.anchor + '"' : '') + '><span>' + esc(it.label) + '</span>' + (it.tag ? it.tag : '') + '</button>');
       b.onclick = () => { go(it.key, it.anchor ? { anchor: it.anchor } : {}); };
       (group || rail).append(b);
     }
     const foot = el('<div class="rail-foot"></div>');
-    foot.append(el('<button class="nav" data-go="testing" style="padding-left:2px;border-left:0">What this prototype is testing</button>'));
-    foot.lastChild.onclick = () => go('testing');
-    if (window.STAGE2) { const ib = el('<button class="nav" data-go="integrations" style="padding-left:2px;border-left:0"><span>Integrations</span></button>'); ib.onclick = () => go('integrations'); foot.append(ib); }
     const sw = el('<label class="switch"><input type="checkbox" id="engSwitch"><span>Engineer view<br><span class="muted small">Simulated role</span></span></label>');
     foot.append(sw);
     const demo = el('<div class="demo-box" aria-label="Demo controls"><div class="demo-h">Demo controls</div>' +
       '<div class="seg sm" id="speedSeg" role="group" aria-label="Playback speed"><button data-v="1">1×</button><button data-v="10">10×</button><button data-v="60">60×</button></div>' +
-      '<label title="Allows Start before the laser is stable, with a recorded override reason. Demonstrates I1."><input type="checkbox" id="demoEarly"> Start AKTA run before laser is stable</label>' +
-      '<label title="Sets the UNICORN fraction delay to the pre-TRIFLE value. Demonstrates I5."><input type="checkbox" id="demoDelay"> UNICORN fraction delay not updated</label>' +
-      '<button class="btn sm" id="demoFF" title="Simulates the rest of the run immediately">Fast-forward to run end</button>' +
-      '<button class="btn sm" id="demoReset" title="Restarts the mock-up from the beginning">Restart demo</button></div>');
+      '<label class="demo-sel" title="In use, the AKTA run comes from the UNICORN export">AKTA run<select id="demoAkta">' + Object.keys(window.AKTA_RUNS || {}).map(k => '<option value="' + k + '">' + esc(window.AKTA_RUNS[k]) + '</option>').join('') + '</select></label>' +
+      '<label title="Allows Start before the laser is stable (rule I1)"><input type="checkbox" id="demoEarly"> Start before laser stable</label>' +
+      '<label title="Uses the UNICORN fraction delay from before TRIFLE was fitted (rule I5)"><input type="checkbox" id="demoDelay"> Old fraction delay</label>' +
+      '<div class="demo-btns"><button class="btn sm" id="demoFF" title="Simulates the rest of the run immediately">Fast-forward</button>' +
+      '<button class="btn sm" id="demoReset" title="Restarts the mock-up from the beginning">Restart</button></div></div>');
     foot.append(demo); rail.append(foot);
     $('#engSwitch').onchange = e => { S.engineer = e.target.checked; document.body.classList.toggle('eng', S.engineer); M.audit('role', 'Simulated role switched to ' + (S.engineer ? 'Engineer' : 'Scientist') + ' view.'); if (!S.engineer && current === 'engineer') go('run'); emitDirty(); };
     $$('#speedSeg button').forEach(b => b.onclick = () => { S.speed = +b.dataset.v; $$('#speedSeg button').forEach(x => x.classList.toggle('on', x === b)); M.audit('demo', 'Playback speed ' + S.speed + '×.'); });
     $$('#speedSeg button').forEach(x => x.classList.toggle('on', +x.dataset.v === S.speed));
-    $('#demoEarly').onchange = e => { S.demo.laserEarly = e.target.checked; M.audit('demo', 'Demo control: start AKTA run before laser is stable ' + (e.target.checked ? 'on' : 'off') + '.'); emitDirty(); };
+    $('#demoEarly').onchange = e => { S.demo.laserEarly = e.target.checked; M.audit('demo', 'Demo control: start before laser stable ' + (e.target.checked ? 'on' : 'off') + '.'); emitDirty(); };
+    const ak = $('#demoAkta'); if (ak) { ak.value = window.aktaRunKey ? window.aktaRunKey() : ak.value; ak.onchange = () => { if (!(window.setAktaRun && window.setAktaRun(ak.value))) ak.value = window.aktaRunKey(); }; }
+    $('#hMock').onclick = () => go('testing');
     $('#demoDelay').onchange = e => { setDelayDemo(e.target.checked); };
     $('#demoFF').onclick = () => fastForwardUI();
     $('#demoReset').onclick = () => { const c = el('<div style="width:260px"><div class="small" style="margin-bottom:6px">Restart from the beginning? The run, decisions and audit trail are cleared.</div><button class="btn primary sm" id="rsGo">Restart</button></div>'); popover($('#demoReset'), c); $('#rsGo', c).onclick = () => location.reload(); };
   }
   function setDelayDemo(on) {
     S.demo.delayNotUpdated = on; const d = $('#demoDelay'); if (d) d.checked = on;
-    M.audit('demo', 'Demo control: UNICORN fraction delay not updated ' + (on ? 'on (configured value ' + fmt.ml(S.setup.fracDelayPre) + ' mL)' : 'off (configured value ' + fmt.ml(S.setup.fracDelay) + ' mL)') + '.');
+    M.audit('demo', 'Demo control: old fraction delay ' + (on ? 'on (' + fmt.ml(S.setup.fracDelayPre) + ' mL)' : 'off (' + fmt.ml(S.setup.fracDelay) + ' mL)') + '.');
     settingChangedDuringRun();
   }
   function settingChangedDuringRun() {
@@ -3195,19 +3202,14 @@ const UI = (function () {
   return { procExtras, sortable, sortAll, $, $$, esc, el, tag, TAGS, sgn, stateHtml, register, go, cur, screen, emitDirty, frame, modal, popover, closePopover, download, downloadDataUrl, copyText, processingButton, setProc, buildRail, renderChips, setDelayDemo, settingChangedDuringRun, isFF, indicators };
 })();
 
-/* ---------- Setup (Acquire) ---------- */
+/* ---------- Setup: TRIFLE's own settings only ---------- */
 (function () {
   const { $, $$, esc, el, tag } = UI, S = M.S, fmt = M.fmt;
   const root = () => $('#scr-setup');
   const AAV_NAME = 'AAVX capture, crude AAV 3.6 mL'; let preAavName = null;
   function locked() { return !!S.run; }
   // readable names for coded values in the audit trail
-  const NAMES = {
-    template: { protA: 'Protein A platform (GSK)', free: 'Free run', aav: 'AAV affinity capture (AAVX)' },
-    system: { avant: 'AKTA avant 150', pure: 'AKTA pure' },
-    source: { import: 'Imported UNICORN result export', manual: 'Manual event marks', standalone: 'Standalone TRIFLE' },
-    autorange: { v20: 'v2.0 reference', prop: 'Proposed method' }
-  };
+  const NAMES = { autorange: { v20: 'v2.0 reference', prop: 'Proposed' } };
   function set(path, val, label, unit) {
     const parts = path.split('.'); let o = S.setup; for (let i = 0; i < parts.length - 1; i++) o = o[parts[i]];
     const k = parts[parts.length - 1], old = o[k]; if (old === val) return; o[k] = val;
@@ -3215,102 +3217,81 @@ const UI = (function () {
     M.audit('setting', (label || path) + ' changed from ' + show(old) + ' to ' + show(val) + (unit ? ' ' + unit : '') + '.');
     render(); UI.emitDirty();
   }
+
+  // The AKTA run TRIFLE watches comes from the UNICORN export, not from Setup.
+  // In the mock-up a demo control picks which simulated AKTA run is used.
+  const AKTA_RUNS = { 'protA|import': 'Protein A platform', 'free|import': 'Free run', 'protA|manual': 'Manual event marks', 'protA|standalone': 'No AKTA data' };
+  if (window.STAGE2) AKTA_RUNS['aav|import'] = 'AAV capture';
+  window.AKTA_RUNS = AKTA_RUNS;
+  window.aktaRunKey = () => { const k = S.setup.template + '|' + S.setup.source; return AKTA_RUNS[k] ? k : 'protA|import'; };
+  window.setAktaRun = function (v) {
+    if (S.run || !AKTA_RUNS[v]) return false;
+    const [tplKey, source] = v.split('|'), s = S.setup, t = TR.TEMPLATES[tplKey === 'free' ? 'protA' : tplKey];
+    s.flows = null; s.cvMl = t.cv; s.column = t.column; s.frac = { loadSize: t.fractions.loadSize, elSize: t.fractions.elSize, elCollect: t.fractions.elCollect };
+    if (tplKey === 'aav') { if (s.template !== 'aav') preAavName = s.runName; s.system = 'pure'; s.sample = 'AAV crude lysate'; s.runName = AAV_NAME; }
+    else { s.system = 'avant'; if (s.sample === 'AAV crude lysate') s.sample = 'mAb CUB'; if (s.runName === AAV_NAME && preAavName) s.runName = preAavName; }
+    s.template = tplKey; s.source = source; s.flowTrace = true; s.timerMin = null;
+    M.audit('demo', 'Simulated AKTA run: ' + AKTA_RUNS[v] + '.');
+    render(); UI.emitDirty(); M.emit('setup');
+    return true;
+  };
+
   function build() {
     const r = root();
     r.innerHTML = '<div class="scr-h"><h1>Setup</h1><span class="sp"></span><span id="setupLock" class="note"></span><button class="btn primary" id="toReady">Continue to Readiness</button></div>' +
-      '<div class="grid2"><div class="stack" id="setupL"></div><div class="stack" id="setupR"></div></div>';
+      '<div class="grid2 setup-grid"><div class="stack" id="setupL"></div><div class="stack" id="setupR"></div></div>';
     $('#toReady').onclick = () => UI.go('readiness');
     render();
   }
-  function opt(v, label, sel, dis) { return '<option value="' + esc(v) + '"' + (sel ? ' selected' : '') + (dis ? ' disabled' : '') + '>' + esc(label) + '</option>'; }
   function render() {
     const s = S.setup, L = $('#setupL'), Rt = $('#setupR'); if (!L) return;
     const lock = locked(), dis = lock ? ' disabled' : '';
-    $('#setupLock').textContent = lock ? 'Settings are locked for this run. Processing options stay switchable on Run and Fraction review.' : '';
-    const tpl = M.template(), ph = TR.buildPhases(tpl);
-    const al = M.alignmentState(), p = M.plumbing(), pi = M.presetInfo(s.pmt), pc = M.presetCheck(), lad = TR.LADDERS[s.pmt], standalone = s.source === 'standalone';
-    // phases, flows and fractions are defined in the AKTA method and arrive with the UNICORN export
-    const methodNote = standalone ? '' : s.source === 'manual' ? 'Phases come from your event marks.' : 'Phases, flows and fractions come from the UNICORN export (' + ph.list.length + ' phases, ' + fmt.ml(ph.totalVol) + ' mL, ' + fmt.min1(ph.totalMin) + ' min).';
-    // ---- left column: the run and the AKTA it watches
+    $('#setupLock').textContent = lock ? 'Locked during the run. Processing options stay available on Run and Fraction review.' : '';
+    const ph = TR.buildPhases(M.template()), pi = M.presetInfo(s.pmt), pc = M.presetCheck(), lad = TR.LADDERS[s.pmt];
     L.innerHTML =
       '<div class="panel"><div class="ph"><h3>Run details</h3></div><div class="pb form">' +
       '<label class="l" for="sEln">Experiment ID</label><input id="sEln" type="text" value="' + esc(s.eln) + '"' + dis + '>' +
       '<label class="l" for="sRun">Run name</label><input id="sRun" type="text" value="' + esc(s.runName) + '"' + dis + '>' +
-      '<label class="l" for="sOp">Operator initials</label><input id="sOp" type="text" value="' + esc(s.operator) + '" maxlength="4" style="width:80px"' + dis + '>' +
+      '<label class="l" for="sOp">Operator</label><input id="sOp" type="text" value="' + esc(s.operator) + '" maxlength="4" style="width:90px"' + dis + '>' +
       '</div></div>' +
-      '<div class="panel"><div class="ph"><h3>AKTA run</h3></div><div class="pb form">' +
-      '<label class="l" for="sSys">System</label><select id="sSys"' + dis + '>' + opt('avant', 'AKTA avant 150 (GSK target configuration)', s.system === 'avant') + opt('pure', 'AKTA pure (current UCL configuration)', s.system === 'pure') + '</select>' +
-      '<label class="l" for="sTpl">Method</label><select id="sTpl"' + dis + '>' + opt('protA', 'Protein A platform (GSK)', s.template === 'protA') + opt('free', 'Free run', s.template === 'free') + (window.STAGE2 ? opt('aav', 'AAV affinity capture (AAVX)', s.template === 'aav') : '') + '</select>' +
-      (methodNote ? '<div class="full note">' + methodNote + '</div>' : '') +
-      (s.template === 'free' ? '<div class="full callout">No method template. Rules P2, P4 and H1 are off.</div>' : '') +
-      (s.template === 'aav' ? '<div class="full callout"><b>Empty and full capsid assessment is not a TRIFLE output in this version.</b> Volumes and flows are assumed, apart from the 3.6 mL load and 95 min run. Rules P2 and H1 do not apply to this template. ' + tag('P', 'always') + '</div>' : '') +
-      '<label class="l" style="align-self:start;padding-top:2px">Data</label><div class="stack" style="gap:6px">' +
-      '<label class="opt"><input type="radio" name="src" value="import"' + (s.source === 'import' ? ' checked' : '') + dis + '><span>Imported UNICORN result export</span></label>' +
-      '<label class="opt"><input type="radio" name="src" value="manual"' + (s.source === 'manual' ? ' checked' : '') + dis + '><span>Manual event marks<span class="note">No flow trace or UV; alignment is Uncertain.</span></span></label>' +
-      '<label class="opt"><input type="radio" name="src" value="standalone"' + (s.source === 'standalone' ? ' checked' : '') + dis + '><span>Standalone TRIFLE<span class="note">No chromatography data; time axis only.</span></span></label>' +
-      '<label class="opt dis"><input type="radio" name="src" value="live" disabled><span>Live UNICORN link ' + tag('F', 'always') + '<span class="note">Unavailable.</span></span></label></div>' +
-      '<label class="l" for="sFlow">Flow-rate trace</label><label class="chk"><input id="sFlow" type="checkbox"' + (s.flowTrace && s.source === 'import' ? ' checked' : '') + (s.source !== 'import' || lock ? ' disabled' : '') + '> Present in the export</label>' +
+      '<div class="panel"><div class="ph"><h3>Sign-in</h3></div><div class="pb stack" style="gap:8px">' +
+      '<label class="chk"><input type="checkbox" id="sTrained"' + (s.trained ? ' checked' : '') + dis + '> Trained user</label>' +
+      '<label class="chk"><input type="checkbox" id="sIp"' + (s.ip ? ' checked' : '') + dis + '> IP agreement</label>' +
       '</div></div>' +
-      '<div class="panel"><div class="ph"><h3>Plumbing and delay volumes</h3><span class="sp"></span>' + (standalone ? UI.stateHtml('na', 'Not used') : al.i5 ? UI.stateHtml('warn', 'I5 ' + (al.detector === 'Uncertain' ? 'alignment uncertain' : 'fraction assignment uncertain')) : UI.stateHtml('ok', 'Aligned')) + '</div><div class="pb form">' +
-      '<label class="l" for="sOrder">Order</label><select id="sOrder"' + dis + '>' + opt('uv-trifle-fc', 'UV monitor, TRIFLE, fraction collector', true) + '</select>' +
-      '<label class="l" for="sV1">V1, UV to TRIFLE (mL)</label><div class="inl"><input id="sV1" type="number" step="0.01" min="0" value="' + (isFinite(s.V1) ? s.V1.toFixed(2) : '') + '" style="width:100px"' + dis + '><span class="note">detector alignment<span class="eng-only">; simulation value</span></span></div>' +
-      '<label class="l" for="sV2">V2, TRIFLE to collector (mL)</label><div class="inl"><input id="sV2" type="number" step="0.01" min="0" value="' + (isFinite(s.V2) ? s.V2.toFixed(2) : '') + '" style="width:100px"' + dis + '><span class="note">fraction assignment<span class="eng-only">; simulation value</span></span></div>' +
-      '<label class="l" for="sFd">UNICORN fraction delay (mL)</label><div class="inl"><input id="sFd" type="number" step="0.01" min="0" value="' + fmt.ml(p.fracDelay) + '" style="width:100px"' + (lock || S.demo.delayNotUpdated ? ' disabled' : '') + '><span class="note">V1 + V2 = ' + fmt.ml(s.V1 + s.V2) + ' mL; tolerance ' + fmt.ml(S.th.i5Tol) + ' mL</span></div>' +
-      (al.issues.length && !standalone ? '<div class="full callout warn">' + al.issues.map(esc).join(' ') + (al.fractions === 'Uncertain' ? ' Fraction assignments will be marked Uncertain.' : '') + '</div>' : '<div class="full note">Last checked ' + S.alignChecked + '. Re-check when the tubing changes.</div>') +
-      '</div></div>';
-    // ---- right column: TRIFLE's own settings
+      (s.template === 'aav' ? '<div class="callout"><b>Empty and full capsid assessment is not a TRIFLE output in this version.</b> ' + tag('P', 'always') + '</div>' : '');
     Rt.innerHTML =
-      '<div class="panel"><div class="ph"><h3>Acquisition preset</h3><span class="sp"></span>' + tag('P') + '</div><div class="pb form">' +
-      '<label class="l">PMT control voltage</label><div class="inl"><div class="seg" id="sPmt">' + [400, 800].map(v => '<button data-v="' + v + '" class="' + (s.pmt === v ? 'on' : '') + '"' + dis + '>' + v + ' mV</button>').join('') + '</div><span class="note">Set by hand on the separate supply ' + tag('E') + '</span></div>' +
-      '<label class="l">Preset</label><div><b>' + pi.id + '</b> <span class="muted">checksum ' + pi.checksum + '</span></div>' +
+      '<div class="panel"><div class="ph"><h3>Acquisition</h3><span class="sp"></span>' + tag('P') + '</div><div class="pb form">' +
+      '<label class="l">PMT voltage</label><div class="inl"><div class="seg" id="sPmt">' + [400, 800].map(v => '<button data-v="' + v + '" class="' + (s.pmt === v ? 'on' : '') + '"' + dis + '>' + v + ' mV</button>').join('') + '</div><span class="note">Set on the PMT supply ' + tag('E') + '</span></div>' +
+      '<label class="l">Preset</label><div><b>' + pi.id + '</b> <span class="muted small">checksum ' + pi.checksum + '</span></div>' +
       '<label class="l eng-only">Loads</label><div class="small eng-only">IRF ' + esc('impulse_' + s.irfFile + '_mV.txt') + '<br>Ladder ' + esc('od_filters_and_ranges_' + s.ladderFile + '_mV.txt') + ', ' + lad.length + ' steps</div>' +
       (pc.ok ? '' : '<div class="full callout fault">' + esc(pc.msg) + '</div>') +
-      '</div></div>' +
-      '<div class="panel"><div class="ph"><h3>Acquisition options</h3></div><div class="pb stack" style="gap:6px">' +
-      '<div><div class="small muted" style="margin-bottom:3px">Auto-ranging</div>' +
-      '<label class="chk"><input type="radio" name="ar" value="v20"' + (s.autorange === 'v20' ? ' checked' : '') + dis + '> v2.0 reference ' + tag('E') + '</label><br>' +
-      '<label class="chk" title="Block median input, corrected no-signal test (nothing below the baseline counts as no signal), baseline not scaled"><input type="radio" name="ar" value="prop"' + (s.autorange === 'prop' ? ' checked' : '') + dis + '> Proposed method</label></div>' +
-      '<label class="chk"><input type="checkbox" id="sBm"' + (s.beamPerBlock ? ' checked' : '') + dis + '> Capture the beam monitor with every block ' + tag('P', s.beamPerBlock ? 'always' : 'engineer') + '</label><div class="note eng-only" style="margin:-4px 0 0 22px">Adds a second channel to each rapid block, which may slow the block rate. ' + tag('H') + '</div>' +
-      '<label class="chk"><input type="checkbox" id="sSave"' + (s.save2s ? ' checked' : '') + dis + '> Save every 2 s instead of after every block ' + tag('P') + '</label>' +
-      '<label class="chk"><input type="checkbox" id="sEmit"' + (s.laserCheck ? ' checked' : '') + dis + '> Enable the laser emission check at Readiness ' + tag('P') + '</label>' +
-      '<label class="chk"><input type="checkbox" id="sCsv"' + (s.csvJson ? ' checked' : '') + dis + '> Write CSV plus JSON metadata alongside the record ' + tag('P') + '</label>' +
-      '<div class="form" style="grid-template-columns:170px 1fr"><label class="l" for="sTimer">Experiment timer (min)</label><div class="inl"><input id="sTimer" type="number" step="1" min="1" value="' + (s.timerMin || Math.ceil(ph.totalMin + 2)) + '" style="width:100px"' + dis + '><span class="note">method ' + fmt.min1(ph.totalMin) + ' min, plus 1 min before and after</span></div></div>' +
-      '</div></div>' +
-      '<div class="panel"><div class="ph"><h3>Sign-in</h3></div><div class="pb stack" style="gap:6px">' +
-      '<label class="chk"><input type="checkbox" id="sTrained"' + (s.trained ? ' checked' : '') + dis + '> I am a trained user of this instrument.</label>' +
-      '<label class="chk"><input type="checkbox" id="sIp"' + (s.ip ? ' checked' : '') + dis + '> IP arrangements are in place for collaborative work.</label>' +
-      (!(s.trained && s.ip) ? '<div class="note">Both statements are needed before Start.</div>' : '') + '</div></div>';
+      '<label class="l">Auto-ranging</label><div class="inl" style="gap:14px">' +
+      '<label class="chk"><input type="radio" name="ar" value="v20"' + (s.autorange === 'v20' ? ' checked' : '') + dis + '> v2.0 ' + tag('E') + '</label>' +
+      '<label class="chk" title="Block median input, corrected no-signal test, baseline not scaled"><input type="radio" name="ar" value="prop"' + (s.autorange === 'prop' ? ' checked' : '') + dis + '> Proposed</label></div>' +
+      '<label class="l" style="align-self:start;padding-top:2px">Options</label><div class="stack" style="gap:6px">' +
+      '<label class="chk"><input type="checkbox" id="sBm"' + (s.beamPerBlock ? ' checked' : '') + dis + '> Beam monitor every block ' + tag('P', s.beamPerBlock ? 'always' : 'engineer') + '</label>' +
+      '<label class="chk"><input type="checkbox" id="sSave"' + (s.save2s ? ' checked' : '') + dis + '> Save every 2 s ' + tag('P') + '</label>' +
+      '<label class="chk"><input type="checkbox" id="sEmit"' + (s.laserCheck ? ' checked' : '') + dis + '> Laser emission check ' + tag('P') + '</label>' +
+      '<label class="chk"><input type="checkbox" id="sCsv"' + (s.csvJson ? ' checked' : '') + dis + '> CSV and JSON export ' + tag('P') + '</label></div>' +
+      '<label class="l" for="sTimer">Run time (min)</label><div class="inl"><input id="sTimer" type="number" step="1" min="1" value="' + (s.timerMin || Math.ceil(ph.totalMin + 2)) + '" style="width:100px"' + dis + '><span class="note">AKTA method ' + fmt.min1(ph.totalMin) + ' min</span></div>' +
+      '</div></div>';
     wire();
   }
   function num(id) { const v = parseFloat($(id).value); return isFinite(v) ? v : NaN; }
   function wire() {
-    const s = S.setup;
     $('#sEln').onchange = e => set('eln', e.target.value.trim(), 'Experiment ID');
     $('#sRun').onchange = e => set('runName', e.target.value.trim(), 'Run name');
     $('#sOp').onchange = e => set('operator', e.target.value.trim().toUpperCase() || 'DS', 'Operator');
-    $('#sTpl').onchange = e => {
-      const v = e.target.value; const t = TR.TEMPLATES[v === 'free' ? 'protA' : v];
-      S.setup.flows = null; S.setup.cvMl = t.cv; S.setup.column = t.column; S.setup.frac = { loadSize: t.fractions.loadSize, elSize: t.fractions.elSize, elCollect: t.fractions.elCollect };
-      if (v === 'aav') { if (S.setup.template !== 'aav') preAavName = S.setup.runName; S.setup.system = 'pure'; S.setup.sample = 'AAV crude lysate'; S.setup.runName = AAV_NAME; }
-      else { S.setup.system = 'avant'; if (S.setup.sample === 'AAV crude lysate') S.setup.sample = 'mAb CUB'; if (S.setup.runName === AAV_NAME && preAavName) S.setup.runName = preAavName; }
-      S.setup.timerMin = null; set('template', v, 'AKTA method');
-    };
-    $('#sSys').onchange = e => set('system', e.target.value, 'Chromatography system');
-    $$('input[name=src]').forEach(r => r.onchange = () => { set('source', r.value, 'Chromatography data source'); UI.settingChangedDuringRun(); });
-    $('#sFlow').onchange = e => { set('flowTrace', e.target.checked, 'Flow-rate trace present'); };
-    $('#sV1').onchange = () => { set('V1', num('#sV1'), 'V1 (UV to TRIFLE)', 'mL'); };
-    $('#sV2').onchange = () => { set('V2', num('#sV2'), 'V2 (TRIFLE to collector)', 'mL'); };
-    $('#sFd').onchange = () => { set('fracDelay', num('#sFd'), 'UNICORN fraction delay', 'mL'); };
     $$('#sPmt button').forEach(b => b.onclick = () => { const v = +b.dataset.v; S.setup.irfFile = v; S.setup.ladderFile = v; set('pmt', v, 'PMT preset', 'mV'); });
     $$('input[name=ar]').forEach(r => r.onchange = () => set('autorange', r.value, 'Auto-ranging'));
-    $('#sBm').onchange = e => { set('beamPerBlock', e.target.checked, 'Beam monitor with every block'); if (!e.target.checked && S.proc.laser) UI.setProc('laser', false); };
+    $('#sBm').onchange = e => { set('beamPerBlock', e.target.checked, 'Beam monitor every block'); if (!e.target.checked && S.proc.laser) UI.setProc('laser', false); };
     $('#sSave').onchange = e => set('save2s', e.target.checked, 'Save every 2 s');
     $('#sEmit').onchange = e => set('laserCheck', e.target.checked, 'Laser emission check');
-    $('#sCsv').onchange = e => set('csvJson', e.target.checked, 'CSV plus JSON alongside');
-    $('#sTimer').onchange = () => { const v = num('#sTimer'); if (v > 0) set('timerMin', v, 'Experiment timer', 'min'); };
+    $('#sCsv').onchange = e => set('csvJson', e.target.checked, 'CSV and JSON export');
+    $('#sTimer').onchange = () => { const v = num('#sTimer'); if (v > 0) set('timerMin', v, 'Run time', 'min'); };
     const signIn = (k, what) => e => { S.setup[k] = e.target.checked; M.audit('setting', 'Sign-in: ' + what + (e.target.checked ? ' confirmed.' : ' withdrawn.')); render(); UI.emitDirty(); };
     $('#sTrained').onchange = signIn('trained', 'trained user');
-    $('#sIp').onchange = signIn('ip', 'IP arrangements');
+    $('#sIp').onchange = signIn('ip', 'IP agreement');
   }
   UI.register('setup', { show() { if (!$('#setupL')) build(); else render(); }, build, render });
   M.on(ev => { if ((ev === 'run' || ev === 'setup') && UI.cur() === 'setup') render(); });
@@ -3545,14 +3526,14 @@ const RC = (function () {
   for (let j = 0; j < 600; j++) pulse.x[j] = j * 0.2;
   function build() {
     const r = $('#scr-run'); r.classList.add('fixed');
-    r.innerHTML = '<div class="scr-h"><h1>Run</h1><span class="sp"></span>' +
+    r.innerHTML = '<div class="scr-h"><h1>Run</h1><div class="chips acq-chips"></div><span class="sp"></span>' +
       '<button class="btn primary" id="rStart">Start</button><button class="btn" id="rPause">Pause</button><button class="btn" id="rCont">Continue</button><button class="btn" id="rEnd">End</button><span class="sep"></span><button class="btn" id="rMark">Mark event</button><button class="btn" id="rNote">Add note</button></div>' +
-      '<div class="run-top"><div class="chips acq-chips"></div><span class="note" id="rCtlNote"></span>' +
-      '<div class="toolbar" id="rTools"><div class="seg sm" id="rX" role="group" aria-label="X-axis units"><button data-v="vol">mL</button><button data-v="cv">CV</button><button data-v="min">min</button></div><div class="seg sm" id="rLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div><label class="chk small"><input type="checkbox" id="rRul"> Rulers</label><button class="btn sm" id="rReset" title="Right-click the chart to undo one zoom step">Reset zoom</button><button class="btn sm" id="rExp" title="Esc exits the expanded view">Expand chart</button></div></div>' +
+      '<div class="run-top">' +
+      '<div class="toolbar" id="rTools"><div class="seg sm" id="rX" role="group" aria-label="X-axis units"><button data-v="vol">mL</button><button data-v="cv">CV</button><button data-v="min">min</button></div><div class="seg sm" id="rLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div><label class="chk small"><input type="checkbox" id="rRul"> Rulers</label><button class="btn sm" id="rReset" title="Right-click the chart to undo one zoom step">Reset zoom</button><button class="btn sm" id="rExp" title="Esc exits the expanded view">Expand chart</button></div><span class="note" id="rCtlNote"></span></div>' +
       '<div class="panel run-chart expand-target"><div class="pb"><div id="runChart" style="flex:1;min-height:0"></div></div></div>' +
       '<div class="run-bottom" id="runBottom">' +
       '<div class="panel"><div class="ph"><h3>Run values</h3></div><div class="pb" id="runValues"></div></div>' +
-      '<div class="panel"><div class="ph"><h3>Pulse</h3><span class="sp"></span><div class="seg sm" id="rPLog"><button data-v="0" class="on">Lin</button><button data-v="1">Log</button></div></div><div class="pb" style="padding:2px 4px"><div id="runPulse" style="height:100%"></div></div></div>' +
+      '<div class="panel eng-only" id="pulsePanel"><div class="ph"><h3>Pulse</h3><span class="sp"></span><div class="seg sm" id="rPLog"><button data-v="0" class="on">Lin</button><button data-v="1">Log</button></div></div><div class="pb" style="padding:2px 4px"><div id="runPulse" style="height:100%"></div></div></div>' +
       '<div class="panel" id="logPanel"><div class="ph"><h3>Run log</h3><span class="sp"></span><select id="rLogF" class="small" style="height:22px" aria-label="Filter run log"><option value="all">All entries</option><option value="sensitivity">Sensitivity</option><option value="laser">Laser</option><option value="alignment">Alignment</option><option value="note">Notes and events</option><option value="card">Cards</option><option value="system">System</option></select></div><div class="pb log" id="runLog"></div></div>' +
       '<div class="panel" id="cardPanel"><div class="ph"><h3>Evidence</h3><span class="cnt" id="cardCnt">0</span></div><div class="pb" id="runCards"><div class="cards"></div></div></div>' +
       '</div>';
@@ -3660,13 +3641,11 @@ const RC = (function () {
     const fl = n && i >= 0 ? R.y.act[i] : NaN, use = n ? A.ruse[i] : NaN;
     const html = '<div class="sysstate">' + esc(sys) + '</div><table class="rv">' +
       row('Fluorescence', 'V·ns', fmt.sig3(fl)) +
-      (imp ? row('UV 280', 'mAU', fmt.mau(K.uv[k])) + row('Conductivity', 'mS/cm', fmt.cond(K.cond[k])) + row('pH', '', fmt.ph(K.ph[k])) : row('AKTA traces', '', 'not available')) +
-      row('Volume', 'mL · CV', fmt.ml(vp) + ' · ' + fmt.cv(vp / R.cv)) +
-      '<tr class="sec"><td colspan="2">Signal QC</td></tr>' +
+      (R.setupSnap.source === 'standalone' ? '' : row('Volume', 'mL', fmt.ml(vp))) +
       row('Sensitivity', 'OD ' + st.nd + ', ' + st.range * 1000 + ' mV', A.cur + ' of ' + lad.length) +
       row('Input range' + (use < S.th.lowPrec ? ' <span class="flag w" title="Pulse under ' + Math.round(S.th.lowPrec * 100) + ' % of the input range (provisional)">Low precision</span>' : use > TR.ACQ.limit ? ' <span class="flag f">Above 90 % limit</span>' : ''), '', rangeBar(use)) +
       row('Blocks', '', fmt.int(n - disc) + ' · ' + fmt.int(disc) + ' disc.') +
-      row('Beam monitor', R.setupSnap.beamPerBlock ? '% of start' : '', R.setupSnap.beamPerBlock && n ? fmt.pct1(A.bm[i] / (R.bmRef || A.bm[i])) : 'start/end only') +
+      (R.setupSnap.beamPerBlock ? row('Beam monitor', '% of start', n ? fmt.pct1(A.bm[i] / (R.bmRef || A.bm[i])) : '–') : '') +
       row('Alignment', '', esc(al.detector + (al.fractions === 'Uncertain' && al.detector !== 'Uncertain' ? ', fractions Uncertain' : ''))) + RC.runRows.map(f => f(R, i, row)).join('') + '</table>';
     if (box._h !== html) { box.innerHTML = html; box._h = html; }
   }
@@ -3888,7 +3867,7 @@ const RC = (function () {
     const f = fr(focus);
     if (!R || !f) { box.innerHTML = '<div class="note">Select a fraction in the table or drag across the chart.</div>'; zm._mounted = false; return; }
     const st = rows.find(r => r.id === f.id) || M.fractionStats(R).find(r => r.id === f.id), d = dec(f.id), b = flBounds(), pool = R.setupSnap.source === 'import' ? M.uvPool(R) : null;
-    if (!zm._mounted) { box.innerHTML = '<div style="flex:1 1 60%;min-height:170px" id="zmHost"></div><div class="fr-detail-grid" style="flex:1 1 40%;min-height:0;display:grid;grid-template-columns:minmax(0,0.85fr) minmax(0,1.15fr);gap:8px"><div id="mpHost" style="min-height:0"></div><div id="frDet" style="overflow:auto;font-size:12px;min-height:0"></div></div>'; $('#zmHost').append(zm.host); zm.resize(); zm._mounted = true; mountPulse(); }
+    if (!zm._mounted) { box.innerHTML = '<div style="flex:1 1 60%;min-height:170px" id="zmHost"></div><div class="fr-detail-grid" style="flex:1 1 40%;min-height:0;display:grid;grid-template-columns:minmax(0,0.85fr) minmax(0,1.15fr);gap:8px"><div id="mpHost" style="min-height:0"></div><div id="frDet" style="overflow:auto;font-size:13.5px;min-height:0"></div></div>'; $('#zmHost').append(zm.host); zm.resize(); zm._mounted = true; mountPulse(); }
     zm.invalidate();
     const cards = R.rules.cards.filter(c => c.fractions && c.fractions.includes(f.id));
     const shifted = Math.abs(st.ca - f.a) > 0.005 || Math.abs(st.cb - f.b) > 0.005, unc = st.assign === 'Uncertain';
@@ -4213,7 +4192,7 @@ const ENG = (function () {
   function alignHtml() {
     const s = S.setup, p = M.plumbing(), al = M.alignmentState();
     return '<div class="eng-align"><div><div class="toolbar" style="margin-bottom:6px"><div class="seg sm" id="alBA"><button data-v="1"' + (alignBefore ? ' class="on"' : '') + '>Before alignment</button><button data-v="0"' + (!alignBefore ? ' class="on"' : '') + '>After alignment</button></div><span class="note">Drag the two guides onto the UV and fluorescence fronts at the start of the load.</span></div><div style="height:330px" id="alChart"></div></div>' +
-      '<div><table class="tbl" style="margin-bottom:8px"><thead><tr><th>Delay volume</th><th class="num">mL</th><th>Used for</th></tr></thead><tbody><tr><td>V1, UV to TRIFLE</td><td class="num">' + fmt.ml(s.V1) + '</td><td>Detector alignment</td></tr><tr><td>V2, TRIFLE to collector</td><td class="num">' + fmt.ml(s.V2) + '</td><td>Fraction assignment</td></tr><tr><td>V1 + V2</td><td class="num">' + fmt.ml(s.V1 + s.V2) + '</td><td></td></tr><tr><td>UNICORN fraction delay</td><td class="num">' + fmt.ml(p.fracDelay) + '</td><td>Fraction cuts in UNICORN</td></tr></tbody></table>' +
+      '<div><h3 style="margin-bottom:6px">Delay volumes</h3><table class="tbl" style="margin-bottom:6px"><thead><tr><th>Delay volume</th><th class="num">mL</th><th>Used for</th></tr></thead><tbody><tr><td>V1, UV to TRIFLE</td><td class="num">' + '<input id="eV1" type="number" step="0.01" min="0" value="' + fmt.ml(s.V1) + '" style="width:84px"' + (S.run ? ' disabled' : '') + '>' + '</td><td>Detector alignment</td></tr><tr><td>V2, TRIFLE to collector</td><td class="num">' + '<input id="eV2" type="number" step="0.01" min="0" value="' + fmt.ml(s.V2) + '" style="width:84px"' + (S.run ? ' disabled' : '') + '>' + '</td><td>Fraction assignment</td></tr><tr><td>V1 + V2</td><td class="num">' + fmt.ml(s.V1 + s.V2) + '</td><td></td></tr><tr><td>UNICORN fraction delay</td><td class="num">' + '<input id="eFd" type="number" step="0.01" min="0" value="' + fmt.ml(p.fracDelay) + '" style="width:84px"' + (S.run || S.demo.delayNotUpdated ? ' disabled' : '') + '>' + '</td><td>Fraction cuts in UNICORN</td></tr></tbody></table><div class="note" style="margin-bottom:8px">Set when TRIFLE is plumbed in; simulation values. Locked during a run. Tolerance ' + fmt.ml(S.th.i5Tol) + ' mL.</div>' +
       '<div id="alOffset" class="callout"></div><div class="note" style="margin-top:8px">Alignment needs re-checking only when the tubing changes. Last checked ' + S.alignChecked + '. <button class="link small" id="alRec">Record a check today</button></div>' +
       (al.issues.length ? '<div class="note" style="margin-top:6px">Fraction assignment: ' + esc(al.fractions) + '. ' + esc(al.issues.join(' ')) + '</div>' : '') + '</div></div>';
   }
@@ -4566,7 +4545,9 @@ const ENG = (function () {
     const f = { tests: testsHtml, align: alignHtml, ar: arHtml, wf: wfHtml, ladder: ladderHtml, laser: laserHtml, changes: changesHtml, th: thHtml, disc: discHtml, faults: faultsHtml }[tab] || (() => (window.ENG_EXTRA && window.ENG_EXTRA[tab] ? window.ENG_EXTRA[tab].html() : ''));
     body.innerHTML = f();
     if (tab === 'tests') { $('#tCorrupt').onchange = e => { corrupt = e.target.checked; testRes = runTests(); M.audit('engineer', 'Reference test failure demo ' + (corrupt ? 'on' : 'off') + '.'); render(); }; }
-    if (tab === 'align') { mountAlign(); $$('#alBA button').forEach(b => b.onclick = () => { alignBefore = b.dataset.v === '1'; guides = null; render(); }); $('#alRec').onclick = () => { S.alignChecked = M.wall(S.simT).date; M.audit('engineer', 'Alignment check recorded; guides imply ' + fmt.ml(guides ? guides.g2 - guides.g1 : NaN) + ' mL against V1 ' + fmt.ml(S.setup.V1) + ' mL.'); render(); }; }
+    if (tab === 'align') { mountAlign();
+      const setVol = (k, id, label) => { const inp = $(id); if (!inp) return; inp.onchange = () => { const v = parseFloat(inp.value); if (!(v >= 0) || S.run) { render(); return; } const old = S.setup[k]; if (old === v) return; S.setup[k] = v; M.audit('setting', label + ' changed from ' + fmt.ml(old) + ' to ' + fmt.ml(v) + ' mL.'); UI.emitDirty(); render(); }; };
+      setVol('V1', '#eV1', 'V1 (UV to TRIFLE)'); setVol('V2', '#eV2', 'V2 (TRIFLE to collector)'); setVol('fracDelay', '#eFd', 'UNICORN fraction delay'); $$('#alBA button').forEach(b => b.onclick = () => { alignBefore = b.dataset.v === '1'; guides = null; render(); }); $('#alRec').onclick = () => { S.alignChecked = M.wall(S.simT).date; M.audit('engineer', 'Alignment check recorded; guides imply ' + fmt.ml(guides ? guides.g2 - guides.g1 : NaN) + ' mL against V1 ' + fmt.ml(S.setup.V1) + ' mL.'); render(); }; }
     if (tab === 'ar' && S.run) { const b = $('#arBlk'); if (b) b.onchange = e => { arBlock = (+e.target.value || 1) - 1; render(); }; const l = $('#arLatest'); if (l) l.onclick = () => { arBlock = null; render(); }; const c = $('#arCh'); if (c) c.onchange = e => { if (e.target.value !== '') { arBlock = +e.target.value; render(); } }; }
     if (tab === 'wf' && S.run) { mountWf(); $('#wfBlk').onchange = e => { wfSel.block = (+e.target.value || 1) - 1; render(); }; $('#wfLatest').onclick = () => { wfSel.block = null; render(); }; $$('#wfRows tr').forEach(tr => tr.onclick = () => { wfSel.wf = +tr.dataset.w; wfSel.block = wfSel.cur; render(); }); }
     if (tab === 'ladder') {
@@ -4645,9 +4626,10 @@ const ENG = (function () {
     ['H', 'Read from the v2.0 source code and not yet checked on the instrument.']
   ];
   function build() {
-    $('#scr-testing').innerHTML = '<div class="scr-h"><h1>What this prototype is testing</h1></div><div class="stack" style="max-width:1000px">' +
-      '<div class="panel"><div class="pb"><p style="margin:0 0 8px">Evaluation objectives for a future GSK assessment. These are not results.</p><div class="tbl-wrap"><table class="tbl"><thead><tr><th class="nosort">GSK objective</th><th class="nosort">Prototype feature</th><th class="nosort">Evidence to collect in a real evaluation</th></tr></thead><tbody>' + ROWS.map(r => '<tr><td class="wrap">' + esc(r[0]) + '</td><td class="wrap">' + esc(r[1]) + '</td><td class="wrap">' + esc(r[2]) + '</td></tr>').join('') + '</tbody></table></div></div></div>' +
-      '<div class="panel"><div class="ph"><h3>Labels</h3></div><div class="pb"><table class="tbl lbl-tbl"><tbody>' + LABELS.map(([k, t]) => '<tr><td>' + UI.tag(k, 'always') + '</td><td class="wrap">' + esc(t) + '</td></tr>').join('') + '</tbody></table></div></div></div>';
+    $('#scr-testing').innerHTML = '<div class="scr-h"><h1>About this mock-up</h1></div><div class="stack" style="max-width:1040px">' +
+      '<p class="muted" style="margin:0">Every number comes from a seeded simulation. The v2.0 calculations run for real on that data.</p>' +
+      '<div class="panel"><div class="ph"><h3>What this mock-up is testing</h3></div><div class="pb"><p style="margin:0 0 8px">Evaluation objectives for a future GSK assessment. These are not results.</p><div class="tbl-wrap"><table class="tbl"><thead><tr><th class="nosort">GSK objective</th><th class="nosort">Prototype feature</th><th class="nosort">Evidence to collect in a real evaluation</th></tr></thead><tbody>' + ROWS.map(r => '<tr><td class="wrap">' + esc(r[0]) + '</td><td class="wrap">' + esc(r[1]) + '</td><td class="wrap">' + esc(r[2]) + '</td></tr>').join('') + '</tbody></table></div></div></div>' +
+      '<div class="panel"><div class="ph"><h3>Labels</h3></div><div class="pb"><table class="tbl lbl-tbl"><tbody>' + LABELS.map(([k, t]) => '<tr><td>' + UI.tag(k, 'always') + '</td><td class="wrap">' + esc(t) + '</td></tr>').join('') + '</tbody></table></div></div>' + (window.INTEGRATIONS_HTML ? window.INTEGRATIONS_HTML() : '') + '</div>';
   }
   UI.register('testing', { show() { build(); } });
 })();
@@ -4976,10 +4958,11 @@ const Q = (function () {
   UI.register('comparison', { show() { if (!cmpBuilt) cmpBuild(); setTimeout(() => cmpChart.resize(), 0); cmpKey = ''; cmpRender(); }, update() { cmpRender(); } });
 
   /* ---------- Integrations (Future) ---------- */
-  UI.register('integrations', { show() {
+  // Future integrations, listed on the About page
+  window.INTEGRATIONS_HTML = () => {
     const rows = [['Live UNICORN link', 'Phase, flow and fraction events in real time', 'GSK IT approval, UNICORN interface access, validation'], ['IDBS E-WorkBook transfer', 'Push the summary and attachments to an experiment ID', 'IDBS API access, permissions, record structure agreement'], ['Data storage', 'Automatic upload to the agreed GSK repository, replacing the manual SharePoint step', 'Storage location, retention policy'], ['Language-model Questions panel', 'Free-text answers about runs', 'Defined data access, permissions, provenance of every answer, GSK approval'], ['Legacy .pkl conversion', 'Convert v2.0 pickle records to CSV and JSON', 'An isolated, trusted environment, because opening a pickle can execute code embedded in it']];
-    $('#scr-integrations').innerHTML = '<div class="scr-h"><h1>Integrations</h1>' + tag('F', 'always') + '<span class="sp"></span></div><div class="panel" style="max-width:1100px"><div class="pb"><table class="tbl"><thead><tr><th>Integration</th><th>Purpose</th><th>Prerequisites</th><th>Status</th></tr></thead><tbody>' + rows.map(r => '<tr><td class="wrap"><b>' + esc(r[0]) + '</b></td><td class="wrap">' + esc(r[1]) + '</td><td class="wrap">' + esc(r[2]) + '</td><td>' + UI.stateHtml('na', 'Not available in mock-up') + '</td></tr>').join('') + '</tbody></table></div></div>';
-  } });
+    return '<div class="panel"><div class="ph"><h3>Integrations</h3>' + tag('F', 'always') + '</div><div class="pb"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Integration</th><th>Purpose</th><th>Prerequisites</th></tr></thead><tbody>' + rows.map(r => '<tr><td class="wrap"><b>' + esc(r[0]) + '</b></td><td class="wrap">' + esc(r[1]) + '</td><td class="wrap">' + esc(r[2]) + '</td></tr>').join('') + '</tbody></table></div></div></div>';
+  };
 
   /* ---------- Record: export packaging ---------- */
   window.REC_STAGE2 = slot => {
@@ -4994,7 +4977,7 @@ const Q = (function () {
     const R = S.run, n = R.acq.n, disc = R.acq.disc.subarray(0, n).reduce((a, b) => a + b, 0), wf = (n - disc) * 10, bytes = wf * 600 * 2 + wf * 96 + (n - disc) * 64 + 64 * 1024;
     const mb = bytes / 1048576;
     const tree = ['/', '├─ attributes: settings snapshot, preset ' + M.presetInfo(R.pmt).id + ', checksum,', '│              software versions, labels', '├─ irf/  (7 Gaussian terms per preset; A, W, T)', '├─ beam_monitor/  start and end blocks' + (R.setupSnap.beamPerBlock ? ', and one per block' : ''), '└─ blocks/', '   ├─ block_000001/', '   │  ├─ attributes: time_s, step, nd_od, range_V, pmt_mV, timestamp', '   │  └─ waveform_01 … waveform_10  int16[600]', '   │     attributes: nd_od, range_V, pmt_preset, timestamp', '   ├─ …', '   └─ block_' + String(n).padStart(6, '0') + '/'].join('\n');
-    UI.modal('Raw waveforms (HDF5)', '<p class="small">' + tag('P', 'always') + ' Planned file structure and size. No file is written.</p><pre style="font-size:11px;background:#F7F8F9;border:1px solid var(--border);padding:8px;overflow:auto">' + esc(tree) + '</pre><table class="tbl"><tbody><tr><td>Blocks</td><td class="num">' + fmt.int(n - disc) + ' (' + disc + ' discarded, not written)</td></tr><tr><td>Waveforms</td><td class="num">' + fmt.int(wf) + '</td></tr><tr><td>Samples per waveform</td><td class="num">600 × int16 (2 bytes)</td></tr><tr><td>Estimated size</td><td class="num"><b>' + mb.toFixed(1) + ' MB</b> uncompressed</td></tr></tbody></table><p class="note">The estimate includes about 96 bytes of attributes per waveform, 64 bytes per block and 64 kB of settings.</p>', [{ label: 'Close', primary: true }]);
+    UI.modal('Raw waveforms (HDF5)', '<p class="small">' + tag('P', 'always') + ' Planned file structure and size. No file is written.</p><pre style="font-size:12.5px;background:#F7F8F9;border:1px solid var(--border);padding:8px;overflow:auto">' + esc(tree) + '</pre><table class="tbl"><tbody><tr><td>Blocks</td><td class="num">' + fmt.int(n - disc) + ' (' + disc + ' discarded, not written)</td></tr><tr><td>Waveforms</td><td class="num">' + fmt.int(wf) + '</td></tr><tr><td>Samples per waveform</td><td class="num">600 × int16 (2 bytes)</td></tr><tr><td>Estimated size</td><td class="num"><b>' + mb.toFixed(1) + ' MB</b> uncompressed</td></tr></tbody></table><p class="note">The estimate includes about 96 bytes of attributes per waveform, 64 bytes per block and 64 kB of settings.</p>', [{ label: 'Close', primary: true }]);
     M.audit('export', 'HDF5 structure viewed (estimated ' + mb.toFixed(1) + ' MB; no file written).');
   }
 
@@ -5116,11 +5099,8 @@ const Q = (function () {
 (function () {
   const S = M.S;
   UI.buildRail([
-    { group: 'Acquire' }, { key: 'setup', label: 'Setup' }, { key: 'readiness', label: 'Readiness' }, { key: 'run', label: 'Run' },
-    { group: 'Validate and interpret' }, { key: 'fractions', label: 'Fraction review' },
-    ...(window.STAGE2 ? [{ key: 'calibration', label: 'Calibration' }, { key: 'comparison', label: 'Run comparison' }] : []),
-    { group: 'Decide' }, { key: 'fractions', label: 'Samples to send', anchor: 'samples' },
-    { group: 'Record' }, { key: 'record', label: 'Record' },
+    { group: '' }, { key: 'setup', label: 'Setup' }, { key: 'readiness', label: 'Readiness' }, { key: 'run', label: 'Run' }, { key: 'fractions', label: 'Fraction review' }, { key: 'record', label: 'Record' },
+    ...(window.STAGE2 ? [{ group: 'Analysis' }, { key: 'calibration', label: 'Calibration' }, { key: 'comparison', label: 'Run comparison' }] : []),
     { group: 'Engineer', eng: true }, { key: 'engineer', label: 'Diagnostics', eng: true }
   ]);
   Q.init();
