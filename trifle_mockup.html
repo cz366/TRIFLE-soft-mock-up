@@ -3199,7 +3199,6 @@ const UI = (function () {
 (function () {
   const { $, $$, esc, el, tag } = UI, S = M.S, fmt = M.fmt;
   const root = () => $('#scr-setup');
-  const SAMPLES = ['mAb CUB', 'Protein A eluate', 'IgG standard', 'BSA standard', 'Buffer blank'].concat(window.STAGE2 ? ['AAV crude lysate'] : []);
   const AAV_NAME = 'AAVX capture, crude AAV 3.6 mL'; let preAavName = null;
   function locked() { return !!S.run; }
   // readable names for coded values in the audit trail
@@ -3229,39 +3228,22 @@ const UI = (function () {
     const lock = locked(), dis = lock ? ' disabled' : '';
     $('#setupLock').textContent = lock ? 'Settings are locked for this run. Processing options stay switchable on Run and Fraction review.' : '';
     const tpl = M.template(), ph = TR.buildPhases(tpl);
-    const phNote = ((tpl.primeMl ? 'The ' + tpl.primeMl + ' mL sample-pump prime goes to waste and is excluded from the volume axis. ' : '') + (ph.holdMin ? 'During the ' + ph.holdMin + ' min NaOH hold, time advances but volume does not.' : '')).trim();
-    // ---- left column
+    const al = M.alignmentState(), p = M.plumbing(), pi = M.presetInfo(s.pmt), pc = M.presetCheck(), lad = TR.LADDERS[s.pmt], standalone = s.source === 'standalone';
+    // phases, flows and fractions are defined in the AKTA method and arrive with the UNICORN export
+    const methodNote = standalone ? '' : s.source === 'manual' ? 'Phases come from your event marks.' : 'Phases, flows and fractions come from the UNICORN export (' + ph.list.length + ' phases, ' + fmt.ml(ph.totalVol) + ' mL, ' + fmt.min1(ph.totalMin) + ' min).';
+    // ---- left column: the run and the AKTA it watches
     L.innerHTML =
       '<div class="panel"><div class="ph"><h3>Run details</h3></div><div class="pb form">' +
-      '<label class="l" for="sEln">Notebook experiment ID</label><input id="sEln" type="text" value="' + esc(s.eln) + '"' + dis + '>' +
+      '<label class="l" for="sEln">Experiment ID</label><input id="sEln" type="text" value="' + esc(s.eln) + '"' + dis + '>' +
       '<label class="l" for="sRun">Run name</label><input id="sRun" type="text" value="' + esc(s.runName) + '"' + dis + '>' +
       '<label class="l" for="sOp">Operator initials</label><input id="sOp" type="text" value="' + esc(s.operator) + '" maxlength="4" style="width:80px"' + dis + '>' +
       '</div></div>' +
-      '<div class="panel"><div class="ph"><h3>Sample and method</h3></div><div class="pb form">' +
-      '<label class="l" for="sSample">Sample type</label><select id="sSample"' + dis + '>' + SAMPLES.map(x => opt(x, x, x === s.sample)).join('') + '</select>' +
-      '<label class="l" for="sTpl">Method template</label><select id="sTpl"' + dis + '>' + opt('protA', 'Protein A platform (GSK)', s.template === 'protA') + opt('free', 'Free run', s.template === 'free') + (window.STAGE2 ? opt('aav', 'AAV affinity capture (AAVX)', s.template === 'aav') : '') + '</select>' +
-      '<label class="l" for="sCol">Column</label><input id="sCol" type="text" value="' + esc(s.column) + '"' + dis + '>' +
-      '<label class="l" for="sCv">Column volume (mL)</label><div class="inl"><input id="sCv" type="number" step="0.001" min="0.1" value="' + s.cvMl + '" style="width:100px"' + dis + '>' + (s.template === 'aav' ? tag('A') : '') + '</div>' +
-      (s.template === 'free' ? '<div class="full callout">No method template. Rules P2, P4 and H1 are off. Phases and fractions come from the imported UNICORN result.</div>' : '') +
-      (s.template === 'aav' ? '<div class="full callout"><b>Empty and full capsid assessment is not a TRIFLE output in this version.</b> Volumes and flows are assumed, apart from the 3.6 mL load and 95 min run. Rules P2 and H1 do not apply to this template. ' + tag('P', 'always') + '</div>' : '') +
-      '</div></div>' +
-      '<div class="panel"><div class="ph"><h3>Method phases and flow</h3><span class="sp"></span>' + (tpl.id === 'aav' ? tag('A') : '') + '</div><div class="pb" style="padding:0"><div class="tbl-wrap"><table class="tbl phases"><thead><tr><th>Phase</th><th class="num">CV</th><th class="num">Volume <span class="unit">(mL)</span></th><th class="num">Flow <span class="unit">(mL/min)</span></th><th class="num" title="Residence time">Res. <span class="unit">(min)</span></th><th class="num">Duration <span class="unit">(min)</span></th></tr></thead><tbody>' +
-      ph.list.map((p, i) => '<tr><td>' + esc(p.name) + '</td><td class="num">' + fmt.cv(p.cv) + '</td><td class="num">' + fmt.ml(p.vol) + '</td><td class="num"><input type="number" class="flowIn" data-i="' + i + '" step="0.01" min="0.01" value="' + p.flow + '"' + dis + '></td><td class="num">' + fmt.min1(p.res) + '</td><td class="num">' + fmt.min1(p.tPump - p.t0) + (p.hold ? ' + ' + fmt.min1(p.hold) + ' hold' : '') + '</td></tr>').join('') +
-      '<tr><td><b>Total</b></td><td class="num"><b>' + fmt.cv(ph.totalVol / tpl.cv) + '</b></td><td class="num"><b>' + fmt.ml(ph.totalVol) + '</b></td><td></td><td></td><td class="num"><b>' + (ph.holdMin ? fmt.min1(ph.pumpMin) + ' + ' + fmt.min1(ph.holdMin) + ' = ' : '') + fmt.min1(ph.totalMin) + '</b></td></tr>' +
-      '</tbody></table></div>' + (phNote ? '<div class="note" style="padding:6px 10px">' + phNote + '</div>' : '') + '</div></div>' +
-      '<div class="panel"><div class="ph"><h3>Fraction scheme</h3></div><div class="pb form">' +
-      '<label class="l" for="sFl">Load fractions (mL)</label><input id="sFl" type="number" step="0.5" min="0.5" value="' + s.frac.loadSize + '" style="width:100px"' + dis + '>' +
-      '<label class="l" for="sFe">Elution fractions (mL)</label><input id="sFe" type="number" step="0.1" min="0.1" value="' + s.frac.elSize + '" style="width:100px"' + dis + '>' +
-      '<label class="l" for="sFc">Elution collected (mL)</label><div class="inl"><input id="sFc" type="number" step="0.5" min="0.5" value="' + s.frac.elCollect + '" style="width:100px"' + dis + '><span class="note">remainder to waste</span></div>' +
-      '<div class="full note" id="fracSummary"></div></div></div>';
-    const fr = TR.buildFractions(ph, { loadPhase: tpl.fractions.loadPhase, loadSize: s.frac.loadSize, elPhase: tpl.fractions.elPhase, elSize: s.frac.elSize, elCollect: s.frac.elCollect });
-    const fl = fr.filter(f => f.phaseKey === tpl.fractions.loadPhase), fe = fr.filter(f => f.phaseKey === tpl.fractions.elPhase);
-    $('#fracSummary').textContent = (fl.length ? 'Load: ' + fl[0].id + ' to ' + fl[fl.length - 1].id + (Math.abs(fl[fl.length - 1].b - fl[fl.length - 1].a - s.frac.loadSize) > 1e-6 ? ' (last ' + fmt.ml(fl[fl.length - 1].b - fl[fl.length - 1].a) + ' mL)' : '') + '. ' : '') + (fe.length ? 'Elution: ' + fe[0].id + ' to ' + fe[fe.length - 1].id + '.' : '');
-    // ---- right column
-    const al = M.alignmentState(), p = M.plumbing(), pi = M.presetInfo(s.pmt), pc = M.presetCheck(), lad = TR.LADDERS[s.pmt], standalone = s.source === 'standalone';
-    Rt.innerHTML =
-      '<div class="panel"><div class="ph"><h3>Chromatography source</h3></div><div class="pb form">' +
+      '<div class="panel"><div class="ph"><h3>AKTA run</h3></div><div class="pb form">' +
       '<label class="l" for="sSys">System</label><select id="sSys"' + dis + '>' + opt('avant', 'AKTA avant 150 (GSK target configuration)', s.system === 'avant') + opt('pure', 'AKTA pure (current UCL configuration)', s.system === 'pure') + '</select>' +
+      '<label class="l" for="sTpl">Method</label><select id="sTpl"' + dis + '>' + opt('protA', 'Protein A platform (GSK)', s.template === 'protA') + opt('free', 'Free run', s.template === 'free') + (window.STAGE2 ? opt('aav', 'AAV affinity capture (AAVX)', s.template === 'aav') : '') + '</select>' +
+      (methodNote ? '<div class="full note">' + methodNote + '</div>' : '') +
+      (s.template === 'free' ? '<div class="full callout">No method template. Rules P2, P4 and H1 are off.</div>' : '') +
+      (s.template === 'aav' ? '<div class="full callout"><b>Empty and full capsid assessment is not a TRIFLE output in this version.</b> Volumes and flows are assumed, apart from the 3.6 mL load and 95 min run. Rules P2 and H1 do not apply to this template. ' + tag('P', 'always') + '</div>' : '') +
       '<label class="l" style="align-self:start;padding-top:2px">Data</label><div class="stack" style="gap:6px">' +
       '<label class="opt"><input type="radio" name="src" value="import"' + (s.source === 'import' ? ' checked' : '') + dis + '><span>Imported UNICORN result export</span></label>' +
       '<label class="opt"><input type="radio" name="src" value="manual"' + (s.source === 'manual' ? ' checked' : '') + dis + '><span>Manual event marks<span class="note">No flow trace or UV; alignment is Uncertain.</span></span></label>' +
@@ -3275,7 +3257,9 @@ const UI = (function () {
       '<label class="l" for="sV2">V2, TRIFLE to collector (mL)</label><div class="inl"><input id="sV2" type="number" step="0.01" min="0" value="' + (isFinite(s.V2) ? s.V2.toFixed(2) : '') + '" style="width:100px"' + dis + '><span class="note">fraction assignment<span class="eng-only">; simulation value</span></span></div>' +
       '<label class="l" for="sFd">UNICORN fraction delay (mL)</label><div class="inl"><input id="sFd" type="number" step="0.01" min="0" value="' + fmt.ml(p.fracDelay) + '" style="width:100px"' + (lock || S.demo.delayNotUpdated ? ' disabled' : '') + '><span class="note">V1 + V2 = ' + fmt.ml(s.V1 + s.V2) + ' mL; tolerance ' + fmt.ml(S.th.i5Tol) + ' mL</span></div>' +
       (al.issues.length && !standalone ? '<div class="full callout warn">' + al.issues.map(esc).join(' ') + (al.fractions === 'Uncertain' ? ' Fraction assignments will be marked Uncertain.' : '') + '</div>' : '<div class="full note">Last checked ' + S.alignChecked + '. Re-check when the tubing changes.</div>') +
-      '</div></div>' +
+      '</div></div>';
+    // ---- right column: TRIFLE's own settings
+    Rt.innerHTML =
       '<div class="panel"><div class="ph"><h3>Acquisition preset</h3><span class="sp"></span>' + tag('P') + '</div><div class="pb form">' +
       '<label class="l">PMT control voltage</label><div class="inl"><div class="seg" id="sPmt">' + [400, 800].map(v => '<button data-v="' + v + '" class="' + (s.pmt === v ? 'on' : '') + '"' + dis + '>' + v + ' mV</button>').join('') + '</div><span class="note">Set by hand on the separate supply ' + tag('E') + '</span></div>' +
       '<label class="l">Preset</label><div><b>' + pi.id + '</b> <span class="muted">checksum ' + pi.checksum + '</span></div>' +
@@ -3301,23 +3285,16 @@ const UI = (function () {
   function num(id) { const v = parseFloat($(id).value); return isFinite(v) ? v : NaN; }
   function wire() {
     const s = S.setup;
-    $('#sEln').onchange = e => set('eln', e.target.value.trim(), 'Notebook experiment ID');
+    $('#sEln').onchange = e => set('eln', e.target.value.trim(), 'Experiment ID');
     $('#sRun').onchange = e => set('runName', e.target.value.trim(), 'Run name');
     $('#sOp').onchange = e => set('operator', e.target.value.trim().toUpperCase() || 'DS', 'Operator');
-    $('#sSample').onchange = e => set('sample', e.target.value, 'Sample type');
     $('#sTpl').onchange = e => {
       const v = e.target.value; const t = TR.TEMPLATES[v === 'free' ? 'protA' : v];
       S.setup.flows = null; S.setup.cvMl = t.cv; S.setup.column = t.column; S.setup.frac = { loadSize: t.fractions.loadSize, elSize: t.fractions.elSize, elCollect: t.fractions.elCollect };
       if (v === 'aav') { if (S.setup.template !== 'aav') preAavName = S.setup.runName; S.setup.system = 'pure'; S.setup.sample = 'AAV crude lysate'; S.setup.runName = AAV_NAME; }
       else { S.setup.system = 'avant'; if (S.setup.sample === 'AAV crude lysate') S.setup.sample = 'mAb CUB'; if (S.setup.runName === AAV_NAME && preAavName) S.setup.runName = preAavName; }
-      S.setup.timerMin = null; set('template', v, 'Method template');
+      S.setup.timerMin = null; set('template', v, 'AKTA method');
     };
-    $('#sCol').onchange = e => set('column', e.target.value, 'Column');
-    $('#sCv').onchange = e => { const v = num('#sCv'); if (v > 0) set('cvMl', v, 'Column volume', 'mL'); else render(); };
-    $$('.flowIn').forEach(inp => inp.onchange = () => { const i = +inp.dataset.i, v = parseFloat(inp.value); if (!(v > 0)) { render(); return; } const fl = S.setup.flows || []; fl[i] = { flow: v }; S.setup.flows = fl; M.audit('setting', 'Flow for ' + (TR.buildPhases(M.template()).list[i] || { name: 'phase ' + (i + 1) }).name + ' set to ' + v + ' mL/min.'); S.setup.timerMin = null; render(); UI.emitDirty(); });
-    $('#sFl').onchange = () => { const v = num('#sFl'); if (v > 0) set('frac.loadSize', v, 'Load fraction size', 'mL'); };
-    $('#sFe').onchange = () => { const v = num('#sFe'); if (v > 0) set('frac.elSize', v, 'Elution fraction size', 'mL'); };
-    $('#sFc').onchange = () => { const v = num('#sFc'); if (v > 0) set('frac.elCollect', v, 'Elution collected volume', 'mL'); };
     $('#sSys').onchange = e => set('system', e.target.value, 'Chromatography system');
     $$('input[name=src]').forEach(r => r.onchange = () => { set('source', r.value, 'Chromatography data source'); UI.settingChangedDuringRun(); });
     $('#sFlow').onchange = e => { set('flowTrace', e.target.checked, 'Flow-rate trace present'); };
@@ -4034,8 +4011,7 @@ const REC = (function () {
       'Preset: ' + pi.id + ' (PMT ' + s.pmt + ' mV, checksum ' + pi.checksum + '; ' + pi.ladderFile + ', ' + pi.irfFile + ').',
       ...(s.rangeMap === 'shift' ? ['Input ranges simulated one setting larger than stated (what-if, to verify on hardware).'] : []),
       'Auto-ranging: ' + (s.autorange === 'v20' ? 'v2.0 reference' : 'Proposed (block median input, corrected no-signal test, baseline not scaled)') + '. Processing: ' + M.procLabel() + '.',
-      'Chromatography: ' + (s.system === 'avant' ? 'AKTA avant 150' : 'AKTA pure') + '; source ' + ({ import: 'imported UNICORN result export', manual: 'manual event marks', standalone: 'none (standalone TRIFLE)' }[src]) + '.',
-      'Column: ' + s.column + ', CV ' + fmt.ml(tpl.cv) + ' mL. Flows: ' + ph.list.map(q => q.short + ' ' + q.flow.toFixed(2)).join(', ') + ' mL/min. Total ' + fmt.ml(ph.totalVol) + ' mL, ' + fmt.min1(ph.totalMin) + ' min.',
+      'Chromatography: ' + (s.system === 'avant' ? 'AKTA avant 150' : 'AKTA pure') + ', method ' + tpl.name + '; ' + ({ import: 'phases and fractions from the imported UNICORN result export', manual: 'phases from manual event marks', standalone: 'none (standalone TRIFLE)' }[src]) + '.',
       ...(src === 'standalone' ? ['Alignment: not used (standalone TRIFLE, time axis).'] : [
         'Delay volumes: V1 (UV to TRIFLE) ' + fmt.ml(s.V1) + ' mL, V2 (TRIFLE to collector) ' + fmt.ml(s.V2) + ' mL, UNICORN fraction delay ' + fmt.ml(p.fracDelay) + ' mL.',
         'Alignment method: ' + (src === 'manual' || !s.flowTrace ? 'delay volumes applied in the volume domain, without a flow trace.' : 'cumulative volume from the integrated AKTA flow trace; delay volumes applied in the volume domain.')
@@ -4152,7 +4128,7 @@ const REC = (function () {
   function exportPng() { const rc = runChart(); if (!rc || !rc.W) { UI.go('run'); return; } const name = fileBase() + '_chromatogram.png'; saved(name, UI.downloadDataUrl(name, rc.toPNG(S.run.id + ', ' + M.procLabel()))); }
   function prov() {
     const R = S.run, s = R ? R.setupSnap : S.setup, p = M.plumbing(), pi = M.presetInfo(s.pmt), src = s.source;
-    const fig = R ? 'Raw blocks 1 to ' + fmt.int(R.acq.n) + ' (block waveforms regenerated from seed ' + TR.SEED + '); processing ' + M.procLabel() + (src === 'standalone' ? '' : '; alignment V1 ' + fmt.ml(s.V1) + ' mL, V2 ' + fmt.ml(s.V2) + ' mL, fraction delay ' + fmt.ml(p.fracDelay) + ' mL; fraction scheme load ' + s.frac.loadSize + ' mL, elution ' + s.frac.elSize + ' mL for ' + s.frac.elCollect + ' mL') + '; preset ' + pi.id + '.' + ({ import: ' AKTA traces from the UNICORN result export.', manual: ' Phases from manual event marks.' }[src] || '') : 'No run.';
+    const fig = R ? 'Raw blocks 1 to ' + fmt.int(R.acq.n) + ' (block waveforms regenerated from seed ' + TR.SEED + '); processing ' + M.procLabel() + (src === 'standalone' ? '' : '; alignment V1 ' + fmt.ml(s.V1) + ' mL, V2 ' + fmt.ml(s.V2) + ' mL, fraction delay ' + fmt.ml(p.fracDelay) + ' mL') + '; preset ' + pi.id + '.' + ({ import: ' AKTA traces, phases and fractions from the UNICORN result export.', manual: ' Phases from manual event marks.' }[src] || '') : 'No run.';
     const table = !R ? 'No run.' : !R.fractions.length ? 'No fractions.' : 'As the chromatogram figure' + (src === 'import' ? ', plus UV statistics over each fraction\'s collected liquid.' : '.');
     $('#recProv').innerHTML = '<table class="tbl"><thead><tr><th>Item</th><th>Derived from</th></tr></thead><tbody>' +
       '<tr><td>Chromatogram figure</td><td class="wrap small">' + esc(fig) + '</td></tr>' +
