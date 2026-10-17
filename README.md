@@ -27,15 +27,15 @@ Other demo controls pick the simulated AKTA run (Protein A platform, AAV capture
 | Run comparison | Proposed | Overlays the current run on archived runs on a common volume axis (0.05 mL bins), in relative mode, with per-phase integrals and a per-fraction comparison. |
 | AAV template | Proposed | AAV affinity capture method (AAVX), with every volume and flow marked assumed. Empty and full capsid assessment is not a TRIFLE output. |
 | Export packaging | Proposed | A4 PDF summary (print) and the HDF5 raw-waveform structure with an estimated file size. No real HDF5 file is written. |
-| Integrations | Future (GSK integration) | Live UNICORN link, IDBS E-WorkBook transfer, automatic data storage, a language-model Questions panel and legacy .pkl conversion, each with its GSK prerequisites. None is implemented. |
+| Integrations | Future | Live UNICORN link, IDBS E-WorkBook transfer, automatic data storage, a language-model Questions panel and legacy .pkl conversion, each with its GSK prerequisites. None is implemented. |
 
 ## Labels
 
 | Label | Meaning |
 |---|---|
-| Existing (v2.0) | Implemented in the current TRIFLE Python control software, version 2.0 |
+| Existing | Implemented in the current TRIFLE Python control software, version 2.0 |
 | Proposed | Designed here, not yet built or experimentally verified |
-| Future (GSK integration) | Needs further development and access to GSK systems |
+| Future | Needs further development and access to GSK systems |
 | Assumed | An inference the instrument team has not confirmed |
 | Development assumption, not validated | A Stage 2 modelling choice, such as a fit weighting or linearity limit |
 | To verify on hardware | A v2.0 behaviour or fix that needs a bench check on the instrument |
