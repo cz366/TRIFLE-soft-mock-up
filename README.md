@@ -10,23 +10,23 @@ An interactive mock-up of the TRIFLE control and analysis software, for review w
 
 ## Five-minute demonstration
 
-1. **Setup.** Tick Trained user and IP agreement. Setup holds only TRIFLE's own settings: run details, sign-in and acquisition (PMT preset, auto-ranging, options, run time). The AKTA method, phases and fractions come from the UNICORN export; in the mock-up, **Demo controls → AKTA run** picks the simulated run. The TRIFLE delay volumes are instrument configuration, in Engineer view → Alignment check.
+1. **Setup.** Tick Trained user and IP agreement. Setup holds only TRIFLE's own settings: run details, sign-in and acquisition (PMT preset, auto-ranging, options, run time). The AKTA method, phases and fractions come from the UNICORN export; in the mock-up, **Demo controls → AKTA run** picks the simulated run. The TRIFLE delay volumes are instrument configuration, in Engineer view → Alignment.
 2. **Readiness.** The checks run on their own. The laser warm-up panel shows the controller reading stepping down at about 18 min and reaching "stable (provisional)" at about 23.7 min. Confirm the PMT voltage. Under **Demo controls**, playback at 60× makes this take seconds.
-3. **Run.** Press **Start**. Fluorescence, UV 280, conductivity and pH appear against volume. Evidence cards appear as rules fire: P1 (UV saturated), P2 with H1 (possible breakthrough, confirm by Protein A HPLC on FT09 and FT10), I2 (range overruns), P6 (above the calibrated range) and P3 with H2 at the end. **Fast-forward to run end** finishes the run immediately.
-4. **Fraction review.** Select fractions in the table or drag across the chart. Compare the UV 100 mAU pool with the fluorescence boundaries, which are a visual comparison only. Elution fractions inside the calibrated range show an indicative concentration. Record decisions (SEC, Lunatic, Protein A HPLC or no action).
-5. **Record.** Copy the notebook-ready sections and export CSV, JSON and PNG files, or print an A4 PDF (offline file only). The audit trail lists every change.
+3. **Run.** Press **Start**. Start then gives way to Pause (Continue while paused) and End. Fluorescence, UV 280, conductivity and pH appear against volume, and Run values shows the TRIFLE readings: fluorescence, sensitivity, input range, alignment and, during elution, concentration. Evidence cards appear as rules fire: P1 (UV saturated), P2 with H1 (possible breakthrough, confirm by Protein A HPLC on FT09 and FT10), I2 (range overruns), P6 (above the calibrated range) and P3 with H2 at the end. **Demo controls → Fast-forward** finishes the run immediately.
+4. **Fraction review.** Select fractions in the table or drag across the chart. Compare the UV 100 mAU pool with the fluorescence boundaries, which are a visual comparison only. Elution fractions inside the calibrated range show an indicative concentration. Record decisions (HPLC-SEC, Lunatic, Protein A HPLC or no action).
+5. **Record.** One column: Exports first, then the notebook-ready summary and the audit trail. Export Block data (CSV), Fraction table (CSV), Metadata (JSON) and Chromatogram (PNG), or print Summary (PDF) to A4 (offline file only). Copy the notebook-ready sections. The audit trail lists every change.
 
-Other demo controls pick the simulated AKTA run (Protein A platform, AAV capture, free run, manual event marks or no AKTA data), start before the laser is stable (rule I1) and use the old UNICORN fraction delay (rule I5, with fraction assignments marked Uncertain). The **Mock-up · simulated data** button in the header opens the About page: evaluation objectives, labels and planned integrations. In Engineer view you can simulate a fault (digitiser, filter wheel or laser), run a reproducibility check and work through **Discrepancies to verify**.
+Other demo controls pick the simulated AKTA run (Protein A platform, AAV capture, free run, manual event marks or no AKTA data), start before the laser is stable (rule I1) and use the old UNICORN fraction delay (rule I5, with fraction assignments marked Uncertain). The **Mock-up · simulated data** button in the header opens the About page: evaluation objectives, labels and planned integrations. In Engineer view you can simulate a fault (digitiser, filter wheel or laser), run a reproducibility check and work through **Discrepancies**.
 
 ## Stage 2 additions
 
 | Area | Label | What it shows |
 |---|---|---|
 | Calibration | Proposed | Step-injection calibration with purified IgG: plateau detection, unweighted, 1/x or 1/x² linear fits, linear range, "possible inner-filter onset" and a calibration record tied to a PMT preset, processing mode and expiry date. Concentration is indicative, elution fractions only, and never used for yield or recovery. Rules P6 (above calibrated range) and I7 (calibration not applicable). |
-| Decay analysis | Proposed | Option A decay metric per block, a decay strip on the Run chart, a per-fraction decay column and rule P7 with hypothesis H3 (confirm by HPLC-SEC). Engineer view adds a reconvolution fit with the stored IRF, weighted residuals and χ². |
+| Decay analysis | Proposed | Option A decay metric per block, a decay strip on the Run chart, a per-fraction decay column and rule P7 with hypothesis H3 (confirm by HPLC-SEC). The option is in Processing; while it is off, it shows only in Engineer view. Engineer view → Decay adds a reconvolution fit with the stored IRF, weighted residuals and χ², and the metric definition. |
 | Run comparison | Proposed | Overlays the current run on archived runs on a common volume axis (0.05 mL bins), in relative mode, with per-phase integrals and a per-fraction comparison. |
 | AAV template | Proposed | AAV affinity capture method (AAVX), with every volume and flow marked assumed. Empty and full capsid assessment is not a TRIFLE output. |
-| Export packaging | Proposed | A4 PDF summary (print) and the HDF5 raw-waveform structure with an estimated file size. No real HDF5 file is written. |
+| Export packaging | Proposed | Summary (PDF), printed to A4, and Raw waveforms (HDF5): the estimated file size, with the planned group tree in Engineer view. No real HDF5 file is written. |
 | Integrations | Future | Live UNICORN link, IDBS E-WorkBook transfer, automatic data storage, a language-model Questions panel and legacy .pkl conversion, each with its GSK prerequisites. None is implemented. |
 
 ## Labels
@@ -37,7 +37,7 @@ Other demo controls pick the simulated AKTA run (Protein A platform, AAV capture
 | Proposed | Designed here, not yet built or experimentally verified |
 | Future | Needs further development and access to GSK systems |
 | Assumed | An inference the instrument team has not confirmed |
-| Development assumption, not validated | A Stage 2 modelling choice, such as a fit weighting or linearity limit |
+| Development assumption | A Stage 2 modelling choice, such as a fit weighting or linearity limit, not validated |
 | To verify on hardware | A v2.0 behaviour or fix that needs a bench check on the instrument |
 
 The Scientist view shows a tag only where it changes the conclusion. The Engineer view shows every tag.
@@ -46,7 +46,7 @@ The Scientist view shows a tag only where it changes the conclusion. The Enginee
 
 **Simulation**
 
-- Seed 20261009, mulberry32 random streams per block and waveform. The simulated clock advances by a fixed step per tick, so two playbacks give identical data (checksum in Engineer view, Faults and reproducibility).
+- Seed 20261009, mulberry32 random streams per block and waveform. The simulated clock advances by a fixed step per tick, so two playbacks give identical data (checksum in Engineer view → Faults).
 - Waveform model: the 7-term IRF from the v2.0 settings convolved with a single exponential (τ about 3.5 ns), 8-bit quantisation, 600 samples at 0.2 ns. The IRF amplitude units are not recorded, and W is treated as σ.
 - PMT presets: 400 mV has gain 1 and noise 0.2 mV; 800 mV has gain 20 and noise 1.2 mV. The 800 mV values are assumed.
 - Laser warm-up: the controller reading steps down at about 18 min; "stable" means the 30 s moving median holds within the tolerance for the hold time.
@@ -56,7 +56,7 @@ The Scientist view shows a tag only where it changes the conclusion. The Enginee
 - Archived runs (RUN-0128-01, RUN-0091-01 at 800 mV, UCL-AAV-0813) are simulated with varied seeds and peak scales.
 - Record size for the saving estimate: about 50 kB per block (10 waveforms × 600 samples × 8 bytes plus metadata).
 
-**Thresholds** (all provisional and editable in Engineer view → Rules and thresholds)
+**Thresholds** (all provisional and editable in Engineer view → Rules)
 
 - Laser change during acquisition 2 % (I6), re-equilibration baseline 10 % (P3), range overrun counted above 90 % of the input range (I2).
 - Calibration linear range: every level within 5 % of the fit; default weighting 1/x; expiry 30 days. These are development assumptions.
@@ -69,14 +69,14 @@ The Scientist view shows a tag only where it changes the conclusion. The Enginee
 
 ## Discrepancies found
 
-Engineer view → Diagnostics → **Discrepancies to verify** lists each item with its v2.0 source, its effect, the resolution and the check to run on the instrument. v2.0 behaviour stays the default, and every Proposed fix is off until chosen.
+Engineer view → Diagnostics → **Discrepancies** lists each item with its v2.0 source, its effect, the resolution and the check to run on the instrument. v2.0 behaviour stays the default, and every Proposed fix is off until chosen.
 
-1. **Rule ID clash (resolved).** The Stage 2 prompt names "Calibration not applicable" I6, but Stage 1 already uses I6 for "Laser output changed". Rule IDs are stored in card IDs, the audit trail and the exports, so they are permanent: the calibration rule is **I7**, and no ID is reused. Engineer view → Rules and thresholds lists all 17 rules with their source. The Stage 2 prompt should be corrected to I7.
+1. **Rule ID clash (resolved).** The Stage 2 prompt names "Calibration not applicable" I6, but Stage 1 already uses I6 for "Laser output changed". Rule IDs are stored in card IDs, the audit trail and the exports, so they are permanent: the calibration rule is **I7**, and no ID is reused. Engineer view → Rules lists all 17 rules with their source. The Stage 2 prompt should be corrected to I7.
 2. **Digitiser range mapping (to verify on hardware).** v2.0 sends range index 1 for 10 mV and uses the same index to set the range and to convert counts to volts (scope_class.py 145, 277, 391). In the PicoSDK conversion table, index 1 is 20 mV. If the driver also counts from 10 mV = 0, as public PicoSDK sources suggest, every range is one setting larger and volts are right, but the 80 % target is only 32 to 40 % of the real range. If it counts from 10 mV = 1, volts read 2 to 2.5 times high. The mock-up uses the stated ranges; Ladder and IRF has a what-if for one setting larger. Proposed: select ranges by driver name.
 3. **Baseline leverage.** v2.0 takes the baseline as the mean of the first 20 ns and subtracts it over 119.8 ns (signal_class.py 52 to 61). In the low_signal reference, a filter change from OD 2 to OD 3 at 50 mV, the same signal reads 27 % low (ratio 0.730). The median baseline alone gives 1.007, the 30 to 70 ns window alone 0.940, and both together 1.032. Each reference step is one synthetic waveform, so a few per cent is noise. Both are Proposed processing options, off by default.
 4. **Flat waveform in auto-ranging (to verify on hardware).** If the first 100 samples of the latest waveform sit on one count and nothing lies below them, v2.0 cannot call it no signal. Every step ties and v2.0 drops to step 1, the least sensitive, from any step (signal_attenuation.py 74, 155, 164). Simulated v2.0 runs never meet this. The Proposed block-median input did meet it on the 800 mV preset (21 drops to step 1 during equilibration), and so would v2.0 if item 2's larger ranges are real. Proposed auto-ranging now counts "nothing below the baseline" as no signal; no reference value changes.
 5. **Saving interval (Proposed; to verify on hardware).** loop_measurements.py line 28 ORs the 2 s interval with the loop's own running condition, so v2.0 pickles the whole record after every block. In the simulated run that is 13,675 saves of a record that grows to about 684 MB, about 4.7 TB written in total (estimate). Proposed (Setup): save at most every 2 s, and only with new data, which would make 6,839 saves. On the instrument, log the time and size of each save over a 95 min experiment.
-6. **Timeouts (resolved).** A timed-out block adds no waveforms. v2.0 re-runs auto-ranging on the previous block's last waveform, which returns the step already in use, so the range never changes; v2.0 keeps no record of the timeout. The default run has one, at block 6,500. The Run log now lists each timeout, and Auto-range trace opens it.
+6. **Timeouts (resolved).** A timed-out block adds no waveforms. v2.0 re-runs auto-ranging on the previous block's last waveform, which returns the step already in use, so the range never changes; v2.0 keeps no record of the timeout. The default run has one, at block 6,500. The Run log now lists each timeout, and Auto-range opens it.
 7. **Laser emission check (Proposed; to verify on hardware).** connections.py lines 87 to 88 skip the check and set laser_state = True, so v2.0 reports ready without a laser. Re-enabling it is not enough: it also passes when the block times out and returns no waveforms. Proposed (Setup or Readiness): all 10 pulses within 3 s, each at least 0.005 V; a timeout fails and Start stays disabled.
 
 Also found (to verify on hardware): v2.0 sends the trigger threshold as 150 with the comment "Threshold is in mV" (scope_class.py 109). The ps6000a programmer's guide reads the value as ADC counts, about 2.3 mV on ±500 mV, not 0.15 V.
@@ -89,3 +89,5 @@ The interface cleanup removed some text the prompts describe, where it repeated 
 - The header shows "Laser Stable"; "stable (provisional)" stays on Readiness and in the rule text.
 - The Engineer switch reads "Simulated role" without "not access control"; the Questions caption drops "This is not a general assistant".
 - Per-row label tags are shown once per section instead of on every row.
+- Detail a scientist does not act on is in Engineer view only: Provenance on Record (the metadata export keeps it), the HDF5 group tree, the fraction median pulse, the delay volumes in the fraction table note, the Blocks row in Run values and the I6 card's beam-monitor and controller caveats (the Run log and exports keep the full card text).
+- The fraction table has no CV column; the x axis switches to CV, and the fraction CSV keeps CV_start and CV_end. Concentration cells read '–' outside elution and Above range or Below range outside the calibrated range.

@@ -175,6 +175,7 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 .ch-li.off { opacity: 0.4; }
 .ch-li .ch-ll { color: var(--text2); }
 .ch-li .ch-lv { font-weight: bold; min-width: 34px; }
+.ch-li .ch-lv:empty { min-width: 0; }
 .ch-sw { display: inline-block; width: 18px; height: 0; border-top: 2px solid; }
 .ch-sw.dash { border-top-style: dashed; } .ch-sw.dot { border-top-style: dotted; } .ch-sw.dashdot { border-top-style: dashed; }
 .ch-sw.pt { width: 7px; height: 7px; border: 0; }
@@ -275,7 +276,7 @@ body:not(.eng) .rd-lower { grid-template-columns: minmax(0, 1fr); }
 .modal .mh { padding: 10px 14px; border-bottom: 1px solid var(--border); font-weight: bold; font-size: 16px; }
 .modal .mb { padding: 12px 14px; overflow: auto; }
 .modal .mf { padding: 10px 14px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
-.popover { position: fixed; background: #fff; border: 1px solid var(--border2); border-radius: var(--r); box-shadow: 0 1px 3px rgba(0,0,0,0.18); padding: 8px; z-index: 40; font-size: 13.5px; }
+.popover { position: fixed; background: #fff; border: 1px solid var(--border2); border-radius: var(--r); box-shadow: 0 1px 3px rgba(0,0,0,0.18); padding: 8px; z-index: 48; font-size: 13.5px; }
 
 /* ---------- print: notebook-ready summary on A4 ---------- */
 @media print {
@@ -318,6 +319,10 @@ body:not(.eng) .rd-lower { grid-template-columns: minmax(0, 1fr); }
 #frTbl td:last-child { position: sticky; right: 0; background: var(--panel); box-shadow: -1px 0 0 var(--border); }
 #frTbl th:last-child { right: 0; z-index: 2; box-shadow: -1px 0 0 var(--border); }
 #frTbl tbody tr.sel td:last-child { background: var(--accent-bg); }
+#frTbl th { height: auto; padding-top: 4px; padding-bottom: 4px; vertical-align: bottom; }
+#frTbl th .unit { display: block; }
+body:not(.eng) .fr-detail-grid { grid-template-columns: minmax(0, 1fr) !important; }
+#scr-fractions.fr-none .fr-grid, #scr-fractions.fr-none #fTools { display: none !important; }
 
 /* ---------- narrow screens (tablet portrait and phone) ---------- */
 /* ---------- Questions panel: opens over the work area below 1600 px, so screens keep their layout ---------- */
@@ -331,7 +336,7 @@ body:not(.eng) .rd-lower { grid-template-columns: minmax(0, 1fr); }
   #hdr { grid-column: 1; flex-wrap: wrap; gap: 6px 10px; padding: 6px 16px; }
   .m-only { display: inline-flex; }
   #mMenu { order: 0; } .h-id { order: 1; } .h-right { order: 2; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-  .h-conn { order: 3; flex: 1 1 100%; border-left: 0; padding-left: 0; height: auto; overflow-x: auto; scrollbar-width: none; }
+  .h-conn { order: 3; flex: 1 1 100%; border-left: 0; padding-left: 0; height: auto; flex-wrap: wrap; row-gap: 2px; overflow: visible; }
   .h-conn::-webkit-scrollbar { display: none; }
   #hUser, #hElapsed { display: none; }
   #rail { position: fixed; top: 0; bottom: 0; left: 0; width: min(280px, 86vw); z-index: 46; transform: translateX(-105%); transition: transform 160ms ease-out; box-shadow: 0 0 14px rgba(0,0,0,0.18); padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
@@ -340,8 +345,9 @@ body:not(.eng) .rd-lower { grid-template-columns: minmax(0, 1fr); }
   #work { grid-column: 1; }
   #qpanel { display: none; }
   #qpanel:not(.collapsed) { display: flex; position: fixed; inset: 0; width: auto; z-index: 60; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
-  #status { grid-column: 1; overflow-x: auto; scrollbar-width: none; }
-  #status .st-warn { flex: none; }
+  #status { grid-column: 1; flex-wrap: wrap; white-space: normal; padding: 3px 8px; row-gap: 2px; }
+  #status .st-warn { flex: 1 1 100%; white-space: normal; padding-left: 10px; }
+  @media (max-width: 560px) { #status > span:not(.st-warn):not(.muted) { display: none; } }
   .screen { padding: 10px 16px 16px; }
   .screen.fixed { overflow-y: auto; }
   .screen.fixed > * { flex: none !important; }
@@ -361,6 +367,7 @@ body:not(.eng) .rd-lower { grid-template-columns: minmax(0, 1fr); }
   .fr-grid > .panel { min-height: 320px; }
   .fr-detail-grid { grid-template-columns: minmax(0, 1fr) !important; }
   .modal { width: calc(100vw - 32px); }
+  .modal .tbl td { white-space: normal; }
   .popover { max-width: calc(100vw - 32px); }
 }
 @media (prefers-reduced-motion: reduce) { #rail { transition: none; } }
@@ -375,6 +382,7 @@ code, pre, kbd, samp { font-family: inherit; }
 .eng-align { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
 .eng-align > * { flex: 1 1 400px; min-width: 0; }
 .eng-align > :first-child { flex-grow: 1.6; }
+#alOffset:empty { display: none; }
 #arIn { max-width: 640px; }
 #engBody .tbl th { height: auto; vertical-align: bottom; }
 #engBody .tbl th .unit { display: block; }
@@ -391,6 +399,7 @@ code, pre, kbd, samp { font-family: inherit; }
 .disc-b ol { margin: 0; padding-left: 18px; }
 .disc-b li + li { margin-top: 4px; }
 .disc-b .tbl { margin-bottom: 6px; }
+.disc-b .tbl th { white-space: normal; }
 .disc-b .btn { margin-top: 2px; }
 #discTbl td:nth-child(2) { min-width: 112px; }
 #discTbl td:last-child { min-width: 128px; }
@@ -406,11 +415,9 @@ code, pre, kbd, samp { font-family: inherit; }
   #discTbl td[data-h]::before { content: attr(data-h); display: block; font-size: 12.5px; color: var(--text2); }
 }
 /* Record */
-#scr-record .rec-grid { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
-#scr-record { container-type: inline-size; }
-@container (max-width: 960px) { #scr-record .rec-grid { grid-template-columns: minmax(0, 1fr); } }
+#scr-record .rec-grid { grid-template-columns: minmax(0, 1fr); }
+#scr-record .rec-grid > .stack { order: -1; }
 #exStage2 { display: contents; }
-@media (max-width: 820px) { #scr-record .rec-grid { grid-template-columns: minmax(0, 1fr); } }
 /* Units under the column name, so the fraction table fits the summary panel */
 #recBody .tbl th { height: auto; padding-top: 4px; padding-bottom: 4px; vertical-align: bottom; }
 #recBody .tbl th .unit { display: block; }
@@ -421,18 +428,22 @@ code, pre, kbd, samp { font-family: inherit; }
 #scr-run .scr-h { flex-wrap: wrap; row-gap: 6px; }
 #scr-run .scr-h .acq-chips { margin-left: 8px; }
 #scr-run .run-top { flex-wrap: nowrap; }
+#work.expanded #scr-run .run-top { flex: none !important; }
 #rCtlNote { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
 /* Scientist view: Run values, Run log and Evidence (Pulse is in the Engineer view) */
 body:not(.eng) .run-bottom { grid-template-columns: minmax(290px, 33fr) minmax(260px, 33fr) minmax(260px, 34fr); }
 body:not(.eng) .run-bottom.narrow { grid-template-columns: minmax(220px, 40fr) minmax(240px, 60fr); }
 .run-bottom > .panel > #runValues { padding-top: 3px; }
 #runValues .sysstate { margin-bottom: 1px; }
-#runValues .rv td { height: 22px; line-height: 20px; }
+#runValues .rv td { height: 21px; line-height: 20px; }
 /* evidence card rule ID: the title shows the rule condition */
 .ecard .rid[title]:not([title=""]) { cursor: help; }
 #runValues .rv td.v .state { white-space: normal; text-align: right; }
 #runValues .rv .flag { font-size: 13.5px; line-height: 16px; margin: 0 0 0 4px; }
-@media (max-width: 820px) { #rCtlNote { flex-basis: 100%; white-space: normal; } #scr-run .scr-h .sep { display: none; } }
+#runValues .rv td.k { width: 1%; }
+#runValues .rbwrap > .flag, #runValues .rbwrap > b { flex: none; white-space: nowrap; }
+#runValues .rangebar { min-width: 24px; }
+@media (max-width: 820px) { #rCtlNote { flex-basis: 100%; white-space: normal; } #scr-run .scr-h .sep { display: none; } body:not(.eng) .run-bottom, body:not(.eng) .run-bottom.narrow { grid-template-columns: minmax(0, 1fr); } }
 /* Setup: the method phases table fits a half-width panel at 1280 px */
 .tbl.phases th { white-space: normal; vertical-align: bottom; line-height: 1.25; padding-top: 3px; padding-bottom: 3px; }
 .tbl.phases th, .tbl.phases td { padding-left: 6px; padding-right: 6px; }
@@ -1725,10 +1736,11 @@ const CH = (function () {
       const cfg = this.cfg, W = this.W, H = this.H, gap = 6;
       const ml = cfg.marginLeft || 70, mr = cfg.panels.some(p => p.yr) ? (cfg.marginRight || 62) : 14, top = cfg.topBand != null ? cfg.topBand : 32, bottom = cfg.bottom || 36;
       const vis = cfg.panels.filter(p => !(p.hidden && p.hidden()));
-      const fixedSum = vis.filter(p => p.px).reduce((s, p) => s + p.px, 0), gaps = Math.max(0, vis.length - 1) * gap;
-      const mainH = Math.max(40, H - top - bottom - fixedSum - gaps);
+      const gaps = Math.max(0, vis.length - 1) * gap, avail = H - top - bottom - gaps, want = vis.filter(p => p.px).reduce((s, p) => s + p.px, 0);
+      const k = want > avail / 2 ? avail / 2 / want : 1, stripH = p => Math.max(30, Math.floor(p.px * k));
+      const mainH = Math.max(40, avail - vis.filter(p => p.px).reduce((s, p) => s + stripH(p), 0));
       let y = top; this.panels = [];
-      for (const p of vis) { const h = p.px || mainH; this.panels.push({ cfg: p, key: p.key, x: ml, y, w: W - ml - mr, h }); y += h + gap; }
+      for (const p of vis) { const h = p.px ? stripH(p) : mainH; this.panels.push({ cfg: p, key: p.key, x: ml, y, w: W - ml - mr, h }); y += h + gap; }
       this.px0 = ml; this.pw = W - ml - mr; this.top = top; this.bottomY = H - bottom;
       for (const s of this.series) s.b = null;
     }
@@ -1791,6 +1803,7 @@ const CH = (function () {
         for (let c = 0; c < b.cnt.length; c++) { if (!b.cnt[c]) continue; if (b.min[c] < lo) lo = b.min[c]; if (b.max[c] > hi) hi = b.max[c]; if (b.minPos[c] < loP) loP = b.minPos[c]; if (b.maxPos[c] > hiP) hiP = b.maxPos[c]; if (b.rmin[c] < rlo) rlo = b.rmin[c]; if (b.rmax[c] > rhi) rhi = b.rmax[c]; }
       }
       if (rhi > rlo) { lo = rlo; hi = rhi; }
+      else if (side === 'l' && p === this.panels[0]) { const v = []; for (const s of this.series) if (s.visible && s.panel === p.key && (s.side || 'l') === 'l' && s.b && s.mode !== 'points') for (let c = 0; c < s.b.cnt.length; c++) if (s.b.cnt[c]) v.push(s.b.last[c]); if (v.length >= 3) { v.sort((a, b) => a - b); const m = v[v.length >> 1], d = v.map(x => Math.abs(x - m)).sort((a, b) => a - b)[v.length >> 1] || Math.abs(m) * 0.1 || 1e-6, w = v.filter(x => Math.abs(x - m) <= 10 * d); lo = w[0]; hi = w[w.length - 1]; } }
       if (log) {
         if (!(hiP > 0)) return { lin: false, a: -3, b: 1, ax };
         let a = Math.floor(Math.log10(Math.max(loP, hiP * 1e-6))), b = Math.ceil(Math.log10(hiP * 1.05));
@@ -1866,8 +1879,7 @@ const CH = (function () {
           ctx.textAlign = 'right';
           for (const v of yt) { const y = p.y + p.h - (v - s.l.a) / (s.l.b - s.l.a) * p.h; if (p.cfg.px && y < p.y + 6) continue; ctx.fillText(s.l.lin ? (s.l.ax.tickFmt ? s.l.ax.tickFmt(v) : tickFmt(v, st)) : supExp(v), p.x - 4, Math.min(p.y + p.h - 5, Math.max(p.y + 5, y))); }
           ctx.save(); ctx.fillStyle = C.text; ctx.textAlign = 'center';
-          if (p.cfg.px) { const t = (s.l.ax.short || s.l.ax.title) + (s.l.ax.unit ? ' (' + s.l.ax.unit + ')' : ''); ctx.font = FONT_S; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; const tw = ctx.measureText(t).width; ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(p.x + 2, p.y + 2, tw + 8, 16); ctx.fillStyle = C.text2; ctx.fillText(t, p.x + 6, p.y + 4); ctx.textBaseline = 'middle'; }
-          else { ctx.translate(12, p.y + p.h / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(s.l.ax.title + (s.l.ax.unit ? ' (' + s.l.ax.unit + ')' : '') + (s.l.lin ? '' : ', log'), 0, 0); }
+          if (!p.cfg.px) { let t = s.l.ax.title + (s.l.ax.unit ? ' (' + s.l.ax.unit + ')' : '') + (s.l.lin ? '' : ', log'); if (ctx.measureText(t).width > 2 * (p.y + p.h / 2) - 4) t = s.l.ax.title + (s.l.ax.unit ? ' (' + s.l.ax.unit.split(',')[0] + ')' : '') + (s.l.lin ? '' : ', log'); ctx.translate(12, p.y + p.h / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(t, 0, 0); }
           ctx.restore();
         }
         if (s.r) {
@@ -1889,7 +1901,7 @@ const CH = (function () {
         for (const stride of [1, 2, 5, 10]) {
           const w = fr.items.length > 1 ? Math.min(...fr.items.slice(0, -1).map(f => this.xToPx(f.b) - this.xToPx(f.a))) : 999;
           if (w * stride >= 26 || stride === 10) {
-            fr.items.forEach((f, k) => { const num = parseInt(f.id.replace(/\D/g, ''), 10); if (stride > 1 && num !== 1 && num % stride !== 0) return; const x = (this.xToPx(f.a) + this.xToPx(f.b)) / 2; if (x < main.x - 5 || x > main.x + main.w + 5) return; ctx.fillText(f.id, x, main.y - 6); });
+            let lastR = -1e9; fr.items.forEach((f, k) => { const num = parseInt(f.id.replace(/\D/g, ''), 10); if (stride > 1 && num !== 1 && num % stride !== 0) return; const x = (this.xToPx(f.a) + this.xToPx(f.b)) / 2, tw = ctx.measureText(f.id).width; if (x < main.x - 5 || x > main.x + main.w + 5 || x - tw / 2 < lastR + 6) return; ctx.fillStyle = '#FFFFFF'; ctx.fillRect(x - tw / 2 - 2, main.y - 12, tw + 4, 12); ctx.fillStyle = C.text2; ctx.fillText(f.id, x, main.y - 6); lastR = x + tw / 2; });
             break;
           }
         }
@@ -1900,14 +1912,13 @@ const CH = (function () {
       for (const L of vl) {
         const x = Math.round(this.xToPx(L.x)) + 0.5; if (x < main.x || x > main.x + main.w) continue;
         ctx.save(); ctx.strokeStyle = L.color || C.text2; ctx.setLineDash(dashFor(L.dash || 'dash')); ctx.lineWidth = L.width || 1; ctx.beginPath(); ctx.moveTo(x, main.y); ctx.lineTo(x, main.y + main.h); ctx.stroke(); ctx.restore();
-        if (L.label) { ctx.font = FONT_S; ctx.fillStyle = L.color || C.text2; ctx.textAlign = L.align || 'left'; ctx.fillText(L.label, x + (L.align === 'right' ? -3 : 3), main.y + 8 + (L.row || 0) * 12); }
       }
       // hatched intervals (alignment uncertain) and interval bars (laser change)
       for (const h of (cfg.hatches ? cfg.hatches() : [])) { const x0 = Math.max(main.x, this.xToPx(h.x0)), x1 = Math.min(main.x + main.w, this.xToPx(h.x1)); if (x1 > x0) for (const p of this.panels) this.hatch(ctx, x0, p.y, x1 - x0, p.h, 'rgba(91,102,112,0.28)'); }
       let ivRow = 0;
       for (const iv of (cfg.intervals ? cfg.intervals() : [])) {
         const x0 = Math.max(main.x, this.xToPx(iv.x0)), x1 = Math.min(main.x + main.w, Math.max(this.xToPx(iv.x1), this.xToPx(iv.x0) + 2)); if (x1 <= main.x || x0 >= main.x + main.w) continue;
-        ctx.fillStyle = iv.color || C.warn; ctx.fillRect(x0, main.y + 1 + ivRow * 4, x1 - x0, 3); ctx.font = FONT_S; ctx.textAlign = 'left'; ctx.fillText(iv.label, x0 + 2, main.y + 11 + ivRow * 11); ivRow = (ivRow + 1) % 3;
+        ctx.fillStyle = iv.color || C.warn; ctx.fillRect(x0, main.y + 1 + ivRow * 16, x1 - x0, 3); ivRow = (ivRow + 1) % 3;
       }
       // x axis
       const yAx = this.bottomY; ctx.strokeStyle = C.axis; ctx.beginPath(); ctx.moveTo(this.px0, yAx + 0.5); ctx.lineTo(this.px0 + this.pw, yAx + 0.5); ctx.stroke();
@@ -1915,11 +1926,11 @@ const CH = (function () {
       for (const v of xt) { const x = this.xToPx(v); ctx.beginPath(); ctx.moveTo(Math.round(x) + 0.5, yAx); ctx.lineTo(Math.round(x) + 0.5, yAx + 4); ctx.stroke(); ctx.fillText(cfg.xTickFmt ? cfg.xTickFmt(v) : tickFmt(v, xst), x, yAx + 6); }
       ctx.fillStyle = C.text; ctx.font = FONT; ctx.fillText(cfg.xTitle(), this.px0 + this.pw / 2, yAx + 17);
       // markers on the x axis: sensitivity ticks and note/event markers
-      this.markerHits = [];
-      for (const m of (cfg.markers ? cfg.markers() : [])) {
+      this.markerHits = []; let mEnd = -1e9, mRow = 0;
+      for (const m of (cfg.markers ? cfg.markers() : []).slice().sort((a, b) => a.x - b.x)) {
         const x = this.xToPx(m.x); if (x < this.px0 - 1 || x > this.px0 + this.pw + 1) continue;
         if (m.kind === 'tick') { ctx.strokeStyle = m.color || C.v20; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(Math.round(x) + 0.5, yAx - 5); ctx.lineTo(Math.round(x) + 0.5, yAx); ctx.stroke(); this.markerHits.push({ x, y0: yAx - 6, y1: yAx + 2, text: m.text }); }
-        else { ctx.fillStyle = m.color || C.text; ctx.beginPath(); ctx.moveTo(x, yAx - 9); ctx.lineTo(x - 4, yAx - 1); ctx.lineTo(x + 4, yAx - 1); ctx.closePath(); ctx.fill(); ctx.font = FONT_S; ctx.textBaseline = 'bottom'; ctx.textAlign = 'center'; ctx.fillText(m.label || '', x, yAx - 10); ctx.textBaseline = 'top'; this.markerHits.push({ x, y0: yAx - 22, y1: yAx + 2, text: m.text }); }
+        else { ctx.font = FONT_S; const tw = ctx.measureText(m.label || '').width; mRow = x - tw / 2 < mEnd ? mRow + 1 : 0; mEnd = x + tw / 2 + 3; const ly = yAx - 10 - mRow * 13; ctx.fillStyle = m.color || C.text; ctx.beginPath(); ctx.moveTo(x, yAx - 9); ctx.lineTo(x - 4, yAx - 1); ctx.lineTo(x + 4, yAx - 1); ctx.closePath(); ctx.fill(); ctx.textBaseline = 'bottom'; ctx.textAlign = 'center'; ctx.fillText(m.label || '', x, ly); ctx.textBaseline = 'top'; this.markerHits.push({ x, y0: ly - 12, y1: yAx + 2, text: m.text }); }
       }
       ctx.textBaseline = 'alphabetic';
     }
@@ -1986,11 +1997,12 @@ const CH = (function () {
         ctx.fillStyle = h.fill || 'rgba(27,54,93,0.10)'; ctx.fillRect(x0, top, x1 - x0, bot - top);
         if (h.edge !== false) { ctx.strokeStyle = 'rgba(27,54,93,0.55)'; ctx.lineWidth = 1; ctx.strokeRect(Math.round(x0) + 0.5, top + 0.5, Math.round(x1 - x0), bot - top - 1); }
       }
+      this.drawLabels(ctx);
       // draggable lines (rulers, guides, fluorescence boundaries)
       for (const g of this.dragLines()) {
         const x = Math.round(this.xToPx(g.x)) + 0.5; if (x < main.x || x > main.x + main.w) continue;
         ctx.strokeStyle = g.color; ctx.lineWidth = 1; ctx.setLineDash(dashFor(g.dash)); ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bot); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = g.color; ctx.fillRect(x - 4, top - 1, 8, 7); if (g.label) { ctx.font = FONT_S; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText(g.label, x + 6, top + 1 + (g.row || 0) * 11); }
+        ctx.fillStyle = g.color; ctx.fillRect(x - 4, top - 1, 8, 7); if (g.label) { ctx.font = FONT_S; ctx.textBaseline = 'top'; const tw = ctx.measureText(g.label).width, flip = x + 6 + tw > main.x + main.w, lx = flip ? x - 6 - tw : x + 6, ly = top + 1 + (g.row || 0) * 11; ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(lx - 1, ly - 1, tw + 2, 13); ctx.fillStyle = g.color; ctx.textAlign = 'left'; ctx.fillText(g.label, lx, ly); }
       }
       if (this.cursorX != null && !this.dragging) { const x = Math.round(this.xToPx(this.cursorX)) + 0.5; ctx.strokeStyle = 'rgba(31,41,51,0.45)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bot); ctx.stroke(); }
       if (this.dragging && (this.dragging.kind === 'zoom' || this.dragging.kind === 'select')) {
@@ -1998,6 +2010,14 @@ const CH = (function () {
         ctx.fillStyle = 'rgba(27,54,93,0.08)'; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); ctx.strokeStyle = C.accent; ctx.lineWidth = 1; ctx.strokeRect(x0 + 0.5, y0 + 0.5, x1 - x0, y1 - y0);
       }
       ctx.textBaseline = 'alphabetic';
+    }
+    // labels drawn above the traces with a backing: interval labels, strip titles, reference-line labels (also on the PNG)
+    drawLabels(ctx) {
+      const main = this.panels[0]; if (!main) return;
+      let ivRow = 0; ctx.font = FONT_S; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      for (const iv of (this.cfg.intervals ? this.cfg.intervals() : [])) { const x0 = Math.max(main.x, this.xToPx(iv.x0)); if (this.xToPx(iv.x1) < main.x || x0 >= main.x + main.w) continue; const y = main.y + 11 + ivRow * 16, tw = ctx.measureText(iv.label).width; ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.fillRect(x0 + 1, y - 7, tw + 4, 14); ctx.fillStyle = iv.color || C.warn; ctx.fillText(iv.label, x0 + 3, y); ivRow = (ivRow + 1) % 3; }
+      for (const p of this.panels) { const ax = p.cfg.yl; if (!p.cfg.px || !ax) continue; const t = (ax.short || ax.title) + (ax.unit ? ' (' + ax.unit + ')' : ''); ctx.font = FONT_S; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; const tw = ctx.measureText(t).width; ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(p.x + 2, p.y + 2, tw + 8, 16); ctx.fillStyle = C.text2; ctx.fillText(t, p.x + 6, p.y + 4); }
+      for (const L of (this.cfg.vlines ? this.cfg.vlines() : [])) { if (!L.label) continue; const x = Math.round(this.xToPx(L.x)) + 0.5; if (x < main.x || x > main.x + main.w) continue; ctx.font = FONT_S; ctx.textBaseline = 'middle'; const tw = ctx.measureText(L.label).width, right = L.align === 'right' || (L.align !== 'left' && x + 3 + tw > main.x + main.w), lx = right ? x - 3 - tw : x + 3, y = main.y + 8 + (L.row || 0) * 12; ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(lx - 1, y - 7, tw + 2, 14); ctx.fillStyle = L.color || C.text2; ctx.textAlign = 'left'; ctx.fillText(L.label, lx, y); }
     }
     dragLines() {
       const out = [];
@@ -2091,6 +2111,7 @@ const CH = (function () {
       for (const s of this.series) { if (!s.visible || s.legend === false) continue; ctx.strokeStyle = s.color; ctx.lineWidth = s.width || 1.25; ctx.setLineDash(dashFor(s.dash)); ctx.beginPath(); ctx.moveTo(x, titleH + 9); ctx.lineTo(x + 18, titleH + 9); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = C.text; ctx.fillText(s.label, x + 22, titleH + 13); x += 30 + ctx.measureText(s.label).width; }
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       const oy = (legendH + titleH) * dpr; ctx.drawImage(this.cBase, 0, oy); ctx.drawImage(this.cData, 0, oy);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, oy); this.drawLabels(ctx);
       return out.toDataURL('image/png');
     }
   }
@@ -2191,7 +2212,7 @@ const M = (function () {
     if (missing) issues.push('A delay volume is missing.');
     const noFlow = s.source === 'manual' || !s.flowTrace; if (noFlow) issues.push('The flow-rate trace is missing.');
     const diff = isFinite(p.fracDelay) && !missing ? p.fracDelay - (s.V1 + s.V2) : NaN;
-    const mism = isFinite(diff) && Math.abs(diff) > S.th.i5Tol + 1e-12; if (mism) issues.push('UNICORN fraction delay ' + fmt.ml(p.fracDelay) + ' mL differs from V1 + V2 = ' + fmt.ml(s.V1 + s.V2) + ' mL by ' + fmt.ml(Math.abs(diff)) + ' mL (tolerance ' + fmt.ml(S.th.i5Tol) + ' mL).');
+    const mism = isFinite(diff) && Math.abs(diff) > S.th.i5Tol + 1e-12; if (mism) issues.push('UNICORN fraction delay ' + fmt.ml(p.fracDelay) + ' mL, expected ' + fmt.ml(s.V1 + s.V2) + ' mL (tolerance ' + fmt.ml(S.th.i5Tol) + ' mL).');
     if (!isFinite(p.fracDelay)) issues.push('The UNICORN fraction delay is missing.');
     const det = (missing || noFlow) ? 'Uncertain' : 'Aligned', fr = (missing || noFlow || mism || !isFinite(p.fracDelay)) ? 'Uncertain' : 'Aligned';
     return { detector: det, fractions: fr, issues, i5: issues.length > 0, diff };
@@ -2426,7 +2447,7 @@ const M = (function () {
       else if (c.noSignal) why = 'No signal above 5 SD of the baseline. ' + src + ' used ' + fmt.pct0(c.use) + ofR + '.';
       else if (c.noneEligible) why = 'No step could hold the pulse below 90 %; returned to step 1.';
       else why = src + ' used ' + fmt.pct0(c.use) + ofR + ' (' + (c.use > TR.ACQ.limit ? 'limit 90 %' : 'target 80 %') + '). Predicted use after change: ' + fmt.pct0(c.pred) + ' %.';
-      const e = log(R, 'sensitivity', 'Sensitivity ' + dir + ' from step ' + c.from + ' to step ' + c.to + ' (OD ' + to.nd + ', ' + (to.range * 1000) + ' mV). ' + why, { x: R.x.vol[c.i], i: c.i });
+      const e = log(R, 'sensitivity', 'Sensitivity ' + dir + ' from step ' + c.from + ' to step ' + c.to + ' (OD ' + to.nd + ', ' + (to.range * 1000) + ' mV). ' + why, { x: R.x.vol[c.i], i: c.i, short: 'Sensitivity ' + dir + ' from step ' + c.from + ' to step ' + c.to + (isFinite(c.use) ? ' at ' + fmt.pct0(c.use) + ' % of the input range' : '') + '.' });
       e.t = c.t; e.wall = wall(R.simStart + c.t).time;
     }
     R.rules.process();
@@ -2485,6 +2506,7 @@ const M = (function () {
     phaseKey(i) { const L = this.R.ph.list; return L[this.R.acq.phase[i]].key; }
     ph(i) { return this.R.standalone ? 0 : this.R.acq.phase[i]; }
     loc(u) { return this.R.standalone ? fmt.min1(u) + ' min' : fmt.ml(u) + ' mL'; }
+    xAt(i) { const A = this.R.acq; return this.R.standalone ? A.t[i] / 60 : A.u[i]; }
     fracsIn(x0, x1) { const R = this.R, d = R.plumbAtStart; return R.fractions.filter(f => { const [a, b] = TR.collectedRange(f, plumbing()); return b > x0 && a < x1; }).map(f => f.id); }
     card(o) {
       const ph = this.R.ph.list[o.phaseIdx], base = o.rule + '-' + (ph ? ph.key : 'run');
@@ -2512,19 +2534,19 @@ const M = (function () {
       // I1: chromatography run started before laser stable (provisional)
       if (!this.i1done && n > 0) {
         this.i1done = true;
-        if (!R.laserStableAtStart) this.i1 = this.card({ rule: 'I1', phaseIdx: A.phase[0], title: 'Run started before laser stable (provisional)', obs: '', x0: A.u[0], x1: A.u[0], fractions: [], features: [{ name: 'Laser controller log reading', label: 'P' }], action: 'Treat early data with caution; repeat the affected part if it matters for the decision.' });
+        if (!R.laserStableAtStart) this.i1 = this.card({ rule: 'I1', phaseIdx: A.phase[0], title: 'Run started before laser stable', obs: '', x0: this.xAt(0), x1: this.xAt(0), fractions: [], features: [{ name: 'Laser controller log reading', label: 'P' }], action: 'Treat early data with caution; repeat the affected part if it matters for the decision.' });
         if (R.bmStart < th.i4V) this.card({ rule: 'I4', phaseIdx: A.phase[0], title: 'Laser not detected', obs: 'Beam monitor block at run start read ' + R.bmStart.toFixed(3) + ' V (minimum ' + th.i4V + ' V).', x0: A.u[0], x1: A.u[0], fractions: [], action: 'Check the laser controller shows emission and the beam path is clear. Fluorescence recorded now is not valid.' });
       }
       if (this.i1) {
         const L2 = S.laser, now = R.laserTl0 + runTimeS(R) / 60;
-        if (L2 && L2.stableAt != null && L2.stableAt <= now) { const tS = (L2.stableAt - R.laserTl0) * 60; let j = TR.lowerBound(A.t, A.n, tS); j = Math.min(Math.max(0, j), A.n - 1); this.i1.obs = 'The run started ' + fmt.min1((L2.stableAt - R.laserTl0)) + ' min before the laser was stable. Data before ' + fmt.ml(A.u[j]) + ' mL may include laser warm-up.'; this.i1.x1 = A.u[j]; this.i1.fractions = this.fracsIn(-1, A.u[j]); }
+        if (L2 && L2.stableAt != null && L2.stableAt <= now) { const tS = (L2.stableAt - R.laserTl0) * 60; let j = TR.lowerBound(A.t, A.n, tS); j = Math.min(Math.max(0, j), A.n - 1); this.i1.obs = 'The run started ' + fmt.min1((L2.stableAt - R.laserTl0)) + ' min before the laser was stable. Data before ' + (R.standalone ? fmt.min1(A.t[j] / 60) + ' min' : fmt.ml(A.u[j]) + ' mL') + ' may include laser warm-up.'; this.i1.x1 = this.xAt(j); this.i1.fractions = R.standalone ? [] : this.fracsIn(-1, A.u[j]); }
         else this.i1.obs = 'Data until the laser is stable may include laser warm-up.';
       }
       // I5: alignment and fraction assignment (setting state; placed at the block where it last changed)
       const al = alignmentState();
       if (al.i5 && !R.standalone && !this.i5card && n > this.i5At) {
         const fr = R.fractions.map(f => f.id);
-        this.i5card = this.card({ rule: 'I5', phaseIdx: A.phase[Math.min(this.i5At, n - 1)], title: al.detector === 'Uncertain' ? 'Alignment uncertain' : 'Fraction assignment uncertain', obs: al.issues.join(' ') + (fr.length ? ' Fractions affected: ' + rangeIds(fr) + '.' : ''), x0: A.u[Math.min(this.i5At, n - 1)], x1: A.u[Math.min(this.i5At, n - 1)], fractions: fr, action: al.detector === 'Uncertain' ? 'Enter the missing delay volume or import the flow trace.' : 'Update the UNICORN fraction delay to V1 + V2 for future runs. For this run, treat signal-to-fraction links near fraction cuts as uncertain.' });
+        this.i5card = this.card({ rule: 'I5', phaseIdx: A.phase[Math.min(this.i5At, n - 1)], title: al.detector === 'Uncertain' ? 'Alignment uncertain' : 'Fraction assignment uncertain', obs: al.issues.join(' '), x0: A.u[Math.min(this.i5At, n - 1)], x1: A.u[Math.min(this.i5At, n - 1)], fractions: fr, action: al.detector === 'Uncertain' ? 'Enter the missing delay volume or import the flow trace.' : 'Set the UNICORN fraction delay to ' + fmt.ml(S.setup.V1 + S.setup.V2) + ' mL for future runs. For this run, treat fraction links near cuts as uncertain.' });
       }
       for (const h of ruleHooks) if (h.pre) h.pre(this, n);
       for (let i = this.i; i < n; i++) {
@@ -2607,7 +2629,7 @@ const M = (function () {
       const R = this.R, A = R.acq, s = this.i6.bm || (this.i6.bm = { vals: [], on: false, card: null });
       s.vals.push(A.bm[i]); if (s.vals.length > 360) s.vals.shift(); if (s.vals.length < 360 || i % 10) return;
       const m1 = TR.medianOf(s.vals.slice(-60)), m5 = TR.medianOf(s.vals.slice(0, 300)), d = (m1 / m5 - 1) * 100;
-      this.i6change('bm', Math.abs(d) > S.th.i6Pct, A.u[Math.max(0, i - 60)], A.u[i], A.phase[i], { m5, m1 }, [{ name: 'Beam monitor with every block', label: 'P' }]);
+      this.i6change('bm', Math.abs(d) > S.th.i6Pct, this.xAt(Math.max(0, i - 60)), this.xAt(i), A.phase[i], { m5, m1 }, [{ name: 'Beam monitor with every block', label: 'P' }]);
     }
     i6ctl() {
       const R = this.R, A = R.acq; if (!A.n) return;
@@ -2615,25 +2637,25 @@ const M = (function () {
       for (let k = Math.max(this.logK, k0, 144); k <= kNow; k++) {
         const w = S.laserLog.slice(k - 143, k + 1).map(e => e.pd), m1 = TR.medianOf(w.slice(-24)), m5 = TR.medianOf(w.slice(0, 120)), d = (m1 / m5 - 1) * 100;
         const tS = k * TR.LASER.logS - R.laserTl0 * 60; let j = Math.min(A.n - 1, TR.lowerBound(A.t, A.n, tS)), j0 = Math.min(A.n - 1, TR.lowerBound(A.t, A.n, tS - 60));
-        this.i6change('ctl', Math.abs(d) > S.th.i6Pct, A.u[j0], A.u[j], A.phase[j], { m5, m1 }, [{ name: 'Laser controller log reading', label: 'P' }]);
+        this.i6change('ctl', Math.abs(d) > S.th.i6Pct, this.xAt(j0), this.xAt(j), A.phase[j], { m5, m1 }, [{ name: 'Laser controller log reading', label: 'P' }]);
       }
       this.logK = Math.max(this.logK, kNow + 1);
     }
     i6change(src, on, x0, u, ph, lv, feats) {
       const s = this.i6[src + 'S'] || (this.i6[src + 'S'] = { on: false, card: null });
-      if (on && !s.on) { s.ref = lv.m5; s.card = this.card({ rule: 'I6', phaseIdx: ph, title: 'Laser output changed', obs: '', x0, x1: u, fractions: this.fracsIn(x0, u), features: feats, src, action: 'Treat fluorescence in this interval as possibly affected by the laser. A controller change is not validated as an excitation change.' }); }
+      if (on && !s.on) { s.ref = lv.m5; s.card = this.card({ rule: 'I6', phaseIdx: ph, title: 'Laser output changed', obs: '', x0, x1: u, fractions: this.fracsIn(x0, u), features: feats, src, eng: [' Beam monitor: captured at start and end only (v2.0).', ' A controller change is not validated as an excitation change.'], action: 'Treat fluorescence in this interval as possibly affected by the laser. A controller change is not validated as an excitation change.' }); }
       if (s.card && (on || s.on)) {
         const c = s.card, R = this.R; if (on) { c.x1 = u; c.to = lv.m1; } c.fractions = this.fracsIn(c.x0, c.x1);
         const d = (c.to / s.ref - 1) * 100;
         const detail = src === 'ctl' ? 'Laser controller reading ' + fmt.sig3(s.ref) + ' to ' + fmt.sig3(c.to) + ' mW as logged (' + sgnF(d, 0) + ' %).' : 'Beam monitor ' + sgnF(d, 1) + ' % (1 min median against the previous 5 min).';
         const other = src === 'ctl' ? (R.setupSnap.beamPerBlock ? ' Beam monitor over the same interval: ' + bmChange(R, c.x0, c.x1) + '.' : ' Beam monitor: captured at start and end only (v2.0).') : '';
-        c.obs = 'Laser output changed between ' + fmt.ml(c.x0) + ' and ' + fmt.ml(c.x1) + ' mL' + (on ? ' (ongoing)' : '') + '. ' + detail + other;
+        c.obs = 'Laser output changed between ' + (R.standalone ? fmt.min1(c.x0) + ' and ' + fmt.min1(c.x1) + ' min' : fmt.ml(c.x0) + ' and ' + fmt.ml(c.x1) + ' mL') + (on ? ' (ongoing)' : '') + '. ' + detail + other;
       }
       s.on = on;
     }
   }
   function sgnF(d, dp) { return (d > 0 ? '+' : d < 0 ? '−' : '') + Math.abs(d).toFixed(dp); }
-  function bmChange(R, x0, x1) { const A = R.acq; const i0 = Math.max(0, TR.lowerBound(A.u, A.n, x0) - 30), i1 = Math.min(A.n - 1, TR.lowerBound(A.u, A.n, x1) + 30); const a = A.bm[i0], b = A.bm[i1]; return isFinite(a) && isFinite(b) ? sgnF((b / a - 1) * 100, 1) + ' %' : 'not captured'; }
+  function bmChange(R, x0, x1) { const A = R.acq, xs = R.standalone ? A.t : A.u, k = R.standalone ? 60 : 1; const i0 = Math.max(0, TR.lowerBound(xs, A.n, x0 * k) - 30), i1 = Math.min(A.n - 1, TR.lowerBound(xs, A.n, x1 * k) + 30); const a = A.bm[i0], b = A.bm[i1]; return isFinite(a) && isFinite(b) ? sgnF((b / a - 1) * 100, 1) + ' %' : 'not captured'; }
   function rangeIds(ids) {
     if (!ids.length) return 'none'; if (ids.length <= 3) return ids.join(', ');
     const groups = {}; ids.forEach(id => { const p = id.replace(/\d+$/, ''); (groups[p] || (groups[p] = [])).push(id); });
@@ -2736,7 +2758,7 @@ const S2 = (function () {
   // Stage 2 rules in the catalogue (discrepancy 1). The Stage 2 prompt names "Calibration not applicable" I6;
   // I6 is already the Stage 1 laser-change rule, so it is I7 here. IDs are never reused or renumbered.
   M.RULES.push(
-    { id: 'I7', src: 'Stage 2, section 1', note: 'Named I6 in the Stage 2 prompt; I6 is the Stage 1 laser-change rule.', cond: th => 'The active calibration does not apply: different PMT preset or processing mode, older than ' + th.calExpiryDays + ' days, or no demonstrated linear range.' },
+    { id: 'I7', src: 'Stage 2, section 1', cond: th => 'The active calibration does not apply: different PMT preset or processing mode, older than ' + th.calExpiryDays + ' days, or no demonstrated linear range.' },
     { id: 'P6', src: 'Stage 2, section 1', cond: () => 'Fluorescence above the calibrated linear range within a fraction.' },
     { id: 'P7', src: 'Stage 2, section 2.3', cond: th => 'Decay metric over ' + th.decayWinMl + ' mL shifted from the load-plateau reference by more than ' + th.decayThrNs + ' ns and ' + th.decaySdMult + ' × SD (decay analysis on).' },
     { id: 'H3', src: 'Stage 2, section 2.3', cond: () => 'Raised with P7. Possible change in tryptophan environment. Confirm with HPLC-SEC on the linked fractions.' }
@@ -2819,8 +2841,8 @@ const S2 = (function () {
   }
   function concText(F, R, phaseKey) {
     const k = conc(F, R, phaseKey); if (k.state === 'na') return k.st.none ? '' : 'Calibration not applicable';
-    if (k.state === 'mixed') return 'Not applicable outside elution';
-    if (k.state === 'above') return 'Above calibrated range, relative only'; if (k.state === 'below') return 'Below calibrated range, relative only';
+    if (k.state === 'mixed') return '–';
+    if (k.state === 'above') return 'Above range'; if (k.state === 'below') return 'Below range';
     return fmt.sig3(k.c) + ' mg/mL (indicative)';
   }
   function initRecord() {
@@ -2907,7 +2929,7 @@ const S2 = (function () {
       if (s.ok && prod) { const k = conc(y, R); if (k.state === 'above') above = true; else if (k.state === 'below') below = true; else { cs += k.c; cn++; } }
       const dv = R.y.decay[i]; if (isFinite(dv)) { ds += dv; dn++; }
     }
-    st.conc = !s.ok ? (s.none ? null : 'Calibration not applicable') : !prod ? '–' : above ? 'Above calibrated range, relative only' : below && !cn ? 'Below calibrated range, relative only' : cn ? (cs / cn) : null;
+    st.conc = !s.ok ? (s.none ? null : 'Calibration not applicable') : !prod ? null : above ? 'Above range' : below && !cn ? 'Below range' : cn ? (cs / cn) : null;
     st.concPartBelow = s.ok && below && cn > 0; st.decay = dn >= 5 ? ds / dn : NaN; st.decayN = dn;
   });
 
@@ -3087,11 +3109,11 @@ const UI = (function () {
     closePopover(); const r = anchor.getBoundingClientRect(); pop = el('<div class="popover"></div>'); pop.append(contentEl); document.body.append(pop);
     const w = pop.offsetWidth, h = pop.offsetHeight; pop.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left)) + 'px';
     pop.style.top = (r.bottom + 4 + h > window.innerHeight - 8 ? Math.max(8, r.top - h - 4) : r.bottom + 4) + 'px';
-    pop._onClose = onClose;
+    pop._onClose = onClose; const me = pop, onKey = e => { if (e.key === 'Escape' && pop === me) { closePopover(); if (anchor.focus) anchor.focus(); } }; document.addEventListener('keydown', onKey); pop._off = () => document.removeEventListener('keydown', onKey);
     setTimeout(() => document.addEventListener('mousedown', outside), 0);
     function outside(e) { if (pop && !pop.contains(e.target) && e.target !== anchor) { closePopover(); document.removeEventListener('mousedown', outside); } }
   }
-  function closePopover() { if (pop) { if (pop._onClose) pop._onClose(); pop.remove(); pop = null; } }
+  function closePopover() { if (pop) { if (pop._onClose) pop._onClose(); pop._off(); pop.remove(); pop = null; } }
 
   /* ---------- downloads (Blob, no network) ---------- */
   function download(name, text, type) {
@@ -3119,7 +3141,7 @@ const UI = (function () {
         '<label class="chk"><input type="checkbox" data-k="median"> Median baseline</label>' +
         '<label class="chk"><input type="checkbox" data-k="window"> Integration window 30 to 70 ns</label>' +
         '<label class="chk"><input type="checkbox" data-k="laser"' + (canLaser ? '' : ' disabled') + '> Laser correction by beam monitor</label>' + (canLaser ? '' : '<div class="small muted" style="margin-left:22px">Needs the beam monitor captured with every block (Setup).</div>') + '</div>' +
-        '<label class="chk proc-cmp"><input type="checkbox" data-k="compare"> Compare v2.0 reference and Proposed, with a difference trace</label>' + procExtras.map(x => x.html()).join('') + '</div>');
+        '<label class="chk proc-cmp"><input type="checkbox" data-k="compare"> Compare with v2.0 reference</label>' + procExtras.map(x => x.html()).join('') + '</div>');
       $$('input', c).forEach(i => {
         i.checked = !!p[i.dataset.k];
         i.onchange = () => {
@@ -3472,7 +3494,7 @@ const RC = (function () {
   function panels(extraStrips) {
     const r = () => R();
     const bmOn = () => (r() ? r().setupSnap.beamPerBlock : S.setup.beamPerBlock);
-    const imp = () => !r() || r().setupSnap.source === 'import';
+    const imp = () => (r() ? r().setupSnap.source : S.setup.source) === 'import';
     const out = [
       { key: 'main', yl: { title: 'Fluorescence', unit: 'V·ns, ND-corrected', log: () => view.log, minLog: -3 }, yr: (r() ? r().setupSnap.source : S.setup.source) === 'import' ? { title: 'UV 280', unit: 'mAU', fixed: [0, 4000] } : null },
       { key: 'cond', px: 46, hidden: () => !imp(), yl: { title: 'Conductivity', short: 'Cond.', unit: 'mS/cm', fixed: [0, 100], tickFmt: v => v.toFixed(0) } },
@@ -3504,7 +3526,7 @@ const RC = (function () {
     const f = r.fractions.find(q => v >= q.a && v < q.b);
     let s = fmt.ml(v) + ' mL · ' + fmt.cv(v / r.cv) + ' CV · ' + fmt.min1(t) + ' min · ' + ph.name + (f ? ' · ' + f.id : '');
     if (view.x === 'min') { const hp = r.ph.list.find(p => p.hold && x >= p.tPump && x < p.t1); if (hp) return 'Hold, no flow · ' + fmt.min1(x) + ' min · ' + fmt.ml(hp.v1) + ' mL'; }
-    const i = TR.lowerBound(r.x.vol, r.derivedN, v); if (i < r.derivedN && Math.abs(r.x.vol[i] - v) < 0.2) { const A = r.acq; s += ' · step ' + A.step[i] + (isFinite(A.ruse[i]) ? ' · range use ' + fmt.pct0(A.ruse[i]) + ' %' : ' · discarded block') + (r.low[i] ? ' (low precision)' : ''); for (const f of extraInfo) s += f(r, i); }
+    const i = TR.lowerBound(r.x.vol, r.derivedN, v); if (i < r.derivedN && Math.abs(r.x.vol[i] - v) < 0.2) { const A = r.acq; s += S.engineer ? ' · step ' + A.step[i] + (isFinite(A.ruse[i]) ? ' · range use ' + fmt.pct0(A.ruse[i]) + ' %' : ' · discarded block') + (r.low[i] ? ' (low precision)' : '') : (r.low[i] ? ' · low precision' : ''); for (const f of extraInfo) s += f(r, i); }
     return s;
   }
   function rulerInfo(a, b) {
@@ -3512,7 +3534,7 @@ const RC = (function () {
     const va = fromX(Math.min(a, b)), vb = fromX(Math.max(a, b)), ta = TR.timeAtVol(r.ph, va), tb = TR.timeAtVol(r.ph, vb);
     const A = r.acq, i0 = TR.lowerBound(r.x.vol, r.derivedN, va), i1 = TR.lowerBound(r.x.vol, r.derivedN, vb); let s = 0, n = 0;
     for (let i = i0; i < i1; i++) { const y = r.y.act[i]; if (y === y) { s += y; n++; } }
-    return 'R1 ' + fmt.ml(va) + ' mL, R2 ' + fmt.ml(vb) + ' mL · Δ volume ' + fmt.ml(vb - va) + ' mL · Δ time ' + fmt.min1(tb - ta) + ' min · Mean fluorescence ' + (n ? fmt.sig3(s / n) + ' V·ns' : '–');
+    return 'R1 ' + fmt.ml(va) + ', R2 ' + fmt.ml(vb) + ' mL · Δ ' + fmt.ml(vb - va) + ' mL, ' + fmt.min1(tb - ta) + ' min · mean ' + (n ? fmt.sig3(s / n) + ' V·ns' : '–');
   }
   function legendExtras() { return [{ html: '<span class="ch-sw box" style="background:rgba(183,121,31,0.12);border:1px solid rgba(183,121,31,0.5)"></span><span class="ch-ll">Low precision</span>', tip: 'Pulse fills under ' + Math.round(S.th.lowPrec * 100) + ' % of the input range (provisional). Not used for the y-axis autoscale; values beyond the axis are marked at its edge.' }]; }
   function xTitle() { return sa() ? 'Time from TRIFLE start (min)' : XT[view.x]; }
@@ -3522,7 +3544,7 @@ const RC = (function () {
 /* ---------- Run (Acquire and Validate) ---------- */
 (function () {
   const { $, $$, esc, el, tag } = UI, S = M.S, fmt = M.fmt, C = CH.C;
-  let chart = null, pulseChart = null, built = false, logFilter = 'all', logN = 0, cardsKey = '', pulseLog = false, highlight = null, expanded = false, narrowTab = 'log';
+  let chart = null, pulseChart = null, built = false, engLaid = null, logFilter = 'all', logN = 0, cardsKey = '', pulseLog = false, highlight = null, expanded = false, narrowTab = 'log';
   const pulse = { x: new Float64Array(600), y: new Float64Array(600), ly: new Float64Array(600), iy: new Float64Array(600), liy: new Float64Array(600), n: 0, gen: 0, blk: -1 };
   for (let j = 0; j < 600; j++) pulse.x[j] = j * 0.2;
   function build() {
@@ -3534,7 +3556,7 @@ const RC = (function () {
       '<div class="panel run-chart expand-target"><div class="pb"><div id="runChart" style="flex:1;min-height:0"></div></div></div>' +
       '<div class="run-bottom" id="runBottom">' +
       '<div class="panel"><div class="ph"><h3>Run values</h3></div><div class="pb" id="runValues"></div></div>' +
-      '<div class="panel eng-only" id="pulsePanel"><div class="ph"><h3>Pulse</h3><span class="sp"></span><div class="seg sm" id="rPLog"><button data-v="0" class="on">Lin</button><button data-v="1">Log</button></div></div><div class="pb" style="padding:2px 4px"><div id="runPulse" style="height:100%"></div></div></div>' +
+      '<div class="panel eng-only" id="pulsePanel"><div class="ph"><h3>Pulse</h3><span class="sp"></span><div class="seg sm" id="rPLog"><button data-v="0" class="on">Linear</button><button data-v="1">Log</button></div></div><div class="pb" style="padding:2px 4px"><div id="runPulse" style="height:100%"></div></div></div>' +
       '<div class="panel" id="logPanel"><div class="ph"><h3>Run log</h3><span class="sp"></span><select id="rLogF" class="small" style="height:22px" aria-label="Filter run log"><option value="all">All entries</option><option value="sensitivity">Sensitivity</option><option value="laser">Laser</option><option value="alignment">Alignment</option><option value="note">Notes and events</option><option value="card">Cards</option><option value="system">System</option></select></div><div class="pb log" id="runLog"></div></div>' +
       '<div class="panel" id="cardPanel"><div class="ph"><h3>Evidence</h3><span class="cnt" id="cardCnt">0</span></div><div class="pb" id="runCards"><div class="cards"></div></div></div>' +
       '</div>';
@@ -3545,7 +3567,7 @@ const RC = (function () {
     $$('#rX button').forEach(b => b.onclick = () => { RC.view.x = b.dataset.v; syncSeg(); chart.resetZoom(); chart.invalidate(); UI.emitDirty('xmode'); });
     $$('#rLog button').forEach(b => b.onclick = () => { RC.view.log = b.dataset.v === '1'; syncSeg(); chart.invalidate(); });
     $$('#rPLog button').forEach(b => b.onclick = () => { pulseLog = b.dataset.v === '1'; $$('#rPLog button').forEach(x => x.classList.toggle('on', x === b)); pulseChart.invalidate(); });
-    $('#rRul').onchange = e => { chart.rulersOn = e.target.checked; if (chart.rulersOn) { const [a, b] = chart.xRange(); chart.rulers = [a + (b - a) * 0.4, a + (b - a) * 0.6]; } chart.invalidateOver(); chart.updateReadout(); };
+    $('#rRul').onchange = e => { chart.rulersOn = e.target.checked; if (chart.rulersOn) { const R = S.run, xs = R && R.derivedN ? R.x[RC.sa() ? 'acq' : RC.view.x] : null, [a, b0] = chart.xRange(), b = xs ? Math.min(b0, xs[R.derivedN - 1]) : b0; chart.rulers = [a + (b - a) * 0.4, a + (b - a) * 0.6]; } chart.invalidateOver(); chart.updateReadout(); };
     $('#rReset').onclick = () => chart.resetZoom();
     $('#rExp').onclick = toggleExpand;
     $('#rLogF').onchange = e => { logFilter = e.target.value; logN = -1; };
@@ -3556,7 +3578,7 @@ const RC = (function () {
       highlights: () => highlight ? [{ x0: RC.toX(highlight[0]), x1: RC.toX(highlight[1]) }] : []
     });
     pulseChart = new CH.Chart($('#runPulse'), {
-      ariaLabel: 'Latest pulse', topBand: 12, marginRight: 8, marginLeft: 46, bottom: 26, liveReadout: false,
+      ariaLabel: 'Latest pulse', topBand: 12, marginRight: 8, marginLeft: 46, bottom: 32, liveReadout: false,
       xDomain: () => [0, 119.8], xTitle: () => 'ns from window start',
       panels: [{ key: 'main', yl: { title: 'Signal', unit: 'mV', log: () => pulseLog, zero: false, minLog: -2, minSpan: 0.5 } }],
       bands: () => { const b = [{ x0: 0, x1: 20, label: 'Baseline', fill: '#E8ECEF' }]; if (S.proc.window) b.push({ x0: 30, x1: 70, label: 'Window (Proposed)', fill: 'rgba(166,75,42,0.07)' }); return b; },
@@ -3568,9 +3590,9 @@ const RC = (function () {
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && expanded) toggleExpand(); });
     window.addEventListener('resize', layoutBottom);
     built = true; syncSeg(); layoutBottom();
-    M.on(ev => { if (ev === 'proc' || ev === 'run' || ev === 'series') { chart.cfg.panels = RC.panels(); chart.setSeries(RC.seriesFor()); chart.cfg.legendExtras = RC.legendExtras(); chart.buildLegend(); chart.relayout(); pulse.blk = -1; } if (ev === 'cards') cardsKey = ''; if (ev === 'notes') chart.invalidateBase(); });
+    M.on(ev => { if (ev === 'proc' || ev === 'run' || ev === 'series' || ev === 'setup') { chart.cfg.panels = RC.panels(); chart.setSeries(RC.seriesFor()); chart.cfg.legendExtras = RC.legendExtras(); chart.buildLegend(); chart.relayout(); pulse.blk = -1; } if (ev === 'cards') cardsKey = ''; if (ev === 'notes') chart.invalidateBase(); });
   }
-  function layoutBottom() { const rb = $('#runBottom'); if (!rb) return; const w = rb.getBoundingClientRect().width; if (!w) return; const narrow = w < 980; rb.classList.toggle('narrow', narrow); $('#cardPanel').style.display = narrow && narrowTab === 'log' ? 'none' : ''; $('#logPanel').style.display = narrow && narrowTab === 'cards' ? 'none' : ''; ensureTabs(narrow); }
+  function layoutBottom() { const rb = $('#runBottom'); if (!rb) return; const w = rb.getBoundingClientRect().width; if (!w) return; const narrow = w < (S.engineer ? 1200 : 980); rb.classList.toggle('narrow', narrow); $('#cardPanel').style.display = narrow && narrowTab === 'log' ? 'none' : ''; $('#logPanel').style.display = narrow && narrowTab === 'cards' ? 'none' : ''; ensureTabs(narrow); }
   function ensureTabs(narrow) {
     for (const id of ['logPanel', 'cardPanel']) {
       const ph = $('#' + id + ' .ph'); let t = $('.ptabs', ph);
@@ -3589,11 +3611,11 @@ const RC = (function () {
       if (S.demo.laserEarly && sm.canOverride) { if (!S.readiness.override) { S.readiness.override = { reason: 'Demo control: AKTA run started before the laser was stable.', by: S.setup.operator, t: S.simT }; M.audit('override', 'Readiness override recorded: ' + S.readiness.override.reason); } }
       else if (!(S.readiness && S.readiness.override && sm.canOverride)) return;
     }
-    const R = M.newRun(); RC.view.x = RC.view.x || 'vol'; chart.resetZoom(); UI.emitDirty();
+    const R = M.newRun(); RC.view.x = RC.view.x || 'vol'; syncSeg(); chart.resetZoom(); UI.emitDirty();
   }
   async function endRun() {
     const R = S.run; if (!R || R.state === 'complete') return;
-    const r = await UI.modal('End acquisition', '<p>End TRIFLE acquisition now? The AKTA is not affected. The wheel moves to OD 4, a beam monitor block is captured and the record is saved.</p>', [{ label: 'Cancel', value: false }, { label: 'End acquisition', value: true, primary: true }]);
+    const r = await UI.modal('End acquisition', '<p>End TRIFLE acquisition now? The AKTA run continues and the record is saved.</p>', [{ label: 'Cancel', value: false }, { label: 'End acquisition', value: true, primary: true }]);
     if (r.value) { M.finishRun(R, 'user'); UI.emitDirty(); }
   }
   function noteDlg(kind) {
@@ -3605,7 +3627,8 @@ const RC = (function () {
   function controls() {
     const R = S.run, sm = M.readinessSummary(), st = R ? R.state : 'idle';
     const canStart = !R && S.fault === 'none' && M.presetCheck().ok && (sm.ready || (sm.canOverride && ((S.readiness && S.readiness.override) || S.demo.laserEarly)));
-    $('#rStart').disabled = !canStart; $('#rPause').disabled = st !== 'acquiring'; $('#rCont').disabled = st !== 'paused'; $('#rEnd').disabled = !(st === 'acquiring' || st === 'paused');
+    $('#rStart').disabled = !canStart; $('#rPause').disabled = st !== 'acquiring'; $('#rCont').disabled = st !== 'paused';
+    $('#rStart').classList.toggle('hidden', !!R); $('#rPause').classList.toggle('hidden', st === 'paused'); $('#rCont').classList.toggle('hidden', st !== 'paused'); $('#rEnd').disabled = !(st === 'acquiring' || st === 'paused');
     $('#rMark').disabled = $('#rNote').disabled = !R || st === 'complete';
     let note = '';
     if (!R) note = sm.ready ? '' : canStart ? (S.readiness && S.readiness.override ? 'Override recorded. ' : 'Laser not yet stable. ') + 'I1 will flag early data.' : sm.text;
@@ -3625,29 +3648,28 @@ const RC = (function () {
     pulseChart.cfg.info = () => 'Block ' + fmt.int(i + 1) + ' · baseline ' + fmt.mv(b) + ' mV';
     pulseChart.invalidate();
   }
-  function rangeBar(use) {
+  function rangeBar(use, flag) {
     const u = Math.max(0, Math.min(1.05, use || 0)), over = use > TR.ACQ.limit;
-    return '<div class="rbwrap"><div class="rangebar" title="Input range use: target 80 %, limit 90 %"><div class="fill' + (over ? ' over' : '') + '" style="width:' + (u / 1.05 * 100).toFixed(1) + '%"></div><div class="mk" style="left:' + (0.8 / 1.05 * 100).toFixed(1) + '%" title="Target 80 %"></div><div class="mk lim" style="left:' + (0.9 / 1.05 * 100).toFixed(1) + '%" title="Limit 90 %"></div></div><b>' + (isFinite(use) ? fmt.pct0(use) + ' %' : '–') + '</b></div>';
+    return '<div class="rbwrap">' + (flag || '') + '<div class="rangebar" title="Input range use: target 80 %, limit 90 %"><div class="fill' + (over ? ' over' : '') + '" style="width:' + (u / 1.05 * 100).toFixed(1) + '%"></div><div class="mk" style="left:' + (0.8 / 1.05 * 100).toFixed(1) + '%" title="Target 80 %"></div><div class="mk lim" style="left:' + (0.9 / 1.05 * 100).toFixed(1) + '%" title="Limit 90 %"></div></div><b>' + (isFinite(use) ? fmt.pct0(use) + ' %' : '–') + '</b></div>';
   }
   function runValues() {
     const R = S.run, box = $('#runValues');
     if (!R) { const h = '<div class="note">No run yet.</div>'; if (box._h !== h) { box.innerHTML = h; box._h = h; } return; }
     const A = R.acq, n = R.derivedN; let i = n - 1; while (i > 0 && A.disc[i]) i--;
-    const tS = R.state === 'complete' ? R.endAt : M.runTimeS(R), tA = M.aktaMin(R, tS), K = R.akta, k = Math.max(0, R.aktaN - 1), imp = R.setupSnap.source === 'import';
+    const tS = R.state === 'complete' ? R.endAt : M.runTimeS(R), tA = M.aktaMin(R, tS);
     const ph = tA < 0 ? null : R.ph.list[TR.phaseIdxAtTime(R.ph, tA)];
-    const flow = tA >= 0 && tA <= R.ph.totalMin ? TR.flowAt(R.ph, tA) : 0, vp = TR.pumpVolAt(R.ph, Math.max(0, tA));
+    const vp = TR.pumpVolAt(R.ph, Math.max(0, tA));
     const lad = TR.LADDERS[R.pmt], st = lad[A.cur - 1], al = M.alignmentState(), disc = A.disc.subarray(0, n).reduce((a, b) => a + b, 0);
-    const sys = R.state === 'complete' ? 'Complete. Acquisition time ' + fmt.clock(R.endAt) + '.' : R.state === 'paused' ? 'Paused. The AKTA run continues.' : (tA < 0 ? 'Acquiring buffer. AKTA run starts in ' + fmt.min1(-tA) + ' min.' : (tA > R.ph.totalMin ? 'Acquiring after the AKTA method ended.' : 'Acquiring. ' + ph.name + (ph.hold && tA >= ph.tPump ? ', hold, no flow' : ', ' + fmt.ml(vp - ph.v0) + ' mL in, ' + flow.toFixed(2) + ' mL/min') + '.'));
+    const sys = R.state === 'complete' ? 'Complete. Acquisition time ' + fmt.clock(R.endAt) + '.' : R.state === 'paused' ? 'Paused. The AKTA run continues.' : (tA < 0 ? 'Acquiring buffer. AKTA run starts in ' + fmt.min1(-tA) + ' min.' : (tA > R.ph.totalMin ? 'Acquiring after the AKTA method ended.' : 'Acquiring. ' + ph.name + (ph.hold && tA >= ph.tPump ? ', hold, no flow' : ', ' + fmt.ml(vp - ph.v0) + ' mL in') + '.'));
     const row = (k2, u, v) => '<tr><td class="k">' + k2 + (u ? ' <span class="un">(' + u + ')</span>' : '') + '</td><td class="v">' + v + '</td></tr>';
     const fl = n && i >= 0 ? R.y.act[i] : NaN, use = n ? A.ruse[i] : NaN;
     const html = '<div class="sysstate">' + esc(sys) + '</div><table class="rv">' +
       row('Fluorescence', 'V·ns', fmt.sig3(fl)) +
-      (R.setupSnap.source === 'standalone' ? '' : row('Volume', 'mL', fmt.ml(vp))) +
-      row('Sensitivity', 'OD ' + st.nd + ', ' + st.range * 1000 + ' mV', A.cur + ' of ' + lad.length) +
-      row('Input range' + (use < S.th.lowPrec ? ' <span class="flag w" title="Pulse under ' + Math.round(S.th.lowPrec * 100) + ' % of the input range (provisional)">Low precision</span>' : use > TR.ACQ.limit ? ' <span class="flag f">Above 90 % limit</span>' : ''), '', rangeBar(use)) +
-      row('Blocks', '', fmt.int(n - disc) + ' · ' + fmt.int(disc) + ' disc.') +
+      row('Sensitivity', '', '<span title="OD ' + st.nd + ', ' + st.range * 1000 + ' mV">' + A.cur + ' of ' + lad.length + '</span>') +
+      row('Input range', '', rangeBar(use, use < S.th.lowPrec ? '<span class="flag w" title="Pulse under ' + Math.round(S.th.lowPrec * 100) + ' % of the input range (provisional)">Low precision</span>' : use > TR.ACQ.limit ? '<span class="flag f">Above 90 % limit</span>' : '')) +
+      row('Blocks', '', fmt.int(n - disc) + ' (' + fmt.int(disc) + ' discarded)').replace('<tr>', '<tr class="eng-only">') +
       (R.setupSnap.beamPerBlock ? row('Beam monitor', '% of start', n ? fmt.pct1(A.bm[i] / (R.bmRef || A.bm[i])) : '–') : '') +
-      row('Alignment', '', esc(al.detector + (al.fractions === 'Uncertain' && al.detector !== 'Uncertain' ? ', fractions Uncertain' : ''))) + RC.runRows.map(f => f(R, i, row)).join('') + '</table>';
+      (al.detector === 'n/a' ? '' : row('Alignment', '', esc(al.detector === 'Aligned' && al.fractions === 'Uncertain' ? 'Fractions uncertain' : al.detector))) + RC.runRows.map(f => f(R, i, row)).join('') + '</table>';
     if (box._h !== html) { box.innerHTML = html; box._h = html; }
   }
   const LOGTYPES = { sensitivity: 'Sens.', laser: 'Laser', alignment: 'Align.', note: 'Note', event: 'Event', card: 'Card', system: 'System' };
@@ -3659,11 +3681,12 @@ const RC = (function () {
     const frag = document.createDocumentFragment();
     for (let k = start; k < R.log.length; k++) {
       const e = R.log[k]; if (logFilter !== 'all' && !(e.type === logFilter || (logFilter === 'note' && e.type === 'event') || (logFilter === 'laser' && e.card && /I1|I4|I6/.test(e.text)))) continue;
-      const d = el('<div class="log-e"><span class="t">' + e.wall + '</span><span><span class="k">' + (LOGTYPES[e.type] || e.type) + '</span>' + esc(e.text) + '</span></div>');
-      if (e.x != null) { d.style.cursor = 'pointer'; d.title = 'Show on chart'; d.onclick = () => showOnChart(e.x - 0.3, e.x + 0.3); }
+      const d = el('<div class="log-e"><span class="t">' + e.wall + '</span><span><span class="k">' + (LOGTYPES[e.type] || e.type) + '</span>' + esc(e.short || e.text) + '</span></div>');
+      if (e.x != null) { d.style.cursor = 'pointer'; d.title = (e.short ? e.text + ' ' : '') + 'Click to show on chart.'; d.onclick = () => showOnChart(e.x - 0.3, e.x + 0.3); }
       frag.append(d);
     }
     box.append(frag); logN = R.log.length;
+    const none = box.querySelector(':scope > .note'); if (box.querySelector('.log-e')) { if (none) none.remove(); } else if (!none) box.innerHTML = '<div class="note">No entries of this type yet.</div>';
     if (atBottom || start === 0) box.scrollTop = box.scrollHeight;
   }
   function showOnChart(a, b) {
@@ -3691,13 +3714,13 @@ const RC = (function () {
   function cardHtml(c, group, nOpen, opts, linked) {
     const feats = (c.features || []).map(f => esc(f.name) + ' ' + tag(f.label, f.label === 'P' || f.label === 'F' ? 'always' : 'engineer')).join('; ');
     const resp = c.status !== 'open' ? '<span class="resp">' + (c.status === 'accepted' ? 'Accepted' : 'Dismissed') + ' by ' + esc(S.setup.operator) + (c.note ? ': ' + esc(c.note) : '') + '</span>' : '';
-    const ids = group ? group.map(x => x.id) : [c.id];
+    const ids = group ? group.map(x => x.id) : [c.id], tx = s => (c.eng || []).reduce((h, e) => h.replace(esc(e), '<span class="eng-only">' + esc(e) + '</span>'), esc(s));
     return '<div class="ecard lv-' + c.level + (linked ? ' linked' : '') + (nOpen ? '' : ' done') + '" data-ids="' + ids.join(',') + '">' +
       '<div class="eh"><span class="rid" title="' + esc(M.ruleById(c.rule) ? M.ruleById(c.rule).cond(S.th) : '') + '">' + c.rule + '</span><span class="lvl">' + esc(c.levelName) + (c.linkedTo ? ', from ' + c.linkedTo.split('-')[0] : '') + '</span><span class="lvl">· ' + esc(c.phase) + '</span>' + (group ? '<span class="cnt" title="Repeated in this phase after the condition cleared">' + group.length + '×</span>' : '') + '</div>' +
-      '<div>' + (c.obs && c.obs.indexOf(c.title) === 0 ? '<b>' + esc(c.title) + '</b>' + esc(c.obs.slice(c.title.length)) : '<b>' + esc(c.title) + '.</b> ' + esc(c.obs)) + '</div>' +
-      (group ? '<div class="meta">Also at ' + group.slice(0, -1).map(x => fmt.ml(x.x0) + ' mL').join(', ') + '.</div>' : '') +
+      '<div>' + (c.obs && c.obs.indexOf(c.title) === 0 ? '<b>' + esc(c.title) + '</b>' + tx(c.obs.slice(c.title.length)) : '<b>' + esc(c.title) + '.</b> ' + tx(c.obs)) + '</div>' +
+      (group ? '<div class="meta">Also at ' + group.slice(0, -1).map(x => S.run && S.run.standalone ? fmt.min1(x.x0) + ' min' : fmt.ml(x.x0) + ' mL').join(', ') + '.</div>' : '') +
       '<div class="meta">' + (c.fractions && c.fractions.length ? 'Fractions: ' + esc(M.rangeIds(c.fractions)) + ' · ' : '') + '<button class="link small" data-show="' + c.x0 + ',' + c.x1 + '">Show on chart</button> · Processing: ' + esc(c.mode) + (feats ? ' · Relies on: ' + feats : '') + '</div>' +
-      (c.confirm ? '<div class="meta"><b>Suggested confirmation:</b> ' + esc(c.confirm) + '</div>' : '') + (c.action ? '<div class="meta"><b>Suggested action:</b> ' + esc(c.action) + '</div>' : '') +
+      (c.confirm ? '<div class="meta"><b>Suggested confirmation:</b> ' + esc(c.confirm) + '</div>' : '') + (c.action ? '<div class="meta"><b>Suggested action:</b> ' + tx(c.action) + '</div>' : '') +
       '<div class="acts">' + (nOpen ? '<input type="text" placeholder="Note (optional)" aria-label="Response note"><button class="btn sm" data-r="accepted">Accept</button><button class="btn sm" data-r="dismissed">Dismiss</button>' : resp) + '</div></div>';
   }
   function wireCards(box, rerender) {
@@ -3718,6 +3741,7 @@ const RC = (function () {
   }
   function update(d) {
     if (!built) build();
+    if (engLaid !== S.engineer) { engLaid = S.engineer; layoutBottom(); }
     controls(); runValues(); runLog(); runCards(); updPulse(); UI.renderChips();
     if (d.all || d.xmode) { chart.invalidateBase(); }
     if (S.run) { if (S.run.acq.changes.length !== chart._nch || S.run.rules.cards.length !== chart._ncards) { chart._nch = S.run.acq.changes.length; chart._ncards = S.run.rules.cards.length; chart.invalidateBase(); } }
@@ -3729,10 +3753,10 @@ const RC = (function () {
 /* ---------- Fraction review (Validate, interpret and decide) ---------- */
 (function () {
   const { $, $$, esc, el, tag } = UI, S = M.S, fmt = M.fmt, C = CH.C;
-  let built = false, ov = null, zm = null, pc = null, rows = [], sel = new Set(), focus = null, sortKey = null, sortDir = 1, showShare = false, tab = 'frac', lastKey = '', flManual = null, dataKey = '';
+  let built = false, ov = null, zm = null, pc = null, rows = [], sel = new Set(), focus = null, sortKey = null, sortDir = 1, showShare = false, tab = 'frac', lastKey = '', flManual = null, dataKey = '', userPick = false;
   const mp = { x: new Float64Array(600), y: new Float64Array(600), iy: new Float64Array(600), n: 0, gen: 0 };
   for (let j = 0; j < 600; j++) mp.x[j] = j * 0.2;
-  const ANALYSES = [['sec', 'SEC', 'Purity (monomer, HMWS, LMWS)'], ['lun', 'Lunatic', 'A280 concentration'], ['proa', 'Protein A HPLC', 'Titre'], ['none', 'No action', '']];
+  const ANALYSES = [['sec', 'HPLC-SEC', 'Purity (monomer, HMWS, LMWS)'], ['lun', 'Lunatic', 'A280 concentration'], ['proa', 'Protein A HPLC', 'Titre'], ['none', 'No action', '']];
   const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
   function dec(id) { return S.decisions[id] || (S.decisions[id] = { sec: false, lun: false, proa: false, none: false, note: '' }); }
   function decText(d) { const a = ANALYSES.filter(x => d[x[0]]).map(x => x[1]); return a.length ? a.join(', ') : 'Not decided'; }
@@ -3741,10 +3765,10 @@ const RC = (function () {
     r.innerHTML = '<div class="scr-h"><h1>Fraction review</h1></div>' +
       '<div class="run-top"><div class="chips" id="frChips" style="display:none"><span>Ranges one setting larger (what-if)</span></div><div class="toolbar" id="fTools"><div class="seg sm" id="fX"><button data-v="vol">mL</button><button data-v="cv">CV</button><button data-v="min">min</button></div><div class="seg sm" id="fLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div><span class="nowrap" style="display:inline-flex;align-items:center;gap:6px"><span class="lab">Drag to</span><div class="seg sm" id="fDrag"><button data-v="select" class="on">Select fractions</button><button data-v="zoom">Zoom</button></div></span><label class="chk small"><input type="checkbox" id="fRul"> Rulers</label><button class="btn sm" id="fReset">Reset zoom</button></div></div>' +
       '<div id="fEmpty" class="callout" style="display:none"></div>' +
-      '<div class="fr-grid" id="frGrid" style="min-height:700px;grid-template-rows:minmax(0,56fr) minmax(0,44fr)">' +
+      '<div class="fr-grid" id="frGrid" style="min-height:560px;grid-template-rows:minmax(0,56fr) minmax(0,44fr)">' +
       '<div class="panel" style="grid-column:1;grid-row:1"><div class="pb" style="padding:4px 8px"><div id="frOv" style="height:100%"></div></div></div>' +
       '<div class="panel fr-side" style="grid-column:2;grid-row:1"><div class="ph"><div class="ptabs" id="frTabs"><button data-v="frac" class="on">Fraction</button><button data-v="samples">Samples to send <span class="cnt" id="sampCnt">0</span></button></div><span class="sp"></span><span id="frNav" class="nowrap"></span></div><div class="pb" style="padding:4px 8px;display:flex;flex-direction:column;gap:6px;overflow:hidden" id="frSide"></div></div>' +
-      '<div class="panel fr-table" style="grid-column:1 / 3;grid-row:2"><div class="ph"><h3>Fractions</h3><span class="note" id="frNote"></span><span class="sp"></span><label class="chk small" title="Relative signal-area contribution only. Not equivalent to protein mass, yield or recovery."><input type="checkbox" id="frShare"> Show share of integrated fluorescence</label></div><div class="pb tbl-wrap" style="padding:0" id="frTblWrap"><table class="tbl" id="frTbl"><thead></thead><tbody></tbody></table></div></div>' +
+      '<div class="panel fr-table" style="grid-column:1 / 3;grid-row:2"><div class="ph"><h3>Fractions</h3><span class="note" id="frNote"></span><span class="sp"></span><label class="chk small" title="Relative signal-area contribution only. Not equivalent to protein mass, yield or recovery."><input type="checkbox" id="frShare"> Fluorescence share</label></div><div class="pb tbl-wrap" style="padding:0" id="frTblWrap"><table class="tbl" id="frTbl"><thead></thead><tbody></tbody></table></div></div>' +
       '</div>';
     UI.processingButton($('#fTools'));
     $$('#fX button').forEach(b => b.onclick = () => { RC.view.x = b.dataset.v; sync(); ov.resetZoom(); ov.invalidate(); zoomTo(); UI.emitDirty('xmode'); });
@@ -3765,17 +3789,18 @@ const RC = (function () {
     });
     zm = new CH.Chart(el('<div style="height:100%"></div>'), mkZoomCfg());
     built = true; sync();
-    M.on(ev => { if (ev === 'proc' || ev === 'run' || ev === 'series') { ov.cfg.panels = ovPanels(); ov.setSeries(ovSeries()); zm.cfg.panels = RC.panels().slice(0, 1); zm.setSeries(zmSeries()); for (const c of [ov, zm]) { c.cfg.legendExtras = RC.legendExtras(); c.buildLegend(); c.relayout(); } lastKey = ''; mp.fid = null; } if (ev === 'cards' || ev === 'data') lastKey = ''; });
+    M.on(ev => { if (ev === 'proc' || ev === 'run' || ev === 'series') { ov.cfg.panels = ovPanels(); ov.setSeries(ovSeries()); zm.cfg.panels = zmPanels(); zm.setSeries(zmSeries()); ov.cfg.legendExtras = RC.legendExtras(); for (const c of [ov, zm]) { c.buildLegend(); c.relayout(); } lastKey = ''; mp.fid = null; } if (ev === 'cards' || ev === 'data') lastKey = ''; });
   }
   // overview: main panel plus the strips that carry Proposed processing (beam monitor, difference)
   function ovPanels() { return RC.panels().filter(p => p.key === 'main' || p.key === 'bm' || p.key === 'diff' || p.key === 'decay'); }
   function ovSeries() { return RC.seriesFor().filter(s => s.panel === 'main' || s.panel === 'bm' || s.panel === 'diff' || s.panel === 'decay'); }
+  function zmPanels() { return RC.panels().slice(0, 1).map(p => ({ ...p, yl: { ...p.yl, title: 'Fluor.', unit: 'V·ns' } })); }
   function zmSeries() { return RC.seriesFor().filter(s => s.panel === 'main').map(s => ({ ...s, legend: false })); }
   function mkZoomCfg() {
     return {
       ariaLabel: 'Selected fraction, zoomed', rulers: [0, 1], topBand: 28, marginRight: 50, liveReadout: false,
       xDomain: () => { const f = fr(focus); if (!f) return RC.xDomain(); const w = Math.max(f.b - f.a, 1.0) * 1.3; return [RC.toX(f.a - w), RC.toX(f.b + w)]; },
-      xTitle: () => RC.XT[RC.view.x], panels: RC.panels().slice(0, 1), series: zmSeries(), bands: RC.bands, fractions: RC.fracItems, info: RC.info, rulerInfo: RC.rulerInfo,
+      xTitle: () => RC.XT[RC.view.x], panels: zmPanels(), series: zmSeries(), bands: RC.bands, fractions: RC.fracItems, info: RC.info, rulerInfo: RC.rulerInfo,
       highlights: () => { const f = fr(focus); if (!f) return []; const nb = (S.run.fractions || []).filter(q => q.id !== f.id && (Math.abs(q.a - f.b) < 1e-6 || Math.abs(q.b - f.a) < 1e-6)); return [...nb.map(q => ({ x0: RC.toX(q.a), x1: RC.toX(q.b), fill: 'rgba(91,102,112,0.08)', edge: false })), { x0: RC.toX(f.a), x1: RC.toX(f.b) }]; },
       vlines: () => poolLines(true),
       guides: () => flGuides()
@@ -3791,23 +3816,23 @@ const RC = (function () {
   function flBounds() { const R = S.run; if (!R) return null; const b = M.flBounds(R, S.th.flPct); if (!b) return null; if (flManual) return { ...b, a: flManual[0] != null ? flManual[0] : b.a, b: flManual[1] != null ? flManual[1] : b.b, manual: true }; return b; }
   function flGuides() {
     const b = flBounds(); if (!b) return []; const col = M.procMode() === 'v20' ? C.v20 : C.prop, out = [];
-    const mk = (k, v) => ({ id: 'fl' + k, x: RC.toX(v), color: col, dash: 'dot', label: 'Fl. ' + S.th.flPct + ' %' + (k ? '' : ', visual only'), row: 1 + k, drag: x => { flManual = flManual || [null, null]; flManual[k] = RC.fromX(x); }, onEnd: () => { M.audit('fraction review', 'Fluorescence boundary ' + (k ? 'end' : 'start') + ' moved by hand to ' + fmt.ml(flManual[k]) + ' mL (visual comparison only).'); lastKey = ''; } });
+    const mk = (k, v) => ({ id: 'fl' + k, x: RC.toX(v), color: col, dash: 'dot', label: 'Fl. ' + S.th.flPct + ' %', row: 1 + k, drag: x => { flManual = flManual || [null, null]; flManual[k] = RC.fromX(x); }, onEnd: () => { M.audit('fraction review', 'Fluorescence boundary ' + (k ? 'end' : 'start') + ' moved by hand to ' + fmt.ml(flManual[k]) + ' mL (visual comparison only).'); lastKey = ''; } });
     if (b.a != null) out.push(mk(0, b.a)); if (b.b != null) out.push(mk(1, b.b));
     return out;
   }
   function sync() { $$('#fX button').forEach(b => b.classList.toggle('on', b.dataset.v === RC.view.x)); $$('#fLog button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === RC.view.log)); }
   function zoomTo() { if (!zm || !focus) return; zm.view = null; zm.zoomStack = []; zm.invalidate(); }
-  function selChanged() { lastKey = ''; ov.invalidateOver(); zoomTo(); mp.fid = null; if (tab !== 'frac') { tab = 'frac'; $$('#frTabs button').forEach(x => x.classList.toggle('on', x.dataset.v === 'frac')); } side(true); }
+  function selChanged() { userPick = true; lastKey = ''; ov.invalidateOver(); zoomTo(); mp.fid = null; if (tab !== 'frac') { tab = 'frac'; $$('#frTabs button').forEach(x => x.classList.toggle('on', x.dataset.v === 'frac')); } side(true); }
   /* ---------- table ---------- */
+  let lastFocus = null;
   const COLS = [
     { k: 'id', h: 'Fraction', v: f => f.id },
     { k: 'phase', h: 'Phase', v: f => f.phase },
     { k: 'a', h: 'Volume <span class="unit">(mL)</span>', num: true, v: f => f.a, f: f => fmt.ml(f.a) + '–' + fmt.ml(f.b) },
-    { k: 'cvA', h: 'CV', num: true, v: f => f.cvA, f: f => fmt.cv(f.cvA) + '–' + fmt.cv(f.cvB) },
-    { k: 'uvMean', h: 'UV 280 <span class="unit">(mAU)</span> mean / max', num: true, v: f => f.uvMean, f: f => fmt.mau(f.uvMean) + ' / ' + fmt.mau(f.uvMax) + (f.uvSat ? ' <span class="flag w" title="UV 280 at its 3,800 mAU ceiling">sat.</span>' : '') },
-    { k: 'fMean', h: 'Fluor. <span class="unit">(V·ns)</span> mean / max', num: true, v: f => f.fMean, f: f => fmt.sig3(f.fMean) + ' / ' + fmt.sig3(f.fMax) },
+    { k: 'uvMean', h: 'UV 280 mean / max <span class="unit">(mAU)</span>', num: true, v: f => f.uvMean, f: f => fmt.mau(f.uvMean) + ' / ' + fmt.mau(f.uvMax) + (f.uvSat ? ' <span class="flag w" title="UV 280 at its 3,800 mAU ceiling">sat.</span>' : '') },
+    { k: 'fMean', h: 'Fluor. mean / max <span class="unit">(V·ns)</span>', num: true, v: f => f.fMean, f: f => fmt.sig3(f.fMean) + ' / ' + fmt.sig3(f.fMax) },
     { k: 'qc', h: 'QC', v: f => f.chg + f.over + f.disc * 10 + f.laser * 10, f: f => qcFlags(f) },
-    { k: 'share', h: 'Share of integrated fluorescence <span class="unit">(%)</span>', num: true, opt: true, tip: 'Relative signal-area contribution only. Not equivalent to protein mass, yield or recovery.', v: f => f.share, f: f => isFinite(f.share) ? (f.share * 100).toFixed(1) : '–' },
+    { k: 'share', h: 'Share <span class="unit">(%)</span>', num: true, opt: true, tip: 'Relative signal-area contribution only. Not equivalent to protein mass, yield or recovery.', v: f => f.share, f: f => isFinite(f.share) ? (f.share * 100).toFixed(1) : '–' },
     { k: 'cards', h: 'Cards', v: f => f.linked.length, f: f => f.linked.length ? f.linked.join(', ') : '' },
     { k: 'dec', h: 'Decision', v: f => decText(dec(f.id)), f: f => '<button class="btn sm decb" data-id="' + f.id + '" title="Choose offline analyses">' + esc(decText(dec(f.id))) + (dec(f.id).note ? ' *' : '') + '</button>' }
   ];
@@ -3819,7 +3844,7 @@ const RC = (function () {
     if (f.laser) out.push('<span class="flag w" title="Laser change flagged by I6 in this fraction">Laser</span>');
     if (f.lowShare > 0.5) out.push('<span class="flag w" title="' + Math.round(f.lowShare * 100) + ' % of blocks under ' + Math.round(S.th.lowPrec * 100) + ' % of the input range">Low prec.</span>');
     if (f.assign === 'Uncertain') out.push('<span class="flag w" title="' + esc(['Fraction assignment uncertain.', ...M.alignmentState().issues].join(' ')) + '">Uncertain</span>');
-    if (!f.complete) out.push('<span class="flag" title="Fraction not yet fully acquired">Partial</span>');
+    if (!f.complete && f.nBlocks) out.push('<span class="flag" title="Fraction not yet fully acquired">Partial</span>');
     return out.join('');
   }
   function table() {
@@ -3828,7 +3853,7 @@ const RC = (function () {
     if (key === lastKey) return; lastKey = key;
     rows = R ? M.fractionStats(R) : [];
     if (sortKey) { const c = COLS.find(x => x.k === sortKey); rows.sort((a, b) => { const va = c.v(a), vb = c.v(b); return (va > vb ? 1 : va < vb ? -1 : 0) * sortDir; }); }
-    $('#frTbl thead').innerHTML = '<tr>' + cols.map(c => '<th class="sortable' + (c.num ? ' num' : '') + '" data-k="' + c.k + '"' + (c.tip ? ' title="' + esc(c.tip) + '"' : '') + '>' + c.h + (sortKey === c.k ? (sortDir > 0 ? ' ▲' : ' ▼') : '') + '</th>').join('') + '</tr>';
+    $('#frTbl thead').innerHTML = '<tr>' + cols.map(c => '<th class="sortable' + (c.num ? ' num' : '') + '" data-k="' + c.k + '"' + (c.tip ? ' title="' + esc(c.tip) + '"' : '') + '>' + c.h.replace(/( <span class="unit">.*)?$/, (sortKey === c.k ? (sortDir > 0 ? ' ▲' : ' ▼') : '') + '$1') + '</th>').join('') + '</tr>';
     $('#frTbl tbody').innerHTML = rows.map(f => '<tr class="clickable' + (sel.has(f.id) ? ' sel' : '') + '" data-id="' + f.id + '">' + cols.map(c => '<td class="' + (c.num ? 'num' : '') + '">' + (c.f ? c.f(f) : esc(c.v(f))) + '</td>').join('') + '</tr>').join('') || '<tr><td colspan="12" class="muted">No fractions yet.</td></tr>';
     $$('#frTbl th').forEach(th => th.onclick = () => { if (sortKey === th.dataset.k) sortDir = -sortDir; else { sortKey = th.dataset.k; sortDir = 1; } lastKey = ''; });
     $$('#frTbl tbody tr[data-id]').forEach(tr => tr.onclick = e => {
@@ -3839,8 +3864,9 @@ const RC = (function () {
       focus = id; selChanged();
     });
     $$('.decb').forEach(b => b.onclick = e => { e.stopPropagation(); decisionPopover(b, b.dataset.id); });
+    if (focus !== lastFocus) { lastFocus = focus; const w = $('#frTblWrap'), tr = $('#frTbl tbody tr[data-id="' + focus + '"]'); if (tr) { const r = tr.getBoundingClientRect(), wr = w.getBoundingClientRect(), hh = $('#frTbl thead').offsetHeight; if (r.top < wr.top + hh) w.scrollTop -= wr.top + hh - r.top; else if (r.bottom > wr.bottom) w.scrollTop += r.bottom - wr.bottom; } }
     const al = M.alignmentState();
-    $('#frNote').textContent = R ? (rows.length + ' fractions · ' + (al.fractions === 'Uncertain' ? 'fraction assignment Uncertain' : 'volume-aligned (V1 ' + fmt.ml(S.setup.V1) + ' mL, V2 ' + fmt.ml(S.setup.V2) + ' mL)')) : '';
+    $('#frNote').innerHTML = R ? (rows.length + ' fractions · ' + (al.fractions === 'Uncertain' ? 'fraction assignment Uncertain' : 'volume-aligned<span class="eng-only"> (V1 ' + fmt.ml(S.setup.V1) + ' mL, V2 ' + fmt.ml(S.setup.V2) + ' mL)</span>')) : '';
     $('#sampCnt').textContent = Object.entries(S.decisions).filter(([k, d]) => d.sec || d.lun || d.proa).length;
   }
   function decisionPopover(anchor, id) {
@@ -3868,20 +3894,20 @@ const RC = (function () {
     const f = fr(focus);
     if (!R || !f) { box.innerHTML = '<div class="note">Select a fraction in the table or drag across the chart.</div>'; zm._mounted = false; return; }
     const st = rows.find(r => r.id === f.id) || M.fractionStats(R).find(r => r.id === f.id), d = dec(f.id), b = flBounds(), pool = R.setupSnap.source === 'import' ? M.uvPool(R) : null;
-    if (!zm._mounted) { box.innerHTML = '<div style="flex:1 1 60%;min-height:170px" id="zmHost"></div><div class="fr-detail-grid" style="flex:1 1 40%;min-height:0;display:grid;grid-template-columns:minmax(0,0.85fr) minmax(0,1.15fr);gap:8px"><div id="mpHost" style="min-height:0"></div><div id="frDet" style="overflow:auto;font-size:13.5px;min-height:0"></div></div>'; $('#zmHost').append(zm.host); zm.resize(); zm._mounted = true; mountPulse(); }
+    if (!zm._mounted) { box.innerHTML = '<div style="flex:1 1 60%;min-height:170px" id="zmHost"></div><div class="fr-detail-grid" style="flex:1 1 40%;min-height:0;display:grid;grid-template-columns:minmax(0,0.85fr) minmax(0,1.15fr);gap:8px"><div id="mpHost" class="eng-only" style="min-height:0"></div><div id="frDet" style="overflow:auto;font-size:13.5px;min-height:0"></div></div>'; $('#zmHost').append(zm.host); zm.resize(); zm._mounted = true; mountPulse(); }
     zm.invalidate();
     const cards = R.rules.cards.filter(c => c.fractions && c.fractions.includes(f.id));
     const shifted = Math.abs(st.ca - f.a) > 0.005 || Math.abs(st.cb - f.b) > 0.005, unc = st.assign === 'Uncertain';
     const sub = [shifted ? 'Collected liquid ' + fmt.ml(st.ca) + ' to ' + fmt.ml(st.cb) + ' mL' : '', unc ? '<span title="' + esc(M.alignmentState().issues.join(' ')) + '">Assignment Uncertain</span>' : ''].filter(Boolean);
-    const bnd = st.phaseKey !== (R.tpl.fractions.elPhase || 'el') ? [] : [pool ? 'UV 100 mAU pool ' + fmt.ml(pool.a) + ' to ' + (pool.b != null ? fmt.ml(pool.b) : '…') + ' mL.' : '',
-      b ? 'Fluorescence ' + S.th.flPct + ' % of peak ' + (b.a != null ? fmt.ml(b.a) : '…') + ' to ' + (b.b != null ? fmt.ml(b.b) : '…') + ' mL (' + (b.manual ? 'moved by hand, ' : '') + 'visual comparison only). <label>Level <input type="number" id="flPct" min="1" max="50" step="1" value="' + S.th.flPct + '" style="width:52px;height:20px"> %</label>' + (flManual ? ' <button class="link small" id="flAuto">Reset to automatic</button>' : '') : ''].filter(Boolean);
-    // order: fraction, evidence, decision, then the visual boundary comparison for the zoom chart
+    const bnd = st.phaseKey !== (R.tpl.fractions.elPhase || 'el') ? [] : [pool ? '<span title="UV 280 above 100 mAU">UV pool ' + fmt.ml(pool.a) + ' to ' + (pool.b != null ? fmt.ml(pool.b) : '…') + ' mL</span>' : '',
+      b ? '<span title="Fluorescence ' + S.th.flPct + ' % of peak; visual comparison only">Fl. ' + S.th.flPct + ' % ' + (b.a != null ? fmt.ml(b.a) : '…') + ' to ' + (b.b != null ? fmt.ml(b.b) : '…') + ' mL' + (b.manual ? ', moved' : '') + '</span><label class="eng-only"> Level <input type="number" id="flPct" min="1" max="50" step="1" value="' + S.th.flPct + '" style="width:52px;height:20px"> %</label>' + (flManual ? ' <button class="link small" id="flAuto">Reset</button>' : '') : ''].filter(Boolean);
+    // order: fraction, linked cards and decision, confirmations, then the visual boundary comparison for the zoom chart
     $('#frDet').innerHTML = '<div><b>' + f.id + '</b> · ' + esc(st.phase) + ' · ' + fmt.ml(f.a) + ' to ' + fmt.ml(f.b) + ' mL · ' + fmt.int(st.nBlocks) + ' blocks</div>' +
       (sub.length ? '<div class="muted">' + sub.join(' · ') + '</div>' : '') +
-      (cards.length ? '<div style="margin-top:6px"><b>Linked cards</b> ' + cards.map(c => '<span class="flag" title="' + esc(c.obs && c.obs.indexOf(c.title) === 0 ? c.obs : c.title + (c.obs ? '. ' + c.obs : '')) + '">' + c.rule + (c.status !== 'open' ? ' ' + c.status : '') + '</span>').join('') + '</div>' : '') +
+      '<div style="margin-top:6px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px">' + (cards.length ? '<span><b>Linked cards</b> ' + cards.map(c => '<span class="flag" title="' + esc(c.obs && c.obs.indexOf(c.title) === 0 ? c.obs : c.title + (c.obs ? '. ' + c.obs : '')) + '">' + c.rule + (c.status !== 'open' ? ' ' + c.status : '') + '</span>').join('') + '</span>' : '') +
+      '<span><b>Decision</b> <button class="btn sm" id="frDec">' + esc(decText(d)) + '</button></span></div>' + (d.note ? '<div class="small">Note: ' + esc(d.note) + '</div>' : '') +
       (cards.filter(c => c.confirm).map(c => '<div class="small">' + c.rule + ': ' + esc(c.confirm) + '</div>').join('')) +
-      '<div style="margin-top:6px"><b>Decision</b> <button class="btn sm" id="frDec">' + esc(decText(d)) + '</button>' + (d.note ? '<div class="small">Note: ' + esc(d.note) + '</div>' : '') + '</div>' +
-      (bnd.length ? '<div class="muted" style="margin-top:6px">' + bnd.join(' ') + '</div>' : '');
+      (bnd.length ? '<div class="muted" style="margin-top:6px">' + bnd.join(' · ') + '</div>' : '');
     $('#frDec').onclick = () => decisionPopover($('#frDec'), f.id);
     const fp = $('#flPct'); if (fp) fp.onchange = () => { const v = Math.max(1, Math.min(50, +fp.value || 5)); M.audit('setting', 'Fluorescence boundary level set to ' + v + ' % of peak (visual comparison only).'); S.th.flPct = v; flManual = null; zm.invalidate(); side(true); };
     const fa = $('#flAuto'); if (fa) fa.onclick = () => { flManual = null; M.audit('fraction review', 'Fluorescence boundaries reset to automatic.'); zm.invalidate(); side(true); };
@@ -3890,10 +3916,10 @@ const RC = (function () {
   function mountPulse() {
     if (pc) pc.destroy();
     pc = new CH.Chart($('#mpHost'), {
-      ariaLabel: 'Median pulse of the fraction', topBand: 6, marginLeft: 50, marginRight: 8, bottom: 26, liveReadout: false,
+      ariaLabel: 'Median pulse of the fraction', topBand: 6, marginLeft: 60, marginRight: 8, bottom: 36, liveReadout: false,
       xDomain: () => [20, 90], xTitle: () => 'ns from window start', zoom: false,
       panels: [{ key: 'main', yl: { title: 'Pulse', unit: 'V', zero: false } }],
-      series: [{ key: 'mp', label: 'Median pulse', color: M.procMode() === 'v20' ? C.v20 : C.prop, width: 1.25, panel: 'main', src: () => ({ x: mp.x, y: mp.y, n: mp.n, gen: mp.gen }), fmt: v => fmt.sig3(v) + ' V' }, { key: 'irf', label: 'IRF', color: C.irf, dash: 'dash', width: 1, panel: 'main', src: () => ({ x: mp.x, y: mp.iy, n: mp.n, gen: mp.gen }), fmt: v => fmt.sig3(v) + ' V' }]
+      series: [{ key: 'mp', label: 'Median pulse', legend: false, color: M.procMode() === 'v20' ? C.v20 : C.prop, width: 1.25, panel: 'main', src: () => ({ x: mp.x, y: mp.y, n: mp.n, gen: mp.gen }), fmt: v => fmt.sig3(v) + ' V' }, { key: 'irf', label: 'IRF', legend: false, color: C.irf, dash: 'dash', width: 1, panel: 'main', src: () => ({ x: mp.x, y: mp.iy, n: mp.n, gen: mp.gen }), fmt: v => fmt.sig3(v) + ' V' }]
     });
   }
   function updMedianPulse(f) {
@@ -3908,7 +3934,7 @@ const RC = (function () {
     for (let j = 0; j < 600; j++) { for (let k = 0; k < waves.length; k++) col[k] = waves[k][j]; mp.y[j] = TR.median(col, 0, waves.length); }
     const h = TR.shapeTable(R.pmt).h; let hm = 0, mn = 0; for (let j = 0; j < 600; j++) { if (h[j] < hm) hm = h[j]; if (mp.y[j] < mn) mn = mp.y[j]; }
     for (let j = 0; j < 600; j++) mp.iy[j] = h[j] / hm * mn;
-    mp.n = 600; mp.gen++; pc.cfg.info = () => fmt.int(idx.length) + ' of ' + fmt.int(i1 - i0) + ' blocks sampled';
+    mp.n = 600; mp.gen++; pc.cfg.info = () => 'Median of ' + fmt.int(idx.length) + ' of ' + fmt.int(i1 - i0) + ' blocks · dashed: IRF';
     pc.series[0].color = M.procMode() === 'v20' ? C.v20 : C.prop; pc.invalidate();
   }
   function picked(k) { return Object.entries(S.decisions).filter(([id, d]) => d[k]).map(([id]) => id).sort(); }
@@ -3937,14 +3963,15 @@ const RC = (function () {
     if (!R) { empty.style.display = ''; empty.textContent = 'No run yet. Start a run on the Run screen.'; }
     else if (R.setupSnap.source === 'standalone') { empty.style.display = ''; empty.textContent = 'Standalone TRIFLE: no chromatography data, so no fractions.'; }
     else empty.style.display = 'none';
+    $('#scr-fractions').classList.toggle('fr-none', !R || R.setupSnap.source === 'standalone');
     const wi = $('#frChips'), shift = (R ? R.setupSnap.rangeMap : S.setup.rangeMap) === 'shift'; if (wi.style.display !== (shift ? '' : 'none')) wi.style.display = shift ? '' : 'none';
     if (R && !focus && R.fractions.length) { const e = R.fractions.find(f => f.phaseKey === (R.tpl.fractions.elPhase || 'el')) || R.fractions[0]; const st = M.fractionStats(R); const best = st.filter(x => x.phaseKey === e.phaseKey && x.complete).sort((a, b) => b.fMax - a.fMax)[0]; focus = (best || e).id; sel = new Set([focus]); }
-    table(); side(false);
+    table(); if (R && !userPick) { const best = rows.filter(x => x.phaseKey === (R.tpl.fractions.elPhase || 'el') && x.complete).sort((a, b) => b.fMax - a.fMax)[0]; if (best && best.id !== focus) { focus = best.id; sel = new Set([focus]); lastKey = ''; sideKey = ''; zoomTo(); mp.fid = null; table(); } } side(false);
     if (d.all || d.xmode) { ov.invalidateBase(); zm.invalidateBase(); }
     ov.requestDraw(); if (zm._mounted) zm.requestDraw();
   }
   UI.register('fractions', {
-    show(o) { if (!built) build(); setTimeout(() => { ov.resize(); if (zm._mounted) zm.resize(); if (pc) pc.resize(); }, 0); lastKey = ''; sideKey = ''; zm._mounted = false; tab = o && o.anchor === 'samples' ? 'samples' : 'frac'; $$('#frTabs button').forEach(x => x.classList.toggle('on', x.dataset.v === tab)); side(true); },
+    show(o) { if (!built) build(); setTimeout(() => { ov.resize(); if (zm._mounted) zm.resize(); if (pc) pc.resize(); }, 0); lastKey = ''; sideKey = ''; zm._mounted = false; tab = o && o.anchor === 'samples' ? 'samples' : 'frac'; $$('#frTabs button').forEach(x => x.classList.toggle('on', x.dataset.v === tab)); table(); side(true); },
     update, samplesText, select(id) { focus = id; sel = new Set([id]); selChanged(); },
     // a beforeKey that no longer exists (the Assignment column was removed) inserts before Cards, so Decision stays last
     addCol(col, beforeKey) { let k = COLS.findIndex(c => c.k === beforeKey); if (k < 0) k = COLS.findIndex(c => c.k === 'cards'); COLS.splice(k < 0 ? COLS.length : k, 0, col); lastKey = ''; },
@@ -3979,7 +4006,7 @@ const REC = (function () {
     return out;
   }
   function resultsHead(showAssign) {
-    return [['Fraction'], ['Phase'], ['Volume', 'mL'], ['UV mean', 'mAU'], ['UV max', 'mAU'], ['Fluor. mean', 'V·ns'], ['Fluor. max', 'V·ns']].concat(showAssign ? [['Assignment']] : [], [['Cards']]);
+    return [['Fraction'], ['Phase'], ['Volume', 'mL'], ['UV 280 mean / max', 'mAU'], ['Fluor. mean / max', 'V·ns']].concat(showAssign ? [['Assignment']] : [], [['Cards']]);
   }
   function sections() {
     const R = S.run, s = R ? R.setupSnap : S.setup, al = M.alignmentState(), p = M.plumbing(), pi = M.presetInfo(s.pmt);
@@ -4000,8 +4027,8 @@ const REC = (function () {
     if (R) {
       const st = M.fractionStats(R), showAssign = st.some(f => f.assign === 'Uncertain');
       out.resultsHead = resultsHead(showAssign);
-      out.resultsTable = st.map(f => [f.id, f.phase, fmt.ml(f.a) + '-' + fmt.ml(f.b), fmt.mau(f.uvMean), fmt.mau(f.uvMax) + (f.uvSat ? ' (sat.)' : ''), fmt.sig3(f.fMean), fmt.sig3(f.fMax)].concat(showAssign ? [f.assign] : [], [f.linked.join(' ')]));
-      out.results = R.id + ': ' + fmt.int(R.acq.n) + ' blocks over ' + fmt.min1((R.state === 'complete' ? R.endAt : M.runTimeS(R)) / 60) + ' min. Fluorescence is relative (V·ns, ND-corrected); no concentration, recovery or purity is derived.' +
+      out.resultsTable = st.map(f => [f.id, f.phase, fmt.ml(f.a) + '-' + fmt.ml(f.b), fmt.mau(f.uvMean) + ' / ' + fmt.mau(f.uvMax) + (f.uvSat ? ' (sat.)' : ''), fmt.sig3(f.fMean) + ' / ' + fmt.sig3(f.fMax)].concat(showAssign ? [f.assign] : [], [f.linked.join(' ')]));
+      out.results = R.id + ': ' + fmt.int(R.acq.n) + ' blocks over ' + fmt.min1((R.state === 'complete' ? R.endAt : M.runTimeS(R)) / 60) + ' min. Fluorescence is relative (V·ns, ND-corrected); no recovery or purity is derived.' +
         (st.length ? '\n' + out.resultsHead.map(h => h[0] + (h[1] ? ' (' + h[1] + ')' : '')).join('  ') + '\n' + out.resultsTable.map(r => r.join('  ').trimEnd()).join('\n') : '');
       const A = R.acq, n = R.derivedN; let disc = 0, over = 0, low = 0; for (let i = 0; i < n; i++) { disc += A.disc[i]; over += A.nOver[i]; low += R.low[i]; }
       const cards = R.rules.cards, byRule = {}; cards.forEach(c => { byRule[c.rule] = (byRule[c.rule] || 0) + 1; });
@@ -4038,7 +4065,7 @@ const REC = (function () {
     r.innerHTML = '<div class="scr-h"><h1>Record</h1></div>' +
       '<div class="grid2 rec-grid"><div class="panel"><div class="ph"><h3>Notebook-ready summary</h3><span class="sp"></span><button class="btn sm" id="recCopyAll">Copy all</button></div><div class="pb" id="recBody"></div></div>' +
       '<div class="stack"><div class="panel"><div class="ph"><h3>Exports</h3></div><div class="pb stack" style="gap:8px" id="recExports"></div></div>' +
-      '<div class="panel"><div class="ph"><h3>Provenance</h3></div><div class="pb" id="recProv"></div></div></div></div>' +
+      '<div class="panel eng-only"><div class="ph"><h3>Provenance</h3></div><div class="pb" id="recProv"></div></div></div></div>' +
       '<div class="panel" style="margin-top:12px"><div class="ph"><h3>Audit trail</h3></div><div class="pb tbl-wrap" style="padding:0;max-height:360px"><table class="tbl" id="recAudit"><thead><tr><th>Time</th><th>Type</th><th>Entry</th><th>By</th></tr></thead><tbody></tbody></table></div></div>';
     built = true;
     $('#recCopyAll').onclick = e => UI.copyText(allText(), e.target);
@@ -4048,8 +4075,8 @@ const REC = (function () {
     const R = S.run, s = sections();
     const key = JSON.stringify([R ? R.derivedN : 0, R ? R.state : '', R ? R.rules.cards.map(c => c.status + c.obs.length) : 0, S.decisions, M.procLabel(), purpose, S.audit.length]);
     if (key === lastKey) return; lastKey = key;
-    const thead = s.resultsHead.map((h, k) => '<th' + (k >= 2 && k <= 6 ? ' class="num"' : '') + '>' + esc(h[0]) + (h[1] ? ' <span class="unit">(' + esc(h[1]) + ')</span>' : '') + '</th>').join('');
-    const sec3 = (s, fig) => '<div class="rec-sec"><div class="rh"><h3>3. Results</h3><span class="sp"></span><button class="btn sm" data-copy="3">Copy</button></div>' + fig + '<div class="rec-text">' + esc(s.results.split('\n')[0]) + '</div>' + (s.resultsTable.length ? '<div class="tbl-wrap" style="margin-top:6px"><table class="tbl"><thead><tr>' + thead + '</tr></thead><tbody>' + s.resultsTable.map(r => '<tr>' + r.map((c, k) => '<td' + (k >= 2 && k <= 6 ? ' class="num"' : '') + '>' + esc(c) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>' : '') + '</div>';
+    const thead = s.resultsHead.map((h, k) => '<th' + (k >= 2 && k <= 4 ? ' class="num"' : '') + '>' + esc(h[0]) + (h[1] ? ' <span class="unit">(' + esc(h[1]) + ')</span>' : '') + '</th>').join('');
+    const sec3 = (s, fig) => '<div class="rec-sec"><div class="rh"><h3>3. Results</h3><span class="sp"></span><button class="btn sm" data-copy="3">Copy</button></div>' + fig + '<div class="rec-text">' + esc(s.results.split('\n')[0]) + '</div>' + (s.resultsTable.length ? '<div class="tbl-wrap" style="margin-top:6px"><table class="tbl"><thead><tr>' + thead + '</tr></thead><tbody>' + s.resultsTable.map(r => '<tr>' + r.map((c, k) => '<td' + (k >= 2 && k <= 4 ? ' class="num"' : '') + '>' + esc(c) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>' : '') + '</div>';
     const sec = (n, title, text, extra) => '<div class="rec-sec"><div class="rh"><h3>' + n + '. ' + title + '</h3><span class="sp"></span><button class="btn sm" data-copy="' + n + '">Copy</button></div>' + (extra || '') + '<div class="rec-text">' + esc(text) + '</div></div>';
     let fig = '';
     const rc = runChart();
@@ -4064,9 +4091,8 @@ const REC = (function () {
   function exportsPanel() {
     const R = S.run, dis = R ? '' : ' disabled', csv = (R ? R.setupSnap : S.setup).csvJson;
     const box = $('#recExports');
-    box.innerHTML = '<div class="toolbar"><button class="btn" id="exBlocks"' + dis + '>CSV per block</button><button class="btn" id="exFr"' + dis + '>CSV per fraction</button><button class="btn" id="exJson">JSON metadata</button><button class="btn" id="exPng"' + dis + '>PNG of main chart</button><span id="exStage2"></span></div>' +
-      '<div class="callout small"><b>Instrument record</b> ' + tag('E') + '<br>Run folder with the Python pickle (.pkl), settings files and class source. Move the data to SharePoint, then delete the local copy.' + (csv ? '<br>CSV and JSON metadata are written alongside. ' + tag('P') : '') + '</div>' +
-      '<div class="callout small"><b>Legacy .pkl conversion</b> ' + tag('F', 'always') + '<br>Opening a pickle can execute code embedded in it, so conversion to CSV and JSON needs an isolated, trusted environment.</div>';
+    box.innerHTML = '<div class="toolbar"><button class="btn" id="exBlocks"' + dis + '>Block data (CSV)</button><button class="btn" id="exFr"' + dis + '>Fraction table (CSV)</button><button class="btn" id="exJson">Metadata (JSON)</button><button class="btn" id="exPng"' + dis + '>Chromatogram (PNG)</button><span id="exStage2"></span></div>' +
+      '<div class="callout small"><b>Instrument record</b> ' + tag('E') + ' Run folder (.pkl and settings). Move it to SharePoint, then delete the local copy.' + (csv ? ' CSV and JSON metadata are written alongside. ' + tag('P') : '') + '</div>';
     if (R) { $('#exBlocks').onclick = () => exportBlocks(); $('#exFr').onclick = () => exportFractions(); $('#exPng').onclick = () => exportPng(); }
     $('#exJson').onclick = () => exportJson();
     if (window.REC_STAGE2) window.REC_STAGE2($('#exStage2'));
@@ -4118,7 +4144,7 @@ const REC = (function () {
   }
   function audit() {
     const tb = $('#recAudit tbody'); if (tb._n === S.audit.length) return; tb._n = S.audit.length;
-    tb.innerHTML = S.audit.slice().reverse().map(a => '<tr><td class="nowrap">' + esc(a.ts) + '</td><td>' + esc(a.kind) + '</td><td class="wrap">' + esc(a.text) + '</td><td>' + esc(a.by) + '</td></tr>').join('');
+    tb.innerHTML = S.audit.slice().reverse().map(a => '<tr><td class="nowrap">' + esc(a.ts) + '</td><td>' + esc(a.kind) + '</td><td class="wrap">' + esc(a.text) + '</td><td>' + esc(a.by) + '</td></tr>').join('') || '<tr><td colspan="4" class="muted">No entries yet.</td></tr>';
   }
   let lastT = 0;
   UI.register('record', { show() { if (!built) build(); lastKey = ''; render(); lastT = performance.now(); }, update() { if (!built) build(); if (performance.now() - lastT < 2000) return; lastT = performance.now(); render(); } });
@@ -4130,7 +4156,7 @@ const ENG = (function () {
   const { $, $$, esc, el, tag } = UI, S = M.S, fmt = M.fmt, C = CH.C;
   let built = false, tab = 'tests', charts = {}, corrupt = false, alignBefore = true, guides = null, wfSel = { block: null, wf: 10 }, arBlock = null, testRes = null, repro = null, discSel = 1, discAt = 0;
   // Stage 2 inserts its tabs with addTab(key, label, afterKey)
-  const TABS = [['tests', 'Reference tests'], ['align', 'Alignment check'], ['ar', 'Auto-range trace'], ['wf', 'Raw waveforms'], ['ladder', 'Ladder and IRF'], ['laser', 'Laser log'], ['th', 'Rules and thresholds'], ['changes', 'Proposed changes'], ['disc', 'Discrepancies to verify'], ['faults', 'Faults and reproducibility']];
+  const TABS = [['tests', 'Reference tests'], ['align', 'Alignment'], ['ar', 'Auto-range'], ['wf', 'Waveforms'], ['ladder', 'Ladder and IRF'], ['laser', 'Laser log'], ['th', 'Rules'], ['changes', 'Changes'], ['disc', 'Discrepancies'], ['faults', 'Faults']];
   /* ---------- reference tests: the same functions that process the simulated run ---------- */
   function runTests() {
     const R = JSON.parse(document.getElementById('ref-tests').textContent);
@@ -4193,7 +4219,7 @@ const ENG = (function () {
   function alignHtml() {
     const s = S.setup, p = M.plumbing(), al = M.alignmentState();
     return '<div class="eng-align"><div><div class="toolbar" style="margin-bottom:6px"><div class="seg sm" id="alBA"><button data-v="1"' + (alignBefore ? ' class="on"' : '') + '>Before alignment</button><button data-v="0"' + (!alignBefore ? ' class="on"' : '') + '>After alignment</button></div><span class="note">Drag the two guides onto the UV and fluorescence fronts at the start of the load.</span></div><div style="height:330px" id="alChart"></div></div>' +
-      '<div><h3 style="margin-bottom:6px">Delay volumes</h3><table class="tbl" style="margin-bottom:6px"><thead><tr><th>Delay volume</th><th class="num">mL</th><th>Used for</th></tr></thead><tbody><tr><td>V1, UV to TRIFLE</td><td class="num">' + '<input id="eV1" type="number" step="0.01" min="0" value="' + fmt.ml(s.V1) + '" style="width:84px"' + (S.run ? ' disabled' : '') + '>' + '</td><td>Detector alignment</td></tr><tr><td>V2, TRIFLE to collector</td><td class="num">' + '<input id="eV2" type="number" step="0.01" min="0" value="' + fmt.ml(s.V2) + '" style="width:84px"' + (S.run ? ' disabled' : '') + '>' + '</td><td>Fraction assignment</td></tr><tr><td>V1 + V2</td><td class="num">' + fmt.ml(s.V1 + s.V2) + '</td><td></td></tr><tr><td>UNICORN fraction delay</td><td class="num">' + '<input id="eFd" type="number" step="0.01" min="0" value="' + fmt.ml(p.fracDelay) + '" style="width:84px"' + (S.run || S.demo.delayNotUpdated ? ' disabled' : '') + '>' + '</td><td>Fraction cuts in UNICORN</td></tr></tbody></table><div class="note" style="margin-bottom:8px">Set when TRIFLE is plumbed in; simulation values. Locked during a run. Tolerance ' + fmt.ml(S.th.i5Tol) + ' mL.</div>' +
+      '<div><h3 style="margin-bottom:6px">Delay volumes</h3><table class="tbl" style="margin-bottom:6px"><thead><tr><th>Delay volume</th><th class="num">mL</th></tr></thead><tbody><tr><td title="Used for detector alignment">V1, UV to TRIFLE</td><td class="num">' + '<input id="eV1" type="number" step="0.01" min="0" value="' + fmt.ml(s.V1) + '" style="width:84px"' + (S.run ? ' disabled' : '') + '>' + '</td></tr><tr><td title="Used for fraction assignment">V2, TRIFLE to collector</td><td class="num">' + '<input id="eV2" type="number" step="0.01" min="0" value="' + fmt.ml(s.V2) + '" style="width:84px"' + (S.run ? ' disabled' : '') + '>' + '</td></tr><tr><td>V1 + V2</td><td class="num">' + fmt.ml(s.V1 + s.V2) + '</td></tr><tr><td title="Used for fraction cuts in UNICORN">UNICORN fraction delay</td><td class="num">' + '<input id="eFd" type="number" step="0.01" min="0" value="' + fmt.ml(p.fracDelay) + '" style="width:84px"' + (S.run || S.demo.delayNotUpdated ? ' disabled' : '') + '>' + '</td></tr></tbody></table><div class="note" style="margin-bottom:8px">Set when TRIFLE is plumbed in; simulation values. Locked during a run. Tolerance ' + fmt.ml(S.th.i5Tol) + ' mL.</div>' +
       '<div id="alOffset" class="callout"></div><div class="note" style="margin-top:8px">Alignment needs re-checking only when the tubing changes. Last checked ' + S.alignChecked + '. <button class="link small" id="alRec">Record a check today</button></div>' +
       (al.issues.length ? '<div class="note" style="margin-top:6px">Fraction assignment: ' + esc(al.fractions) + '. ' + esc(al.issues.join(' ')) + '</div>' : '') + '</div></div>';
   }
@@ -4203,9 +4229,9 @@ const ENG = (function () {
     guides = guides && guides.before === alignBefore ? guides : { before: alignBefore, g1: d.uvHalf || d.x0 + 1, g2: d.flHalf || d.x0 + 1.2 };
     charts.al = new CH.Chart(host, {
       ariaLabel: 'Alignment check', topBand: 8, marginRight: 12, xDomain: () => [d.x0, d.x1], xTitle: () => 'Volume (mL)' + (alignBefore ? ', TRIFLE at acquisition volume' : ', TRIFLE aligned by V1'),
-      panels: [{ key: 'main', yl: { title: 'Front height', unit: '% of plateau', fixed: [-5, 110] } }],
+      panels: [{ key: 'main', yl: { title: 'Front height', unit: '% of plateau', fixed: [-5, 130] } }],
       series: [{ key: 'uv', label: 'UV 280 front', color: C.uv, width: 1.25, panel: 'main', src: () => d.uv, fmt: v => v.toFixed(0) + ' %' }, { key: 'fl', label: 'Fluorescence front', color: M.procMode() === 'v20' ? C.v20 : C.prop, width: 1.25, panel: 'main', src: () => d.fl, fmt: v => v.toFixed(0) + ' %' }],
-      guides: () => [{ id: 'g1', x: guides.g1, color: C.uv, dash: 'dash', label: 'UV guide', row: 1, drag: v => { guides.g1 = v; }, onDrag: offset }, { id: 'g2', x: guides.g2, color: C.v20, dash: 'dash', label: 'Fluorescence guide', row: 2, drag: v => { guides.g2 = v; }, onDrag: offset }]
+      guides: () => [{ id: 'g1', x: guides.g1, color: C.uv, dash: 'dash', label: 'UV', row: 1, drag: v => { guides.g1 = v; }, onDrag: offset }, { id: 'g2', x: guides.g2, color: C.v20, dash: 'dash', label: 'Fluorescence', row: 2, drag: v => { guides.g2 = v; }, onDrag: offset }]
     });
     offset();
     function offset() { const o = guides.g2 - guides.g1, b = $('#alOffset'); if (!b) return; b.innerHTML = 'Offset implied by the guides: <b>' + fmt.ml(o) + ' mL</b>. Entered V1: <b>' + fmt.ml(S.setup.V1) + ' mL</b>. ' + (alignBefore ? (Math.abs(o - S.setup.V1) <= 0.05 ? 'Consistent within 0.05 mL.' : 'Differs from V1 by ' + fmt.ml(Math.abs(o - S.setup.V1)) + ' mL. Check the tubing and V1.') : (Math.abs(o) <= 0.05 ? 'After alignment the fronts coincide within 0.05 mL.' : 'Residual offset after alignment. Check V1.')); }
@@ -4280,9 +4306,9 @@ const ENG = (function () {
     const log = S.laserLog, last = log.slice(-60).reverse();
     return '<div class="note" style="margin-bottom:6px">' + tag('P', 'always') + ' Laser controller log from the vendor software over RS-232, one line every 2.5 s. v2.0 does not read it. ' + esc(M.laserText()) + '</div>' +
       '<div class="tbl-wrap" style="max-height:480px"><table class="tbl"><thead><tr><th>Time</th><th class="num">t <span class="unit">(s)</span></th><th class="num">Diode temp <span class="unit">(°C)</span></th><th class="num">Crystal temp <span class="unit">(°C)</span></th><th class="num">Case temp <span class="unit">(°C)</span></th><th class="num">Diode current <span class="unit">(as logged)</span></th><th class="num">Photodetector <span class="unit">(mW, as logged)</span></th></tr></thead><tbody>' +
-      last.map(e => '<tr><td>' + M.wall(e.k * 2.5).time + '</td><td class="num">' + (e.k * 2.5).toFixed(0) + '</td><td class="num">' + e.ld.toFixed(2) + '</td><td class="num">' + e.nlo.toFixed(2) + '</td><td class="num">' + e.caseT.toFixed(2) + '</td><td class="num">' + e.cur.toFixed(2) + '</td><td class="num">' + e.pd.toFixed(1) + '</td></tr>').join('') + '</tbody></table></div><div class="note">Latest 60 of ' + fmt.int(log.length) + ' lines.</div>';
+      last.map(e => '<tr><td>' + M.wall(e.k * 2.5).time + '</td><td class="num">' + (e.k * 2.5).toFixed(0) + '</td><td class="num">' + e.ld.toFixed(2) + '</td><td class="num">' + e.nlo.toFixed(2) + '</td><td class="num">' + e.caseT.toFixed(2) + '</td><td class="num">' + e.cur.toFixed(2) + '</td><td class="num">' + e.pd.toFixed(1) + '</td></tr>').join('') + '</tbody></table></div><div class="note" style="margin-top:6px">Latest 60 of ' + fmt.int(log.length) + ' lines.</div>';
   }
-  /* ---------- Proposed changes ---------- */
+  /* ---------- Changes (Proposed) ---------- */
   function changesHtml() {
     const s = S.setup, p = S.proc, on = v => v ? UI.stateHtml('ok', 'On') : '<span class="muted">Off</span>';
     const rows = [
@@ -4373,7 +4399,7 @@ const ENG = (function () {
   const H = () => tag('H', 'always'), src = (t, plain) => '<div class="disc-src' + (plain ? ' plain' : '') + '">' + t + '</div>', p = t => '<p>' + t + '</p>';
   const ol = items => '<ol>' + items.map(t => '<li>' + t + '</li>').join('') + '</ol>';
   const noRun = t => '<p class="muted">' + t + '</p>';
-  // Discrepancies to verify: one entry per item feeds both the summary row and the detail panel
+  // Discrepancies: one entry per item feeds both the summary row and the detail panel
   const DISC = [
     {
       n: 1, title: 'Rule ID clash', v20: 'Not in v2.0. The Stage 2 prompt gives I6 to a second rule.', src: 'Stage 2 prompt, section 1; Stage 1, section 11', plain: true,
@@ -4382,7 +4408,7 @@ const ENG = (function () {
       detail: () => ({
         v20: p('Not in v2.0, which has no rule IDs. The Stage 2 prompt (section 1) gives I6 to Calibration not applicable. Stage 1 (section 11) already uses I6 for Laser output changed.'),
         effect: p('Rule IDs are stored in card IDs (for example I6-load-1), responses, the audit trail and the JSON and CSV exports. One ID for two rules would make those records ambiguous.'),
-        res: p('Calibration not applicable is I7; P6, P7 and H3 are unchanged. The Stage 2 prompt is to be corrected.') + '<button class="btn sm" id="discGoTh">Open Rules and thresholds</button>',
+        res: p('Calibration not applicable is I7; P6, P7 and H3 are unchanged. The Stage 2 prompt is to be corrected.') + '<button class="btn sm" id="discGoTh">Open Rules</button>',
         check: p('None needed.')
       })
     },
@@ -4484,7 +4510,7 @@ const ENG = (function () {
       detail: R => {
         let eff = p('The inputs are those of the previous decision, so it returns the step already in use and the range does not change. Each timeout costs about 3 s and leaves no record.');
         if (!R) eff += noRun('Start a run to count timeouts.');
-        else { const ix = timeouts(R); eff += p(ix.length ? 'This run: ' + ix.length + (ix.length === 1 ? ' timeout, block ' : ' timeouts, blocks ') + listBlocks(ix) + '.' : 'This run: no timeouts.'); if (ix.length) eff += '<button class="btn sm" id="discGoAr">Open block ' + fmt.int(ix[0] + 1) + ' in Auto-range trace</button>'; }
+        else { const ix = timeouts(R); eff += p(ix.length ? 'This run: ' + ix.length + (ix.length === 1 ? ' timeout, block ' : ' timeouts, blocks ') + listBlocks(ix) + '.' : 'This run: no timeouts.'); if (ix.length) eff += '<button class="btn sm" id="discGoAr">Open block ' + fmt.int(ix[0] + 1) + ' in Auto-range</button>'; }
         return {
           v20: p('After 3 s without a complete block the scope returns no waveforms (scope_class.py, lines 230 to 235 and 331 to 333). The loop still saves and runs auto-ranging (loop_measurements.py, lines 28 to 37). Auto-ranging reads the last stored waveform, from the previous block, with that waveform\'s step (signal_modelling.py, line 81; signal_attenuation.py, lines 56 to 62).'),
           effect: eff,
@@ -4513,7 +4539,7 @@ const ENG = (function () {
       DISC.map(x => '<tr' + (x.n === it.n ? ' class="sel"' : '') + '><td class="num dn">' + x.n + '</td><td class="wrap" data-h="Item ' + x.n + '"><button class="link" data-n="' + x.n + '"' + (x.n === it.n ? ' aria-current="true"' : '') + '>' + esc(x.title) + '</button></td><td class="wrap" data-h="v2.0 behaviour and source">' + esc(x.v20) + src(esc(x.src), x.plain) + '</td><td class="wrap" data-h="Effect">' + esc(x.effect(R)) + '</td><td class="wrap" data-h="Resolution">' + esc(x.res) + '</td><td data-h="Status">' + x.status(R) + '</td></tr>').join('') + '</tbody></table></div>' +
       '<div id="discDetail" class="panel" style="margin-top:12px"><div class="ph"><h3>' + it.n + '. ' + esc(it.title) + '</h3></div><div class="pb"><div class="disc-d">' +
       blk('v2.0 behaviour', it.e ? tag('E', 'always') : '', d.v20) + blk('Effect', '', d.effect) + blk('Resolution', it.p ? tag('P', 'always') : '', d.res) + blk('Check on the instrument', it.h ? H() : '', d.check) + '</div></div></div>' +
-      '<div class="note disc-foot"><b>Trigger threshold.</b> v2.0 sends 150 with the comment <code>Threshold is in mV</code> (scope_class.py, lines 108 to 109). The ps6000a programmer\'s guide reads the value as ADC counts, about 2.3 mV on ±500 mV, not 0.15 V. ' + H() + '</div>' +
+      '<div class="note disc-foot"><b>Trigger threshold.</b> v2.0 sends 150 with the comment "Threshold is in mV" (scope_class.py, lines 108 to 109). The ps6000a programmer\'s guide reads the value as ADC counts, about 2.3 mV on ±500 mV, not 0.15 V. ' + H() + '</div>' +
       '<div class="note disc-foot">A quadratic fit of recent pulse minima was abandoned during v2.0 development because it failed when the signal changed by orders of magnitude. It is not reintroduced.</div>';
   }
   /* ---------- faults and reproducibility ---------- */
@@ -4559,7 +4585,7 @@ const ENG = (function () {
     }
     if (tab === 'th') $$('[data-th]').forEach(inp => inp.onchange = () => { const k = inp.dataset.th, v = parseFloat(inp.value); if (!isFinite(v)) { inp.value = S.th[k]; return; } const old = S.th[k]; S.th[k] = v; M.audit('threshold', M.TH_INFO[k][0] + ' ' + v + ' ' + M.TH_INFO[k][1] + ' (was ' + old + ').'); if (S.run) { M.rederive(S.run); } S.laser = null; M.laserUpdate(); UI.emitDirty(); const rr = $('#ruleRows'); if (rr) rr.innerHTML = ruleRows(); });
     if (tab === 'disc') {
-      $$('#discTbl [data-n]').forEach(b => b.onclick = () => { discSel = +b.dataset.n; render(); });
+      $$('#discTbl [data-n]').forEach(b => b.onclick = () => { discSel = +b.dataset.n; render(); const d = $('#discDetail'); if (d && d.getBoundingClientRect().top > innerHeight - 160) d.scrollIntoView({ block: 'start' }); });
       const go = (id, f) => { const b = $(id); if (b) b.onclick = f; };
       go('#discGoTh', () => { tab = 'th'; render(); });
       go('#discGoLadder', () => { tab = 'ladder'; render(); });
@@ -4722,7 +4748,7 @@ const Q = (function () {
       const L = S.laser; return A(M.laserText() + ' Latest controller reading ' + fmt.sig3(L ? L.last : 0) + ' mW as logged at ' + fmt.min1(S.simT / 60) + ' min after emission started. A stable controller reading does not confirm stable UV output.', 'Laser controller log (Proposed); thresholds: fall ' + S.th.laserFallPct + ' %, hold ±' + S.th.laserHoldPct + ' % for ' + S.th.laserHoldMin + ' min');
     }
     if (/(v2|v 2|2\.0|reference).*(proposed)|(proposed).*(v2|2\.0|reference)|processing mode|difference between/.test(q)) {
-      return A('v2.0 reference: mean of the first 100 samples (20 ns) as baseline, subtracted across the whole 119.8 ns window, no laser correction. Proposed processing: median baseline, an optional 30 to 70 ns window that reduces baseline leverage, and optional correction by the beam monitor. Proposed auto-ranging uses the block median waveform, a corrected no-signal test and an unscaled baseline. Current processing: ' + M.procLabel() + '. Use Compare on Run to overlay both.', 'Proposed changes table (Engineer view); setting: processing mode');
+      return A('v2.0 reference: mean of the first 100 samples (20 ns) as baseline, subtracted across the whole 119.8 ns window, no laser correction. Proposed processing: median baseline, an optional 30 to 70 ns window that reduces baseline leverage, and optional correction by the beam monitor. Proposed auto-ranging uses the block median waveform, a corrected no-signal test and an unscaled baseline. Current processing: ' + M.procLabel() + '. Use Compare on Run to overlay both.', 'Engineer view: Changes; setting: processing mode');
     }
     if (/(which|what).*(fraction).*(flag|qc|problem)|flags/.test(q)) {
       if (!R) return A('No run yet.', 'Run state');
@@ -4732,10 +4758,10 @@ const Q = (function () {
       return A(st.length + ' fractions have flags: ' + desc.join('; ') + (st.length > 10 ? '; and ' + (st.length - 10) + ' more' : '') + '.', 'Fraction table QC (' + M.procLabel() + ')');
     }
     if (/hypothesis|evidence level|process observation|instrument evidence/.test(q)) return A(GLOSSARY['evidence level'][1] + ' A hypothesis card always names the offline confirmation, for example Protein A HPLC for H1. The software advises only; you decide.', 'Glossary: Evidence levels');
-    if (/notebook|e-?workbook|idbs|record this|export|attach/.test(q)) return A('Open Record. Copy the six sections (purpose, methods, results, data quality, fraction decisions, attachments) into your E-WorkBook experiment, or use Copy all. Export the CSV per block, CSV per fraction, JSON metadata and the chromatogram PNG, and attach them with the UNICORN report and the offline results. Direct transfer to IDBS is a future integration.', 'Procedure: Record');
+    if (/notebook|e-?workbook|idbs|record this|export|attach/.test(q)) return A('Open Record. Copy the six sections (purpose, methods, results, data quality, fraction decisions, attachments) into your E-WorkBook experiment, or use Copy all. Export the block data, fraction table, metadata and chromatogram, and attach them with the UNICORN report and the offline results. Direct transfer to IDBS is a future integration.', 'Procedure: Record');
     if (/\bv1\b|\bv2\b|delay volume|fraction delay|align/.test(q)) {
       const al = M.alignmentState(), s = S.setup;
-      return A('V1 (UV to TRIFLE, ' + fmt.ml(s.V1) + ' mL) places TRIFLE signals on the UNICORN chromatogram by volume. V2 (TRIFLE to collector, ' + fmt.ml(s.V2) + ' mL) and the UNICORN fraction delay (' + fmt.ml(M.plumbing().fracDelay) + ' mL) decide which fraction the liquid reached. Alignment: ' + al.detector + '; fraction assignment: ' + al.fractions + '. ' + (al.issues.join(' ')), 'Engineer view: Alignment check; rule I5');
+      return A('V1 (UV to TRIFLE, ' + fmt.ml(s.V1) + ' mL) places TRIFLE signals on the UNICORN chromatogram by volume. V2 (TRIFLE to collector, ' + fmt.ml(s.V2) + ' mL) and the UNICORN fraction delay (' + fmt.ml(M.plumbing().fracDelay) + ' mL) decide which fraction the liquid reached. Alignment: ' + al.detector + '; fraction assignment: ' + al.fractions + '. ' + (al.issues.join(' ')), 'Engineer view: Alignment; rule I5');
     }
     if (/buffer baseline|pre-run baseline|noise|drift|wander/.test(q)) {
       const m = S.readiness && S.readiness.metrics; return A('The buffer baseline is measured at Readiness with flow on: noise is the RMS of fluorescence over 60 blocks, drift the slope over 5 min, wander the peak-to-peak of a 30-block moving mean.' + (m ? ' Measured: noise ' + fmt.sig3(m.noise) + ' V·ns, drift ' + fmt.sig3s(m.drift) + ' V·ns per min, wander ' + fmt.sig3(m.wander) + ' V·ns; pre-run baseline ' + fmt.sig3(m.median) + ' V·ns.' : ' It has not been measured yet.') + ' Rule P3 compares buffer phases with it.', 'Readiness: buffer baseline');
@@ -4774,24 +4800,24 @@ const Q = (function () {
    ===================================================================== */
 (function () {
   const { $, $$, esc, el, tag } = UI, S = M.S, fmt = M.fmt, C = CH.C;
-  const DEV = '<span class="tag" data-scope="always">Development assumption, not validated</span>';
+  const DEV = '<span class="tag" data-scope="always" title="Not validated">Development assumption</span>';
 
   /* ---------- Run and Fraction review additions ---------- */
-  UI.procExtras.push({ key: 'decay', label: 'Decay-shape analysis (research display)', html: () => '<hr style="border:0;border-top:1px solid var(--border);margin:6px 0"><label class="chk"><input type="checkbox" data-k="decay"> Decay-shape analysis, research display only ' + tag('P', S.proc.decay ? 'always' : 'engineer') + '</label><div class="small muted" style="margin-left:22px">Adds the decay metric strip and rule P7. Unvalidated.</div>', onChange: () => { if (S.run) { S.run.dataGen++; S.run.rules.replay(); } } });
+  UI.procExtras.push({ key: 'decay', label: 'Decay-shape analysis (research display)', html: () => '<div' + (S.proc.decay ? '' : ' class="eng-only"') + '><hr style="border:0;border-top:1px solid var(--border);margin:6px 0"><label class="chk"><input type="checkbox" data-k="decay"> Decay-shape analysis ' + tag('P', S.proc.decay ? 'always' : 'engineer') + '</label><div class="small muted" style="margin-left:22px">Research display, not validated. Adds the decay strip and rule P7.</div></div>', onChange: () => { if (S.run) { S.run.dataGen++; S.run.rules.replay(); } } });
   RC.extraPanels.push(() => [{ key: 'decay', px: 46, hidden: () => !S.proc.decay, yl: { title: 'Decay metric', short: 'Decay', unit: 'ns', zero: false, minSpan: 0.4 } }]);
-  RC.extraSeries.push(() => { const ref = S2.decayRef(S.run), info = S2.irfInfo(S.run ? S.run.pmt : S.setup.pmt); return [{ key: 'decay', label: 'Decay metric' + (ref ? ' (load plateau ' + ref.mean.toFixed(2) + ' ± ' + ref.sd.toFixed(2) + ' ns SD)' : ' (SD pending)') + '; IRF ' + info.fwhmNs.toFixed(1) + ' ns FWHM; sampling 0.2 ns', color: C.decay, width: 1, panel: 'decay', src: ref ? RC.trifle('decay') : () => null, fmt: v => v.toFixed(2) + ' ns', visible: !!S.proc.decay, legend: !!S.proc.decay, tag: 'Proposed', tagScope: 'always', tip: 'Intensity-weighted mean delay after the IRF peak, 0 to 20 ns, on the block median waveform. Computed only where input range use is between ' + Math.round(S.th.decayUseMin * 100) + ' and ' + Math.round(S.th.decayUseMax * 100) + ' %. Research display only.' }]; });
-  RC.extraInfo.push((r, i) => { let s = ''; const pk = r.ph.list[r.acq.phase[i]].key, k = S2.conc(r.y.act[i], r, pk); if (k.state !== 'na' && k.state !== 'mixed') s += ' · ' + S2.concText(r.y.act[i], r, pk); const ref = S2.decayRef(r); if (S.proc.decay && ref && isFinite(r.y.decay[i])) s += ' · decay ' + r.y.decay[i].toFixed(2) + ' ± ' + ref.sd.toFixed(2) + ' ns'; return s; });
+  RC.extraSeries.push(() => { const ref = S2.decayRef(S.run), info = S2.irfInfo(S.run ? S.run.pmt : S.setup.pmt); return [{ key: 'decay', label: 'Decay metric', color: C.decay, width: 1, panel: 'decay', src: ref ? RC.trifle('decay') : () => null, fmt: v => v.toFixed(2) + ' ns', visible: !!S.proc.decay, legend: !!S.proc.decay, tag: 'Proposed', tagScope: 'always', tip: (ref ? 'Load plateau ' + ref.mean.toFixed(2) + ' ± ' + ref.sd.toFixed(2) + ' ns SD' : 'SD pending') + '; IRF ' + info.fwhmNs.toFixed(1) + ' ns FWHM; sampling 0.2 ns. Intensity-weighted mean delay after the IRF peak, 0 to 20 ns, on the block median waveform. Computed only where input range use is between ' + Math.round(S.th.decayUseMin * 100) + ' and ' + Math.round(S.th.decayUseMax * 100) + ' %. Research display only.' }]; });
+  RC.extraInfo.push((r, i) => { let s = ''; const pk = r.ph.list[r.acq.phase[i]].key, k = S2.conc(r.y.act[i], r, pk); if (k.state !== 'na' && k.state !== 'mixed') s += ' · ' + (k.state === 'in' ? S2.concText(r.y.act[i], r, pk) : 'concentration ' + S2.concText(r.y.act[i], r, pk).toLowerCase()); const ref = S2.decayRef(r); if (S.proc.decay && ref && isFinite(r.y.decay[i])) s += ' · decay ' + r.y.decay[i].toFixed(2) + ' ± ' + ref.sd.toFixed(2) + ' ns'; return s; });
   RC.runRows.push((R, i, row) => {
     let h = ''; if (!(i >= 0) || !R.derivedN) return h;
     const st = S2.status(R);
-    if (!st.none) { const pk = R.ph.list[R.acq.phase[i]].key, k = S2.conc(R.y.act[i], R, pk); h += row('Concentration', '', st.ok ? esc(S2.concText(R.y.act[i], R, pk)) + (k.state === 'mixed' ? '' : ' ' + tag('P', 'always')) : '<span class="state warn" style="font-weight:normal">Calibration not applicable</span>'); }
-    if (S.proc.decay) { const ref = S2.decayRef(R), v = R.y.decay[i], info = S2.irfInfo(R.pmt); h += row('Decay metric', 'ns', ref ? (isFinite(v) ? v.toFixed(2) : '–') + ' <span class="muted" style="font-weight:normal">± ' + ref.sd.toFixed(2) + ' SD; IRF ' + info.fwhmNs.toFixed(1) + ' ns FWHM; 0.2 ns sampling</span>' : '<span class="muted" style="font-weight:normal">SD not yet measured</span>'); }
+    if (!st.none) { const pk = R.ph.list[R.acq.phase[i]].key, k = S2.conc(R.y.act[i], R, pk); if (k.state !== 'mixed') h += row('Concentration', st.ok ? 'mg/mL' : '', st.ok ? (k.state === 'in' ? '<span title="Indicative">' + fmt.sig3(k.c) + '</span>' : k.state === 'above' || k.state === 'below' ? '<span title="Outside the calibrated linear range; fluorescence is relative only">' + esc(S2.concText(R.y.act[i], R, pk)) + '</span>' : esc(S2.concText(R.y.act[i], R, pk))) + ' ' + tag('P', 'always') : '<span class="state warn" style="font-weight:normal">Calibration not applicable</span>'); }
+    if (S.proc.decay) { const ref = S2.decayRef(R), v = R.y.decay[i], info = S2.irfInfo(R.pmt); h += row('Decay metric', 'ns', ref ? (isFinite(v) ? v.toFixed(2) : '–') + ' <span class="muted" style="font-weight:normal" title="IRF ' + info.fwhmNs.toFixed(1) + ' ns FWHM; 0.2 ns sampling">± ' + ref.sd.toFixed(2) + ' SD</span>' : '<span class="muted" style="font-weight:normal">SD not yet measured</span>'); }
     return h;
   });
   function addFrCols() {
     const fr = UI.screen('fractions'); if (!fr || !fr.addCol) return;
-    fr.addCol({ k: 'conc', h: 'Concentration <span class="unit">(mg/mL, indicative)</span>', num: true, show: () => S2.status(S.run).ok, tip: 'Indicative. Elution fractions only, where the whole fraction is inside the calibrated linear range.', v: f => typeof f.conc === 'number' ? f.conc : -1, f: f => f.conc == null ? '–' : typeof f.conc === 'number' ? fmt.sig3(f.conc) + (f.concPartBelow ? ' <span class="flag" title="Part of the fraction is below the calibrated range">part below</span>' : '') : '<span class="muted small">' + esc(f.conc) + '</span>' }, 'qc');
-    fr.addCol({ k: 'decay', get h() { return 'Decay metric <span class="unit">(ns ± SD)</span><br><span class="unit small">IRF ' + S2.irfInfo(S.run ? S.run.pmt : S.setup.pmt).fwhmNs.toFixed(1) + ' ns FWHM; 0.2 ns sampling</span>'; }, num: true, show: () => !!S.proc.decay && !!S2.decayRef(S.run), tip: 'Research display only. Mean of the block decay metric over the fraction.', v: f => f.decay, f: f => { const ref = S2.decayRef(S.run); return S.proc.decay && ref && isFinite(f.decay) ? f.decay.toFixed(2) + ' <span class="muted">± ' + ref.sd.toFixed(2) + '</span>' : '–'; } }, 'assign');
+    fr.addCol({ k: 'conc', h: 'Concentration <span class="unit">(mg/mL)</span>', num: true, show: () => S2.status(S.run).ok, tip: 'Indicative. Elution fractions only, where the whole fraction is inside the calibrated linear range.', v: f => typeof f.conc === 'number' ? f.conc : -1, f: f => f.conc == null ? '–' : typeof f.conc === 'number' ? fmt.sig3(f.conc) + (f.concPartBelow ? ' <span class="flag" title="Part of the fraction is below the calibrated range">part below</span>' : '') : '<span class="muted small" title="Outside the calibrated linear range; fluorescence is relative only">' + esc(f.conc) + '</span>' }, 'qc');
+    fr.addCol({ k: 'decay', h: 'Decay <span class="unit">(ns ± SD)</span>', num: true, show: () => !!S.proc.decay && !!S2.decayRef(S.run), get tip() { return 'Research display only. Mean of the block decay metric over the fraction. IRF ' + S2.irfInfo(S.run ? S.run.pmt : S.setup.pmt).fwhmNs.toFixed(1) + ' ns FWHM; 0.2 ns sampling.'; }, v: f => f.decay, f: f => { const ref = S2.decayRef(S.run); return S.proc.decay && ref && isFinite(f.decay) ? f.decay.toFixed(2) + ' <span class="muted">± ' + ref.sd.toFixed(2) + '</span>' : '–'; } }, 'assign');
   }
   /* ---------- Calibration screen (Proposed) ---------- */
   let calBuilt = false, cAcq = null, cFit = null, cur = null, calKey = '';
@@ -4800,14 +4826,14 @@ const Q = (function () {
   const res = { x: new Float64Array(6), y: new Float64Array(6), n: 6 }, band = { x: Float64Array.from([0, 10.5]), yp: new Float64Array(2), ym: new Float64Array(2), n: 2 };
   function calBuild() {
     const r = $('#scr-calibration');
-    r.innerHTML = '<div class="scr-h"><h1>Calibration</h1>' + tag('P', 'always') + '<span class="sp"></span><span class="note">Converts fluorescence to an indicative concentration, inside a demonstrated linear range only. No yield or recovery is computed.</span></div>' +
+    r.innerHTML = '<div class="scr-h"><h1>Calibration</h1>' + tag('P', 'always') + '<span class="sp"></span><span class="note">Indicative concentration inside the linear range only</span></div>' +
       '<div class="grid2 cal-grid"><div class="stack">' +
-      '<div class="panel"><div class="ph"><h3>Standard and acquisition</h3><span class="sp"></span><span class="note">Step injections at known concentrations</span></div><div class="pb"><div class="form s2-form">' +
+      '<div class="panel"><div class="ph"><h3>Standard and acquisition</h3></div><div class="pb"><div class="form s2-form">' +
       '<label class="l" for="calMat">Standard</label><select id="calMat"><option value="IgG">Purified IgG (default)</option><option value="BSA">BSA (weak surrogate)</option></select>' +
       '<label class="l">Levels</label><div class="small">' + S2.LEVELS.join(', ') + ' mg/mL; ' + S2.SCHED.on + ' min each, ' + S2.SCHED.off + ' min buffer between</div>' +
       '<label class="l">PMT preset and processing</label><div class="small" id="calPre"></div><div class="full" id="calMatNote"></div></div>' +
       '<div style="height:240px;margin-top:6px" id="calAcqChart"></div><div class="note">Drag a window edge on the chart to adjust a plateau.</div></div></div>' +
-      '<div class="panel"><div class="ph"><h3>Plateaus</h3><span class="sp"></span><button class="btn sm" id="calAuto">Reset windows to automatic</button></div><div class="pb tbl-wrap" style="padding:0"><table class="tbl" id="calTbl"><thead><tr><th class="num">Level <span class="unit">(mg/mL)</span></th><th class="num">Window <span class="unit">(min)</span></th><th class="num">Blocks</th><th class="num">Mean <span class="unit">(V·ns)</span></th><th class="num">CV <span class="unit">(%)</span></th><th class="num">Departure <span class="unit">(%)</span></th><th>Linear range</th></tr></thead><tbody></tbody></table></div></div>' +
+      '<div class="panel"><div class="ph"><h3>Plateaus</h3><span class="sp"></span><button class="btn sm" id="calAuto">Reset windows to automatic</button></div><div class="pb tbl-wrap" style="padding:0"><table class="tbl" id="calTbl"><thead><tr><th class="num">Level <span class="unit">(mg/mL)</span></th><th class="num">Window <span class="unit">(min)</span></th><th class="num">Mean <span class="unit">(V·ns)</span></th><th class="num">CV <span class="unit">(%)</span></th><th class="num">Departure <span class="unit">(%)</span></th><th>Linear range</th></tr></thead><tbody></tbody></table></div></div>' +
       '</div><div class="stack">' +
       '<div class="panel"><div class="ph"><h3>Fit</h3><span class="sp"></span>' + DEV + '</div><div class="pb"><div class="form s2-form">' +
       '<label class="l" for="calModel">Fit model</label><div class="inl"><select id="calModel"><option value="unweighted">Unweighted linear</option><option value="1/x">1/x weighted linear (default)</option><option value="1/x2">1/x² weighted linear</option></select></div>' +
@@ -4824,11 +4850,11 @@ const Q = (function () {
       xDomain: () => [0, 10.5], xTitle: () => 'Concentration (mg/mL)',
       panels: [{ key: 'main', yl: { title: 'Plateau mean', unit: 'V·ns' } }, { key: 'res', px: 72, yl: { title: 'Residual', short: 'Residual', unit: '%', sym: true, symMin: 8, zero: false } }],
       bands: () => cur && cur.fit.n ? [{ x0: cur.fit.lo, x1: cur.fit.hi, label: 'Linear range', fill: 'rgba(47,125,79,0.07)' }] : [],
-      vlines: () => cur && cur.fit.onset ? [{ x: cur.fit.onset, label: 'Possible inner-filter onset', color: C.warn, dash: 'dash', align: 'right' }] : [],
+      vlines: () => cur && cur.fit.onset ? [{ x: cur.fit.onset, label: 'Inner-filter onset', color: C.warn, dash: 'dash', align: 'right' }] : [],
       series: [
-        { key: 'fit', label: 'Fit over the linear range', color: C.v20, width: 1.25, panel: 'main', src: () => fitLine, fmt: v => fmt.sig3(v) + ' V·ns' },
-        { key: 'ext', label: 'Fit extended (outside range)', color: C.v20, dash: 'dot', width: 1, panel: 'main', src: () => extLine, fmt: v => fmt.sig3(v) + ' V·ns' },
-        { key: 'pts', label: 'Plateau mean ± SD (open markers outside the linear range)', color: C.text, mode: 'points', panel: 'main', src: () => pts },
+        { key: 'fit', label: 'Fit', color: C.v20, width: 1.25, panel: 'main', src: () => fitLine, fmt: v => fmt.sig3(v) + ' V·ns' },
+        { key: 'ext', label: 'Fit extended', color: C.v20, dash: 'dot', width: 1, panel: 'main', src: () => extLine, fmt: v => fmt.sig3(v) + ' V·ns' },
+        { key: 'pts', label: 'Plateau mean ± SD', tip: 'Plateau mean ± SD; open markers are outside the linear range', color: C.text, mode: 'points', panel: 'main', src: () => pts },
         { key: 'res', label: 'Residual', color: C.text, mode: 'points', panel: 'res', src: () => res, legend: false },
         { key: 'bp', label: 'Criterion', color: C.irf, dash: 'dash', width: 1, panel: 'res', src: () => ({ x: band.x, y: band.yp, n: 2 }), legend: false },
         { key: 'bm', label: 'Criterion', color: C.irf, dash: 'dash', width: 1, panel: 'res', src: () => ({ x: band.x, y: band.ym, n: 2 }), legend: false }
@@ -4844,7 +4870,7 @@ const Q = (function () {
       ariaLabel: 'Calibration acquisition', topBand: 16, marginRight: 12, liveReadout: false,
       xDomain: () => [0, sim.sch.total], xTitle: () => 'Time (min)',
       panels: [{ key: 'main', yl: { title: 'Fluorescence', unit: 'V·ns', log: () => true, minLog: -2 } }],
-      bands: () => cur.pl.map(p => ({ x0: p.w[0], x1: p.w[1], label: p.c + ' mg/mL', fill: 'rgba(27,54,93,0.07)' })),
+      bands: () => cur.pl.map(p => ({ x0: p.w[0], x1: p.w[1], label: p.c + ' mg/mL', short: String(p.c), fill: 'rgba(27,54,93,0.07)' })),
       series: [{ key: 'f', label: 'Fluorescence, ' + M.procLabel(), color: M.procMode() === 'v20' ? C.v20 : C.prop, dash: M.procMode() === 'v20' ? null : 'dash', width: 1, panel: 'main', src: () => ({ ...acqData, gen: calKey }), robust: null, fmt: v => fmt.sig3(v) + ' V·ns' }],
       guides: () => cur.pl.flatMap((p, k) => [0, 1].map(j => ({ id: 'w' + k + j, x: p.w[j], color: C.accent, dash: 'dash', drag: v => { const key = S.cal.material + S.setup.pmt, W = S.cal.windows[key] || (S.cal.windows[key] = cur.pl.map(q => q.w.slice())); W[k][j] = v; }, onEnd: () => { M.audit('calibration', 'Plateau window for ' + p.c + ' mg/mL adjusted by hand.'); calKey = ''; } })))
     });
@@ -4857,7 +4883,7 @@ const Q = (function () {
     $('#calPre').innerHTML = esc(M.presetInfo(S.setup.pmt).id) + ' (PMT ' + S.setup.pmt + ' mV); ' + esc(M.procLabel());
     $('#calMatNote').innerHTML = S.cal.material === 'BSA' ? '<div class="callout warn">BSA is a weak surrogate for IgG. Its extinction coefficient is 0.667 against about 1.4 to 1.6 mL/mg/cm for IgG, and it has fewer tryptophans and a different size. Indicative mAb concentrations from a BSA calibration are not reliable.</div>' : '';
     const f = cur.fit;
-    $('#calTbl tbody').innerHTML = cur.pl.map((p, k) => '<tr><td class="num">' + p.c + '</td><td class="num">' + p.w[0].toFixed(2) + '–' + p.w[1].toFixed(2) + (p.manual ? ' <span class="flag">by hand</span>' : '') + '</td><td class="num">' + p.n + '</td><td class="num">' + fmt.sig3(p.mean) + '</td><td class="num">' + (p.cv * 100).toFixed(2) + '</td><td class="num">' + S2.sgn(f.dep[k], 2) + '</td><td>' + (f.n && k < f.n ? 'Inside' : (f.onset === p.c ? '<span class="state warn" style="font-weight:normal">Possible inner-filter onset</span>' : 'Outside')) + '</td></tr>').join('');
+    $('#calTbl tbody').innerHTML = cur.pl.map((p, k) => '<tr><td class="num">' + p.c + '</td><td class="num" title="' + p.n + ' blocks">' + p.w[0].toFixed(2) + '–' + p.w[1].toFixed(2) + (p.manual ? ' <span class="flag">by hand</span>' : '') + '</td><td class="num">' + fmt.sig3(p.mean) + '</td><td class="num">' + (p.cv * 100).toFixed(2) + '</td><td class="num">' + S2.sgn(f.dep[k], 2) + '</td><td>' + (f.n && k < f.n ? 'Inside' : (f.onset === p.c ? '<span class="state warn" style="font-weight:normal">Possible inner-filter onset</span>' : 'Outside')) + '</td></tr>').join('');
     for (let k = 0; k < 6; k++) { const p = cur.pl[k]; pts.x[k] = p.c; pts.y[k] = p.mean; pts.ylo[k] = p.mean - p.mean * p.cv; pts.yhi[k] = p.mean + p.mean * p.cv; pts.open[k] = f.n && k < f.n ? 0 : 1; res.x[k] = p.c; res.y[k] = f.dep[k]; }
     if (f.n) { fitLine.x[0] = 0; fitLine.x[1] = f.hi; fitLine.y[0] = f.a; fitLine.y[1] = f.a + f.b * f.hi; extLine.x[0] = f.hi; extLine.x[1] = 10.5; extLine.y[0] = f.a + f.b * f.hi; extLine.y[1] = f.a + f.b * 10.5; }
     band.yp.fill(S.th.calDepPct); band.ym.fill(-S.th.calDepPct);
@@ -4894,7 +4920,7 @@ const Q = (function () {
   }
   function cmpBuild() {
     const r = $('#scr-comparison');
-    r.innerHTML = '<div class="scr-h"><h1>Run comparison</h1>' + tag('P', 'always') + '<span class="sp"></span><div class="toolbar"><span class="lab">x</span><div class="seg sm" id="cmpX"><button data-v="vol" class="on">mL</button><button data-v="cv">CV</button></div><label class="chk small"><input type="checkbox" id="cmpRel"> Relative mode</label><button class="btn sm" id="cmpReset">Reset zoom</button></div></div>' +
+    r.innerHTML = '<div class="scr-h"><h1>Run comparison</h1>' + tag('P', 'always') + '<span class="sp"></span><div class="toolbar"><div class="seg sm" id="cmpX" title="x axis"><button data-v="vol" class="on">mL</button><button data-v="cv">CV</button></div><label class="chk small"><input type="checkbox" id="cmpRel"> Relative mode</label><button class="btn sm" id="cmpReset">Reset zoom</button></div></div>' +
       '<div class="grid2 cmp-grid"><div class="stack"><div class="panel"><div class="ph"><h3>Runs</h3><span class="sp"></span><span class="note">Up to 4, same method template</span></div><div class="pb" id="cmpRuns"></div></div><div id="cmpLoad"></div><div id="cmpNote"></div></div>' +
       '<div class="panel"><div class="pb" style="height:470px"><div id="cmpChart" style="height:100%"></div></div></div></div>' +
       '<div class="panel" style="margin-top:12px"><div class="ph"><h3>Per-fraction comparison</h3><span class="sp"></span><span class="note">Share of elution-phase integrated fluorescence (relative, not yield)</span></div><div class="pb tbl-wrap" style="padding:0" id="cmpTbl"></div></div>';
@@ -4931,7 +4957,7 @@ const Q = (function () {
     $('#cmpRuns').innerHTML = !S.run ? '<div class="note">Start a run to compare it with archived runs.</div>' : entries.map((e, k) => {
       const c = compat(e), a = e.def ? S2.archive[e.def.id] : null, v = e.v(), ready = !!v, isSel = sel.has(e.key), idx = [...sel].indexOf(e.key);
       const sty = idx >= 0 ? STY[idx % 4] : null;
-      return '<div class="opt" style="margin-bottom:8px' + (c.ok ? '' : ';color:var(--text2)') + '"><input type="checkbox" data-k="' + e.key + '"' + (isSel ? ' checked' : '') + (c.ok && ready ? '' : ' disabled') + '><span style="flex:1"><b>' + esc(e.key) + '</b> ' + (sty ? '<span class="ch-sw ' + (sty.d || 'solid') + '" style="border-top-color:' + sty.c + ';vertical-align:middle"></span>' : '') + '<span class="note">' + esc(e.def ? e.def.name + ', ' + e.def.date + '; PMT ' + e.def.pmt + ' mV; ' + e.def.mode : 'This run; PMT ' + S.run.pmt + ' mV; ' + M.procLabel()) + (c.ok ? '' : '. Not comparable (' + c.why + ').') + (e.def && !ready && c.ok ? ' Loading.' : '') + '</span></span><label class="small" title="Reference for the difference trace"><input type="radio" name="cmpRef" value="' + e.key + '"' + (refId === e.key ? ' checked' : '') + (isSel ? '' : ' disabled') + '> reference</label></div>';
+      return '<div class="opt" style="margin-bottom:8px' + (c.ok ? '' : ';color:var(--text2)') + '"><input type="checkbox" data-k="' + e.key + '"' + (isSel ? ' checked' : '') + (c.ok && ready ? '' : ' disabled') + '><span style="flex:1"><b>' + esc(e.key) + '</b> ' + (sty ? '<span class="ch-sw ' + (sty.d || 'solid') + '" style="border-top-color:' + sty.c + ';vertical-align:middle"></span>' : '') + '<span class="note">' + esc(e.def ? e.def.name + ', ' + e.def.date + '; PMT ' + e.def.pmt + ' mV; ' + e.def.mode : 'This run; PMT ' + S.run.pmt + ' mV; ' + M.procLabel()) + (c.ok ? '' : '. Not comparable: ' + c.why + '.') + (e.def && !ready && c.ok ? ' Loading.' : '') + '</span></span><label class="small" title="Reference for the difference trace"><input type="radio" name="cmpRef" value="' + e.key + '"' + (refId === e.key ? ' checked' : '') + (isSel ? '' : ' disabled') + '> reference</label></div>';
     }).join('');
     $$('#cmpRuns input[type=checkbox]').forEach(cb => cb.onchange = () => { if (cb.checked) { if (sel.size >= 4) { cb.checked = false; return; } sel.add(cb.dataset.k); } else { sel.delete(cb.dataset.k); if (refId === cb.dataset.k) refId = [...sel][0] || null; } M.audit('comparison', 'Run ' + cb.dataset.k + (cb.checked ? ' added to' : ' removed from') + ' the comparison.'); cmpKey = ''; });
     $$('#cmpRuns input[name=cmpRef]').forEach(rb => rb.onchange = () => { refId = rb.value; M.audit('comparison', 'Reference run set to ' + refId + '.'); cmpKey = ''; });
@@ -4954,10 +4980,10 @@ const Q = (function () {
     const pl = (n, one, many) => n + ' ' + (n === 1 ? one : many);
     const flag = q => [q.chg ? '<span class="flag" title="' + pl(q.chg, 'sensitivity change', 'sensitivity changes') + ' inside the fraction">Sens. ×' + q.chg + '</span>' : '', q.over ? '<span class="flag f" title="' + pl(q.over, 'waveform', 'waveforms') + ' above 90 % of the input range">Over ×' + q.over + '</span>' : '', q.disc ? '<span class="flag w" title="' + pl(q.disc, 'discarded block', 'discarded blocks') + '">Disc. ×' + q.disc + '</span>' : ''].join('') || '<span class="muted">none</span>';
     const diffPct = (a, b) => isFinite(a) && isFinite(b) && b ? ' <span class="muted">(' + S2.sgn((a / b - 1) * 100, 1) + ' %)</span>' : '';
-    $('#cmpTbl').innerHTML = !vs.length ? '<div class="pb note">Select runs to compare.</div>' : '<table class="tbl"><thead><tr><th>Fraction</th>' + fc.map(x => '<th class="num">' + esc(x.id) + ' share <span class="unit">(%)</span></th><th>' + esc(x.id) + ' QC</th>').join('') + '</tr></thead><tbody>' +
-      ids.map(id => '<tr><td>' + id + '</td>' + fc.map(x => { const q = x.fc[id]; return q ? '<td class="num">' + (q.share * 100).toFixed(1) + '</td><td>' + flag(q) + '</td>' : '<td class="num">–</td><td></td>'; }).join('') + '</tr>').join('') +
-      (rel ? '' : '<tr><td><b>Elution integrated fluorescence</b> <span class="unit muted">(V·ns·mL)</span></td>' + fc.map(x => '<td class="num">' + fmt.sig3(x.el) + '</td><td>' + (x.id !== refId && refFc ? diffPct(x.el, refFc.el) : '') + '</td>').join('') + '</tr>' +
-      '<tr><td><b>Load plateau, median</b> <span class="unit muted">(V·ns)</span></td>' + fc.map(x => '<td class="num">' + fmt.sig3(x.lp) + '</td><td>' + (x.id !== refId && refFc ? diffPct(x.lp, refFc.lp) : '') + '</td>').join('') + '</tr>') + '</tbody></table>';
+    $('#cmpTbl').innerHTML = !vs.length ? '<div class="note" style="padding:8px 12px">' + (S.run ? 'Select runs to compare.' : 'Start a run to compare.') + '</div>' : '<table class="tbl"><thead><tr><th>Fraction</th>' + fc.map(x => '<th class="num">' + esc(x.id) + ' <span class="unit">(%)</span></th><th>QC</th>').join('') + '</tr></thead><tbody>' +
+      ids.map(id => '<tr><td>' + id + '</td>' + fc.map(x => { const q = x.fc[id]; return q && isFinite(q.share) ? '<td class="num">' + (q.share * 100).toFixed(1) + '</td><td>' + flag(q) + '</td>' : '<td class="num">–</td><td></td>'; }).join('') + '</tr>').join('') +
+      (rel ? '' : '<tr><td class="wrap"><b>Elution total</b> <span class="unit muted">(V·ns·mL)</span></td>' + fc.map(x => '<td class="num">' + (x.el > 0 ? fmt.sig3(x.el) : '–') + '</td><td>' + (x.id !== refId && refFc ? diffPct(x.el, refFc.el) : '') + '</td>').join('') + '</tr>' +
+      '<tr><td class="wrap"><b>Load plateau</b> <span class="unit muted">(V·ns, median)</span></td>' + fc.map(x => '<td class="num">' + fmt.sig3(x.lp) + '</td><td>' + (x.id !== refId && refFc ? diffPct(x.lp, refFc.lp) : '') + '</td>').join('') + '</tr>') + '</tbody></table>';
   }
   UI.register('comparison', { show() { if (!cmpBuilt) cmpBuild(); setTimeout(() => cmpChart.resize(), 0); cmpKey = ''; cmpRender(); }, update() { cmpRender(); } });
 
@@ -4971,7 +4997,7 @@ const Q = (function () {
   /* ---------- Record: export packaging ---------- */
   window.REC_STAGE2 = slot => {
     slot.innerHTML = '';
-    const pdf = el('<button class="btn offline-only" title="Opens the print dialog. Choose Save as PDF.">PDF (A4)</button>'), pdfTag = el(tag('P')), h5 = el('<button class="btn"' + (S.run ? '' : ' disabled') + '>Raw waveforms (HDF5)…</button>');
+    const pdf = el('<button class="btn offline-only" title="Opens the print dialog. Choose Save as PDF (A4).">Summary (PDF)</button>'), pdfTag = el(tag('P')), h5 = el('<button class="btn"' + (S.run ? '' : ' disabled') + '>Raw waveforms (HDF5)…</button>');
     pdfTag.classList.add('offline-only');
     pdf.onclick = () => { REC.logExport(REC.fileBase() + '_summary.pdf (print)'); setTimeout(() => window.print(), 50); };
     h5.onclick = () => hdf5Dialog();
@@ -4981,12 +5007,12 @@ const Q = (function () {
     const R = S.run, n = R.acq.n, disc = R.acq.disc.subarray(0, n).reduce((a, b) => a + b, 0), wf = (n - disc) * 10, bytes = wf * 600 * 2 + wf * 96 + (n - disc) * 64 + 64 * 1024;
     const mb = bytes / 1048576;
     const tree = ['/', '├─ attributes: settings snapshot, preset ' + M.presetInfo(R.pmt).id + ', checksum,', '│              software versions, labels', '├─ irf/  (7 Gaussian terms per preset; A, W, T)', '├─ beam_monitor/  start and end blocks' + (R.setupSnap.beamPerBlock ? ', and one per block' : ''), '└─ blocks/', '   ├─ block_000001/', '   │  ├─ attributes: time_s, step, nd_od, range_V, pmt_mV, timestamp', '   │  └─ waveform_01 … waveform_10  int16[600]', '   │     attributes: nd_od, range_V, pmt_preset, timestamp', '   ├─ …', '   └─ block_' + String(n).padStart(6, '0') + '/'].join('\n');
-    UI.modal('Raw waveforms (HDF5)', '<p class="small">' + tag('P', 'always') + ' Planned file structure and size. No file is written.</p><pre style="font-size:12.5px;background:#F7F8F9;border:1px solid var(--border);padding:8px;overflow:auto">' + esc(tree) + '</pre><table class="tbl"><tbody><tr><td>Blocks</td><td class="num">' + fmt.int(n - disc) + ' (' + disc + ' discarded, not written)</td></tr><tr><td>Waveforms</td><td class="num">' + fmt.int(wf) + '</td></tr><tr><td>Samples per waveform</td><td class="num">600 × int16 (2 bytes)</td></tr><tr><td>Estimated size</td><td class="num"><b>' + mb.toFixed(1) + ' MB</b> uncompressed</td></tr></tbody></table><p class="note">The estimate includes about 96 bytes of attributes per waveform, 64 bytes per block and 64 kB of settings.</p>', [{ label: 'Close', primary: true }]);
+    UI.modal('Raw waveforms (HDF5)', '<p class="small">' + tag('P', 'always') + ' Planned file structure and size. No file is written.</p><pre class="eng-only" style="font-size:12.5px;background:#F7F8F9;border:1px solid var(--border);padding:8px;overflow:auto">' + esc(tree) + '</pre><table class="tbl"><tbody><tr><td>Blocks</td><td class="num">' + fmt.int(n - disc) + ' (' + disc + ' discarded, not written)</td></tr><tr><td>Waveforms</td><td class="num">' + fmt.int(wf) + '</td></tr><tr><td>Samples per waveform</td><td class="num">600 × int16 (2 bytes)</td></tr><tr><td>Estimated size</td><td class="num" title="Includes about 96 bytes of attributes per waveform, 64 bytes per block and 64 kB of settings"><b>' + mb.toFixed(1) + ' MB</b> uncompressed</td></tr></tbody></table>', [{ label: 'Close', primary: true }]);
     M.audit('export', 'HDF5 structure viewed (estimated ' + mb.toFixed(1) + ' MB; no file written).');
   }
 
   /* ---------- Engineer additions ---------- */
-  ENG.addTab('fit', 'Decay fit', 'wf'); ENG.addTab('defs', 'Decay metric', 'ladder');
+  ENG.addTab('fit', 'Decay', 'wf');
   let fitBlock = null, fc = null;
   window.ENG_EXTRA = {
     defs: { html: () => {
@@ -5003,9 +5029,10 @@ const Q = (function () {
       let i = Math.min(A.n - 1, fitBlock); while (i > 0 && A.disc[i]) i--;
       fc = S2.reconFit(TR.medianWave(TR.regenBlock(A, i)), R.pmt); fc.block = i;
       return '<div class="toolbar" style="margin-bottom:8px"><label class="small">Block <input type="number" id="fitBlk" min="1" max="' + A.n + '" value="' + (i + 1) + '" style="width:90px"></label><span class="note">' + fmt.ml(A.u[i]) + ' mL, ' + esc(R.ph.list[A.phase[i]].name) + ', range use ' + fmt.pct0(A.ruse[i]) + ' %.</span>' + tag('P', 'always') + '</div>' +
-        '<div class="grid2 fit-grid"><div style="height:420px" id="fitChart"></div><div class="stack"><table class="tbl"><thead><tr><th>Parameter</th><th class="num">Value</th></tr></thead><tbody><tr><td>τ, single exponential</td><td class="num"><b>' + fc.tau.toFixed(3) + ' ± ' + fc.sigTau.toFixed(3) + ' ns</b></td></tr><tr><td>Amplitude A</td><td class="num">' + fc.A.toPrecision(4) + '</td></tr><tr><td>χ² (reduced)</td><td class="num">' + fc.chi2r.toFixed(2) + '</td></tr><tr><td>Points in fit range</td><td class="num">' + fc.N + '</td></tr><tr><td>Fit range</td><td class="num">' + (fc.i0 * 0.2).toFixed(1) + ' to ' + (fc.i1 * 0.2).toFixed(1) + ' ns</td></tr><tr><td>IRF width</td><td class="num">' + fc.fwhm.toFixed(2) + ' ns FWHM ' + tag('A', 'always') + '</td></tr><tr><td>Noise σ per sample</td><td class="num">' + (fc.sd * 1000).toFixed(3) + ' mV</td></tr></tbody></table>' +
-        '<div class="callout small">A good fit overlays the data, its weighted residuals scatter randomly about zero and χ² is close to 1. Prefer the model with the fewest parameters.</div><div class="note">Single exponential convolved with the stored IRF for the run\'s preset. τ uncertainty from Δχ² = 1.</div></div></div>';
+        '<div class="grid2 fit-grid"><div style="height:420px" id="fitChart"></div><div class="stack"><table class="tbl"><thead><tr><th>Parameter</th><th class="num">Value</th></tr></thead><tbody><tr><td>τ, single exponential</td><td class="num"><b>' + fc.tau.toFixed(3) + ' ± ' + fc.sigTau.toFixed(3) + ' ns</b></td></tr><tr><td>Amplitude A</td><td class="num">' + fc.A.toPrecision(4) + '</td></tr><tr><td title="Close to 1 for a good fit">χ² (reduced)</td><td class="num">' + fc.chi2r.toFixed(2) + '</td></tr><tr><td>Points in fit range</td><td class="num">' + fc.N + '</td></tr><tr><td>Fit range</td><td class="num">' + (fc.i0 * 0.2).toFixed(1) + ' to ' + (fc.i1 * 0.2).toFixed(1) + ' ns</td></tr><tr><td>IRF width</td><td class="num">' + fc.fwhm.toFixed(2) + ' ns FWHM ' + tag('A', 'always') + '</td></tr><tr><td>Noise σ per sample</td><td class="num">' + (fc.sd * 1000).toFixed(3) + ' mV</td></tr></tbody></table>' +
+        '<div class="note">Single exponential convolved with the stored IRF for the run\'s preset. τ uncertainty from Δχ² = 1.</div></div></div>';
     }, mount: () => {
+      $('#engBody').insertAdjacentHTML('beforeend', '<div style="margin-top:12px">' + window.ENG_EXTRA.defs.html() + '</div>');
       const host = $('#fitChart'); if (!host || !fc) return;
       const x = new Float64Array(600); for (let j = 0; j < 600; j++) x[j] = j * 0.2;
       const pos = a => Float64Array.from(a, v => v > 0 ? v : NaN), hm = Math.min(...fc.irf), dmax = Math.max(...fc.data);
@@ -5035,8 +5062,8 @@ const Q = (function () {
       if (!S.proc.decay) return { text: 'Decay-shape analysis is off. Switch it on under Processing to show the decay metric and rule P7. It is a Proposed research display and cannot identify a cause.', source: 'Processing options; rule P7' };
       const p7 = R ? R.rules.cards.find(c => c.rule === 'P7') : null, ref = S2.decayRef(R), info = S2.irfInfo(R ? R.pmt : S.setup.pmt);
       const def = 'The decay metric is the intensity-weighted mean delay after the IRF peak, over 0 to 20 ns of the block median waveform. It is computed where input range use is ' + Math.round(S.th.decayUseMin * 100) + ' to ' + Math.round(S.th.decayUseMax * 100) + ' %.';
-      if (p7) return { text: def + ' ' + p7.obs + ' Research hypothesis H3 is a possible change in tryptophan environment. Confirm with HPLC-SEC on ' + M.rangeIds(p7.fractions) + '.', source: 'Decay metric definition (Engineer view); card ' + p7.id + '; H3' };
-      return { text: def + ' No P7 observation so far.' + (ref ? ' The load plateau reference is ' + ref.mean.toFixed(2) + ' ± ' + ref.sd.toFixed(2) + ' ns (SD), with IRF ' + info.fwhmNs.toFixed(1) + ' ns FWHM and 0.2 ns sampling.' : '') + ' P7 fires only when the shift exceeds ' + S.th.decaySdMult + ' × SD and ' + S.th.decayThrNs + ' ns.', source: 'Decay metric definition (Engineer view); rule P7' };
+      if (p7) return { text: def + ' ' + p7.obs + ' Research hypothesis H3 is a possible change in tryptophan environment. Confirm with HPLC-SEC on ' + M.rangeIds(p7.fractions) + '.', source: 'Engineer view: Decay; card ' + p7.id + '; H3' };
+      return { text: def + ' No P7 observation so far.' + (ref ? ' The load plateau reference is ' + ref.mean.toFixed(2) + ' ± ' + ref.sd.toFixed(2) + ' ns (SD), with IRF ' + info.fwhmNs.toFixed(1) + ' ns FWHM and 0.2 ns sampling.' : '') + ' P7 fires only when the shift exceeds ' + S.th.decaySdMult + ' × SD and ' + S.th.decayThrNs + ' ns.', source: 'Engineer view: Decay; rule P7' };
     }
     if (/capsid|\bempty\b.*\bfull\b|\bfull\b.*\bempty\b/.test(q)) return { text: 'Empty and full capsid assessment is not a TRIFLE output in this version.', source: 'AAV affinity capture template' };
     if (/compar|earlier run|previous run|other run/.test(q)) return { text: 'Run comparison overlays up to 4 runs of the same method template, aligned by volume, with a difference trace against a reference run and a per-fraction table. Runs with different PMT presets or processing modes are compared in relative mode only.', source: 'Procedure: Run comparison' };
