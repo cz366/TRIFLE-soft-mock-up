@@ -6,17 +6,17 @@ An interactive mock-up of the TRIFLE control and analysis software, for review w
 - **Simulated data only.** Every number on screen comes from a seeded simulation (mulberry32, seed 20261009) of a GSK platform Protein A run. The calculations run for real on that data. Nothing is a static screenshot.
 - **Verified against TRIFLE v2.0.** The v2.0 fluorescence and auto-ranging algorithms reproduce `trifle_reference_tests.json`, which is embedded in the file. Open **Engineer view → Diagnostics → Reference tests** to see each value checked (228 of 228 pass).
 - **Stage 1 snapshot:** `stage1/trifle_mockup_stage1.html` is the Stage 1 build on its own, kept for comparison.
-- **Phone and hosted page.** Below 820 px wide the navigation moves into a Menu drawer and panels stack. When the page runs inside a hosting viewer, exports go through the viewer's save prompt and the PDF button is hidden, because printing is not available there.
+- **Phone and hosted page.** Below 820 px wide the navigation moves into a Menu drawer and panels stack. When the page runs inside a hosting viewer, exports go through the viewer's save prompt and the Summary (PDF) button is hidden, because printing is not available there.
 
 ## Five-minute demonstration
 
 1. **Setup.** Tick Trained user and IP agreement. Setup holds only TRIFLE's own settings: run details, sign-in and acquisition (PMT preset, auto-ranging, options, run time). The AKTA method, phases and fractions come from the UNICORN export; in the mock-up, **Demo controls → AKTA run** picks the simulated run. The TRIFLE delay volumes are instrument configuration, in Engineer view → Alignment.
 2. **Readiness.** The checks run on their own. The laser warm-up panel shows the controller reading stepping down at about 18 min and reaching "stable (provisional)" at about 23.7 min. Confirm the PMT voltage. Under **Demo controls**, playback at 60× makes this take seconds.
-3. **Run.** Press **Start**. Start then gives way to Pause (Continue while paused) and End. Fluorescence, UV 280, conductivity and pH appear against volume, and Run values shows the TRIFLE readings: fluorescence, sensitivity, input range, alignment and, during elution, concentration. Evidence cards appear as rules fire: P1 (UV saturated), P2 with H1 (possible breakthrough, confirm by Protein A HPLC on FT09 and FT10), I2 (range overruns), P6 (above the calibrated range) and P3 with H2 at the end. **Demo controls → Fast-forward** finishes the run immediately.
+3. **Run.** Press **Start**. While the run is live, Pause (Continue while paused), End, Mark event and Add note take its place. Fluorescence, UV 280, conductivity and pH appear against volume, and Run values shows the TRIFLE readings: fluorescence, sensitivity, input range, alignment and, during elution, concentration. Evidence cards appear as rules fire: P1 (UV saturated), P2 with H1 (possible breakthrough, confirm by Protein A HPLC on FT09 and FT10), I2 (range overruns), P6 (above the calibrated range) and P3 with H2 at the end. **Demo controls → Fast-forward** finishes the run immediately.
 4. **Fraction review.** Select fractions in the table or drag across the chart. Compare the UV 100 mAU pool with the fluorescence boundaries, which are a visual comparison only. Elution fractions inside the calibrated range show an indicative concentration. Record decisions (HPLC-SEC, Lunatic, Protein A HPLC or no action).
 5. **Record.** One column: Exports first, then the notebook-ready summary and the audit trail. Export Block data (CSV), Fraction table (CSV), Metadata (JSON) and Chromatogram (PNG), or print Summary (PDF) to A4 (offline file only). Copy the notebook-ready sections. The audit trail lists every change.
 
-Other demo controls pick the simulated AKTA run (Protein A platform, AAV capture, free run, manual event marks or no AKTA data), start before the laser is stable (rule I1) and use the old UNICORN fraction delay (rule I5, with fraction assignments marked Uncertain). The **Mock-up · simulated data** button in the header opens the About page: evaluation objectives, labels and planned integrations. In Engineer view you can simulate a fault (digitiser, filter wheel or laser), run a reproducibility check and work through **Discrepancies**.
+Other demo controls pick the simulated AKTA run (Protein A platform, AAV capture, free run, manual event marks or no AKTA data, which plots against time and has no fractions or run comparison), start before the laser is stable (rule I1) and use the old UNICORN fraction delay (rule I5, with fraction assignments marked Uncertain). The **Mock-up · simulated data** button in the header opens the About page: evaluation objectives, labels and planned integrations. In Engineer view you can simulate a fault (digitiser, filter wheel or laser), run a reproducibility check and work through **Discrepancies**.
 
 ## Stage 2 additions
 
@@ -38,7 +38,7 @@ Other demo controls pick the simulated AKTA run (Protein A platform, AAV capture
 | Future | Needs further development and access to GSK systems |
 | Assumed | An inference the instrument team has not confirmed |
 | Development assumption | A Stage 2 modelling choice, such as a fit weighting or linearity limit, not validated |
-| To verify on hardware | A v2.0 behaviour or fix that needs a bench check on the instrument |
+| To verify on hardware | Read from the v2.0 source code and not yet checked on the instrument |
 
 The Scientist view shows a tag only where it changes the conclusion. The Engineer view shows every tag.
 
@@ -87,7 +87,7 @@ The interface cleanup removed some text the prompts describe, where it repeated 
 
 - The processing-mode chip is gone from the acquisition strip; the mode shows on the Processing button and in the status line.
 - The header shows "Laser Stable"; "stable (provisional)" stays on Readiness and in the rule text.
-- The Engineer switch reads "Simulated role" without "not access control"; the Questions caption drops "This is not a general assistant".
+- The Engineer view switch has the tooltip "Simulated role", without "not access control"; the Questions caption drops "This is not a general assistant".
 - Per-row label tags are shown once per section instead of on every row.
-- Detail a scientist does not act on is in Engineer view only: Provenance on Record (the metadata export keeps it), the HDF5 group tree, the fraction median pulse, the delay volumes in the fraction table note, the Blocks row in Run values and the I6 card's beam-monitor and controller caveats (the Run log and exports keep the full card text).
+- Detail a scientist does not act on is in Engineer view only: Provenance on Record (the metadata export keeps it), the HDF5 group tree, the fraction median pulse (the Pulse box beside Prev and Next), the delay volumes in the fraction table note, the Blocks and Beam monitor rows in Run values, the I6 card's beam-monitor and controller caveats and the P7 card's IRF note (the metadata export keeps the beam-monitor and IRF notes). The fluorescence boundary level is set in Engineer view → Rules.
 - The fraction table has no CV column; the x axis switches to CV, and the fraction CSV keeps CV_start and CV_end. Concentration cells read '–' outside elution and Above range or Below range outside the calibrated range.

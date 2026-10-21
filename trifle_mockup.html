@@ -321,7 +321,12 @@ body:not(.eng) .rd-lower { grid-template-columns: minmax(0, 1fr); }
 #frTbl tbody tr.sel td:last-child { background: var(--accent-bg); }
 #frTbl th { height: auto; padding-top: 4px; padding-bottom: 4px; vertical-align: bottom; }
 #frTbl th .unit { display: block; }
-body:not(.eng) .fr-detail-grid { grid-template-columns: minmax(0, 1fr) !important; }
+#frTbl .flag { white-space: nowrap; }
+#frTbl .decb { white-space: normal; height: auto; min-height: 28px; max-width: 150px; text-align: left; line-height: 16px; padding-top: 3px; padding-bottom: 3px; }
+/* selected fraction: details at full width; in Engineer view the Pulse box swaps them for the median pulse */
+.fr-detail-grid { grid-template-columns: minmax(0, 1fr); }
+body.eng .fr-detail-grid.show-mp #frDet, .fr-detail-grid:not(.show-mp) #mpHost { display: none !important; }
+body.eng .fr-detail-grid.show-mp { flex: 0 0 40% !important; max-height: none !important; min-height: 120px !important; }
 #scr-fractions.fr-none .fr-grid, #scr-fractions.fr-none #fTools { display: none !important; }
 
 /* ---------- narrow screens (tablet portrait and phone) ---------- */
@@ -365,9 +370,11 @@ body:not(.eng) .fr-detail-grid { grid-template-columns: minmax(0, 1fr) !importan
   .run-bottom > .panel { height: 300px; }
   .fr-grid { display: flex !important; flex-direction: column; min-height: 0 !important; }
   .fr-grid > .panel { min-height: 320px; }
-  .fr-detail-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  #zmHost { min-height: 240px !important; }
+  body.eng .fr-detail-grid.show-mp { flex: 0 0 150px !important; }
   .modal { width: calc(100vw - 32px); }
   .modal .tbl td { white-space: normal; }
+  #scr-testing .tbl th { white-space: normal; }
   .popover { max-width: calc(100vw - 32px); }
 }
 @media (prefers-reduced-motion: reduce) { #rail { transition: none; } }
@@ -384,6 +391,7 @@ code, pre, kbd, samp { font-family: inherit; }
 .eng-align > :first-child { flex-grow: 1.6; }
 #alOffset:empty { display: none; }
 #arIn { max-width: 640px; }
+#engTabs button { padding: 6px 8px; }
 #engBody .tbl th { height: auto; vertical-align: bottom; }
 #engBody .tbl th .unit { display: block; }
 .tbl tr.grp td, .tbl tbody tr.grp:hover td { background: var(--band2); color: var(--text2); font-weight: bold; }
@@ -399,7 +407,7 @@ code, pre, kbd, samp { font-family: inherit; }
 .disc-b ol { margin: 0; padding-left: 18px; }
 .disc-b li + li { margin-top: 4px; }
 .disc-b .tbl { margin-bottom: 6px; }
-.disc-b .tbl th { white-space: normal; }
+.disc-b .tbl th, .disc-b .tbl td:first-child { white-space: normal; }
 .disc-b .btn { margin-top: 2px; }
 #discTbl td:nth-child(2) { min-width: 112px; }
 #discTbl td:last-child { min-width: 128px; }
@@ -416,7 +424,6 @@ code, pre, kbd, samp { font-family: inherit; }
 }
 /* Record */
 #scr-record .rec-grid { grid-template-columns: minmax(0, 1fr); }
-#scr-record .rec-grid > .stack { order: -1; }
 #exStage2 { display: contents; }
 /* Units under the column name, so the fraction table fits the summary panel */
 #recBody .tbl th { height: auto; padding-top: 4px; padding-bottom: 4px; vertical-align: bottom; }
@@ -457,6 +464,8 @@ body:not(.eng) .run-bottom.narrow { grid-template-columns: minmax(220px, 40fr) m
 .fit-grid { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
 .form.s2-form { grid-template-columns: 150px minmax(0, 1fr); }
 #cmpLoad:empty, #cmpNote:empty { display: none; }
+#calRec .tbl th { white-space: normal; }
+#scr-comparison.cmp-none .cmp-grid > .panel, #scr-comparison.cmp-none > .panel, #scr-comparison.cmp-none .scr-h .toolbar, #scr-comparison.cmp-none #cmpLoad, #scr-comparison.cmp-none .cmp-grid .ph .note { display: none !important; }
 @media (max-width: 820px) {
   .cal-grid, .cmp-grid, .fit-grid, .form.s2-form { grid-template-columns: minmax(0, 1fr); }
 }
@@ -1737,7 +1746,7 @@ const CH = (function () {
       const ml = cfg.marginLeft || 70, mr = cfg.panels.some(p => p.yr) ? (cfg.marginRight || 62) : 14, top = cfg.topBand != null ? cfg.topBand : 32, bottom = cfg.bottom || 36;
       const vis = cfg.panels.filter(p => !(p.hidden && p.hidden()));
       const gaps = Math.max(0, vis.length - 1) * gap, avail = H - top - bottom - gaps, want = vis.filter(p => p.px).reduce((s, p) => s + p.px, 0);
-      const k = want > avail / 2 ? avail / 2 / want : 1, stripH = p => Math.max(30, Math.floor(p.px * k));
+      const k = want > avail / 2 ? avail / 2 / want : 1, stripH = p => Math.max(24, Math.floor(p.px * k));
       const mainH = Math.max(40, avail - vis.filter(p => p.px).reduce((s, p) => s + stripH(p), 0));
       let y = top; this.panels = [];
       for (const p of vis) { const h = p.px ? stripH(p) : mainH; this.panels.push({ cfg: p, key: p.key, x: ml, y, w: W - ml - mr, h }); y += h + gap; }
@@ -1926,11 +1935,11 @@ const CH = (function () {
       for (const v of xt) { const x = this.xToPx(v); ctx.beginPath(); ctx.moveTo(Math.round(x) + 0.5, yAx); ctx.lineTo(Math.round(x) + 0.5, yAx + 4); ctx.stroke(); ctx.fillText(cfg.xTickFmt ? cfg.xTickFmt(v) : tickFmt(v, xst), x, yAx + 6); }
       ctx.fillStyle = C.text; ctx.font = FONT; ctx.fillText(cfg.xTitle(), this.px0 + this.pw / 2, yAx + 17);
       // markers on the x axis: sensitivity ticks and note/event markers
-      this.markerHits = []; let mEnd = -1e9, mRow = 0;
+      this.markerHits = []; this.markerLabels = []; let mEnd = -1e9, mRow = 0;
       for (const m of (cfg.markers ? cfg.markers() : []).slice().sort((a, b) => a.x - b.x)) {
         const x = this.xToPx(m.x); if (x < this.px0 - 1 || x > this.px0 + this.pw + 1) continue;
         if (m.kind === 'tick') { ctx.strokeStyle = m.color || C.v20; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(Math.round(x) + 0.5, yAx - 5); ctx.lineTo(Math.round(x) + 0.5, yAx); ctx.stroke(); this.markerHits.push({ x, y0: yAx - 6, y1: yAx + 2, text: m.text }); }
-        else { ctx.font = FONT_S; const tw = ctx.measureText(m.label || '').width; mRow = x - tw / 2 < mEnd ? mRow + 1 : 0; mEnd = x + tw / 2 + 3; const ly = yAx - 10 - mRow * 13; ctx.fillStyle = m.color || C.text; ctx.beginPath(); ctx.moveTo(x, yAx - 9); ctx.lineTo(x - 4, yAx - 1); ctx.lineTo(x + 4, yAx - 1); ctx.closePath(); ctx.fill(); ctx.textBaseline = 'bottom'; ctx.textAlign = 'center'; ctx.fillText(m.label || '', x, ly); ctx.textBaseline = 'top'; this.markerHits.push({ x, y0: ly - 12, y1: yAx + 2, text: m.text }); }
+        else { ctx.font = FONT_S; const tw = ctx.measureText(m.label || '').width; mRow = x - tw / 2 < mEnd ? mRow + 1 : 0; mEnd = x + tw / 2 + 3; const ly = yAx - 10 - mRow * 13; ctx.fillStyle = m.color || C.text; ctx.beginPath(); ctx.moveTo(x, yAx - 9); ctx.lineTo(x - 4, yAx - 1); ctx.lineTo(x + 4, yAx - 1); ctx.closePath(); ctx.fill(); this.markerLabels.push({ x, y: ly, label: m.label || '', color: m.color || C.text }); this.markerHits.push({ x, y0: ly - 12, y1: yAx + 2, text: m.text }); }
       }
       ctx.textBaseline = 'alphabetic';
     }
@@ -1997,12 +2006,13 @@ const CH = (function () {
         ctx.fillStyle = h.fill || 'rgba(27,54,93,0.10)'; ctx.fillRect(x0, top, x1 - x0, bot - top);
         if (h.edge !== false) { ctx.strokeStyle = 'rgba(27,54,93,0.55)'; ctx.lineWidth = 1; ctx.strokeRect(Math.round(x0) + 0.5, top + 0.5, Math.round(x1 - x0), bot - top - 1); }
       }
+      // draggable lines (rulers, guides, fluorescence boundaries): lines first, then every label above them, then the handles
+      const dls = this.dragLines().map(g => ({ g, x: Math.round(this.xToPx(g.x)) + 0.5 })).filter(d => d.x >= main.x && d.x <= main.x + main.w);
+      for (const { g, x } of dls) { ctx.strokeStyle = g.color; ctx.lineWidth = 1; ctx.setLineDash(dashFor(g.dash)); ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bot); ctx.stroke(); ctx.setLineDash([]); }
       this.drawLabels(ctx);
-      // draggable lines (rulers, guides, fluorescence boundaries)
-      for (const g of this.dragLines()) {
-        const x = Math.round(this.xToPx(g.x)) + 0.5; if (x < main.x || x > main.x + main.w) continue;
-        ctx.strokeStyle = g.color; ctx.lineWidth = 1; ctx.setLineDash(dashFor(g.dash)); ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bot); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = g.color; ctx.fillRect(x - 4, top - 1, 8, 7); if (g.label) { ctx.font = FONT_S; ctx.textBaseline = 'top'; const tw = ctx.measureText(g.label).width, flip = x + 6 + tw > main.x + main.w, lx = flip ? x - 6 - tw : x + 6, ly = top + 1 + (g.row || 0) * 11; ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(lx - 1, ly - 1, tw + 2, 13); ctx.fillStyle = g.color; ctx.textAlign = 'left'; ctx.fillText(g.label, lx, ly); }
+      for (const { g, x } of dls) { ctx.fillStyle = g.color; ctx.fillRect(x - 4, top - 1, 8, 7); }
+      for (const { g, x } of dls) {
+        if (g.label) { ctx.font = FONT_S; ctx.textBaseline = 'top'; const tw = ctx.measureText(g.label).width, flip = (g.flip && x - 6 - tw >= main.x) || x + 6 + tw > main.x + main.w, lx = flip ? x - 6 - tw : x + 6, ly = top + 1 + (g.row || 0) * 11; ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(lx - 1, ly - 1, tw + 2, 13); ctx.fillStyle = g.color; ctx.textAlign = 'left'; ctx.fillText(g.label, lx, ly); }
       }
       if (this.cursorX != null && !this.dragging) { const x = Math.round(this.xToPx(this.cursorX)) + 0.5; ctx.strokeStyle = 'rgba(31,41,51,0.45)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bot); ctx.stroke(); }
       if (this.dragging && (this.dragging.kind === 'zoom' || this.dragging.kind === 'select')) {
@@ -2011,17 +2021,25 @@ const CH = (function () {
       }
       ctx.textBaseline = 'alphabetic';
     }
-    // labels drawn above the traces with a backing: interval labels, strip titles, reference-line labels (also on the PNG)
-    drawLabels(ctx) {
+    // labels drawn above the traces with a backing: interval labels, strip titles, marker and reference-line labels (also on the PNG, without drag lines)
+    drawLabels(ctx, noDrag) {
       const main = this.panels[0]; if (!main) return;
       let ivRow = 0; ctx.font = FONT_S; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
       for (const iv of (this.cfg.intervals ? this.cfg.intervals() : [])) { const x0 = Math.max(main.x, this.xToPx(iv.x0)); if (this.xToPx(iv.x1) < main.x || x0 >= main.x + main.w) continue; const y = main.y + 11 + ivRow * 16, tw = ctx.measureText(iv.label).width; ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.fillRect(x0 + 1, y - 7, tw + 4, 14); ctx.fillStyle = iv.color || C.warn; ctx.fillText(iv.label, x0 + 3, y); ivRow = (ivRow + 1) % 3; }
-      for (const p of this.panels) { const ax = p.cfg.yl; if (!p.cfg.px || !ax) continue; const t = (ax.short || ax.title) + (ax.unit ? ' (' + ax.unit + ')' : ''); ctx.font = FONT_S; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; const tw = ctx.measureText(t).width; ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(p.x + 2, p.y + 2, tw + 8, 16); ctx.fillStyle = C.text2; ctx.fillText(t, p.x + 6, p.y + 4); }
-      for (const L of (this.cfg.vlines ? this.cfg.vlines() : [])) { if (!L.label) continue; const x = Math.round(this.xToPx(L.x)) + 0.5; if (x < main.x || x > main.x + main.w) continue; ctx.font = FONT_S; ctx.textBaseline = 'middle'; const tw = ctx.measureText(L.label).width, right = L.align === 'right' || (L.align !== 'left' && x + 3 + tw > main.x + main.w), lx = right ? x - 3 - tw : x + 3, y = main.y + 8 + (L.row || 0) * 12; ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(lx - 1, y - 7, tw + 2, 14); ctx.fillStyle = L.color || C.text2; ctx.textAlign = 'left'; ctx.fillText(L.label, lx, y); }
+      const tbox = [], hit = (b, list) => list.find(t => b[0] < t[2] && b[2] > t[0] && b[1] < t[3] && b[3] > t[1]);
+      for (const p of this.panels) { const ax = p.cfg.yl; if (!p.cfg.px || !ax) continue; const t = (ax.short || ax.title) + (ax.unit ? ' (' + ax.unit + ')' : ''); ctx.font = FONT_S; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; const tw = ctx.measureText(t).width; ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(p.x + 2, p.y + 2, tw + 8, 16); ctx.fillStyle = C.text2; ctx.fillText(t, p.x + 6, p.y + 4); tbox.push([p.x + 2, p.y + 2, p.x + tw + 10, p.y + 18]); }
+      const placed = [];
+      for (const m of (this.markerLabels || [])) {
+        ctx.font = FONT_S; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; const tw = ctx.measureText(m.label).width, box = y => [m.x - tw / 2 - 2, y - 13, m.x + tw / 2 + 2, y]; let y = m.y;
+        for (let k = 0; k < 4; k++) { const t = hit(box(y), tbox), q = !t && hit(box(y), placed); if (!t && !q) break; y = t ? t[1] - 1 : q[1]; }
+        placed.push(box(y)); ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(m.x - tw / 2 - 2, y - 13, tw + 4, 13); ctx.fillStyle = m.color; ctx.fillText(m.label, m.x, y);
+      }
+      const drag = noDrag ? [] : this.dragLines();
+      for (const L of (this.cfg.vlines ? this.cfg.vlines() : [])) { if (!L.label) continue; const x = Math.round(this.xToPx(L.x)) + 0.5; if (x < main.x || x > main.x + main.w) continue; ctx.font = FONT_S; ctx.textBaseline = 'middle'; const tw = ctx.measureText(L.label).width, right = L.align === 'right' ? x - 3 - tw >= main.x : L.align !== 'left' && x + 3 + tw > main.x + main.w, hits = a => drag.filter(g => { const v = this.xToPx(g.x); return v + 5 > a - 1 && v - 5 < a + tw + 1; }); let lx = right ? x - 3 - tw : x + 3, y = main.y + 8 + (L.row || 0) * 12; const h0 = L.row ? [] : hits(lx); if (h0.length) { const alt = right ? x + 3 : x - 3 - tw; if (alt >= main.x && alt + tw <= main.x + main.w && !hits(alt).length) lx = alt; else y = main.y + 8 + 12 * (1 + Math.max(...h0.map(g => g.row || 0))); } ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(lx - 1, y - 7, tw + 2, 14); ctx.fillStyle = L.color || C.text2; ctx.textAlign = 'left'; ctx.fillText(L.label, lx, y); }
     }
     dragLines() {
       const out = [];
-      if (this.rulers && this.rulersOn) this.rulers.forEach((x, k) => out.push({ id: 'r' + k, x, color: this.cfg.rulerColor || C.v20, dash: 'solid', label: 'R' + (k + 1), drag: v => { this.rulers[k] = v; } }));
+      if (this.rulers && this.rulersOn) this.rulers.forEach((x, k) => out.push({ id: 'r' + k, x, color: this.cfg.rulerColor || C.v20, dash: 'solid', label: 'R' + (k + 1), flip: this.rulers[k] < this.rulers[1 - k], drag: v => { this.rulers[k] = v; } }));
       for (const g of (this.cfg.guides ? this.cfg.guides() : [])) out.push(g);
       return out;
     }
@@ -2103,15 +2121,15 @@ const CH = (function () {
       });
     }
     toPNG(title) {
-      const out = document.createElement('canvas'), dpr = this.dpr, legendH = 22, titleH = 26;
+      const out = document.createElement('canvas'), dpr = this.dpr, titleH = 26, items = []; let lx = 8, lrow = 0; { const mc = out.getContext('2d'); mc.font = FONT; for (const s of this.series) { if (!s.visible || s.legend === false) continue; const w = 30 + mc.measureText(s.label).width; if (lx > 8 && lx + w > this.cBase.width / dpr - 8) { lx = 8; lrow++; } items.push({ s, x: lx, y: titleH + lrow * 20 }); lx += w; } } const legendH = 22 + lrow * 20;
       out.width = this.cBase.width; out.height = this.cBase.height + (legendH + titleH) * dpr; const ctx = out.getContext('2d');
       ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, out.width, out.height); ctx.scale(dpr, dpr);
       ctx.fillStyle = C.text; ctx.font = 'bold 13px Arial, "Liberation Sans", sans-serif'; ctx.fillText(title || '', 8, 17);
-      let x = 8; ctx.font = FONT;
-      for (const s of this.series) { if (!s.visible || s.legend === false) continue; ctx.strokeStyle = s.color; ctx.lineWidth = s.width || 1.25; ctx.setLineDash(dashFor(s.dash)); ctx.beginPath(); ctx.moveTo(x, titleH + 9); ctx.lineTo(x + 18, titleH + 9); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = C.text; ctx.fillText(s.label, x + 22, titleH + 13); x += 30 + ctx.measureText(s.label).width; }
+      ctx.font = FONT;
+      for (const { s, x, y } of items) { ctx.strokeStyle = s.color; ctx.lineWidth = s.width || 1.25; ctx.setLineDash(dashFor(s.dash)); ctx.beginPath(); ctx.moveTo(x, y + 9); ctx.lineTo(x + 18, y + 9); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = C.text; ctx.fillText(s.label, x + 22, y + 13); }
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       const oy = (legendH + titleH) * dpr; ctx.drawImage(this.cBase, 0, oy); ctx.drawImage(this.cData, 0, oy);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, oy); this.drawLabels(ctx);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, oy); this.drawLabels(ctx, true);
       return out.toDataURL('image/png');
     }
   }
@@ -2427,7 +2445,7 @@ const M = (function () {
         // one Run log line per timed-out block (discrepancy 6), placed at the block's time
         for (const A = R.acq; R.toLogged < A.n; R.toLogged++) {
           const i = R.toLogged; if (!A.disc[i]) continue;
-          const e = log(R, 'system', 'Block ' + fmt.int(i + 1) + ' timed out after ' + TR.ACQ.timeoutS + ' s: no waveforms. Sensitivity unchanged.', { x: R.x.vol[i], i });
+          const e = log(R, 'system', 'Block ' + fmt.int(i + 1) + ' timed out after ' + TR.ACQ.timeoutS + ' s: no waveforms. Sensitivity unchanged.', { x: R.standalone ? R.acq.t[i] / 60 : R.x.vol[i], i });
           e.t = A.t[i]; e.wall = wall(R.simStart + A.t[i]).time;
         }
       }
@@ -2447,7 +2465,7 @@ const M = (function () {
       else if (c.noSignal) why = 'No signal above 5 SD of the baseline. ' + src + ' used ' + fmt.pct0(c.use) + ofR + '.';
       else if (c.noneEligible) why = 'No step could hold the pulse below 90 %; returned to step 1.';
       else why = src + ' used ' + fmt.pct0(c.use) + ofR + ' (' + (c.use > TR.ACQ.limit ? 'limit 90 %' : 'target 80 %') + '). Predicted use after change: ' + fmt.pct0(c.pred) + ' %.';
-      const e = log(R, 'sensitivity', 'Sensitivity ' + dir + ' from step ' + c.from + ' to step ' + c.to + ' (OD ' + to.nd + ', ' + (to.range * 1000) + ' mV). ' + why, { x: R.x.vol[c.i], i: c.i, short: 'Sensitivity ' + dir + ' from step ' + c.from + ' to step ' + c.to + (isFinite(c.use) ? ' at ' + fmt.pct0(c.use) + ' % of the input range' : '') + '.' });
+      const e = log(R, 'sensitivity', 'Sensitivity ' + dir + ' from step ' + c.from + ' to step ' + c.to + ' (OD ' + to.nd + ', ' + (to.range * 1000) + ' mV). ' + why, { x: R.standalone ? R.acq.t[c.i] / 60 : R.x.vol[c.i], i: c.i, short: 'Sensitivity ' + dir + ' from step ' + c.from + ' to step ' + c.to + (isFinite(c.use) ? ' at ' + fmt.pct0(c.use) + ' % of the input range' : '') + '.' });
       e.t = c.t; e.wall = wall(R.simStart + c.t).time;
     }
     R.rules.process();
@@ -2721,11 +2739,11 @@ const M = (function () {
   }
 
   /* ---------- notes and events ---------- */
-  function addNote(R, kind, text) {
-    const A = R.acq, i = Math.max(0, A.n - 1), u = A.n ? A.u[i] : 0;
+  function addNote(R, kind, text, at) {
+    const A = R.acq, i = Math.max(0, at != null && at >= 0 ? Math.min(at, A.n - 1) : A.n - 1), u = A.n ? A.u[i] : 0;
     const k = R.notes.filter(x => x.kind === kind).length + 1, id = (kind === 'note' ? 'N' : 'E') + k;
-    const nt = { id, kind, text, x: u, t: runTimeS(R), wall: wall(S.simT).time };
-    R.notes.push(nt); log(R, kind === 'note' ? 'note' : 'event', (kind === 'note' ? 'Note ' : 'Event ') + id + ' at ' + fmt.ml(u) + ' mL: ' + text, { x: u });
+    const nt = { id, kind, text, x: u, t: at != null && at >= 0 && A.n ? A.t[i] : runTimeS(R) }; nt.wall = wall(R.simStart + nt.t).time;
+    R.notes.push(nt); log(R, kind === 'note' ? 'note' : 'event', (kind === 'note' ? 'Note ' : 'Event ') + id + ' at ' + (R.standalone ? fmt.min1(nt.t / 60) + ' min' : fmt.ml(u) + ' mL') + ': ' + text, { x: R.standalone ? nt.t / 60 : u });
     audit(kind, (kind === 'note' ? 'Note ' : 'Event ') + id + ' added: ' + text); emit('notes'); return nt;
   }
 
@@ -2910,7 +2928,7 @@ const S2 = (function () {
       if (card && on) {
         if (Math.abs(shift) >= Math.abs(card.shift)) { card.shift = shift; card.unc = unc; card.x0 = x0; card.x1 = u; card.fractions = E.fracsIn(x0, u); }
         const info = irfInfo(R.pmt);
-        card.obs = 'Decay metric changed by ' + sgn(card.shift, 2) + ' ± ' + card.unc.toFixed(2) + ' ns between the ' + fmt.ml(card.x0) + ' to ' + fmt.ml(card.x1) + ' mL window and the load plateau reference (' + fmt.ml(d.ref.u0) + ' to ' + fmt.ml(d.ref.u1) + ' mL, ' + d.ref.mean.toFixed(2) + ' ± ' + d.ref.sd.toFixed(2) + ' ns SD). IRF about ' + info.fwhmNs.toFixed(1) + ' ns FWHM; sampling 0.2 ns.';
+        card.obs = 'Decay metric changed by ' + sgn(card.shift, 2) + ' ± ' + card.unc.toFixed(2) + ' ns between the ' + fmt.ml(card.x0) + ' to ' + fmt.ml(card.x1) + ' mL window and the load plateau reference (' + fmt.ml(d.ref.u0) + ' to ' + fmt.ml(d.ref.u1) + ' mL, ' + d.ref.mean.toFixed(2) + ' ± ' + d.ref.sd.toFixed(2) + ' ns SD). IRF about ' + info.fwhmNs.toFixed(1) + ' ns FWHM; sampling 0.2 ns.'; card.eng = [' IRF about ' + info.fwhmNs.toFixed(1) + ' ns FWHM; sampling 0.2 ns.'];
         const h = E.cards.find(c => c.linkedTo === card.id); if (h) { h.fractions = card.fractions; h.x0 = card.x0; h.x1 = card.x1; h.confirm = 'HPLC-SEC on ' + (card.fractions.length ? M.rangeIds(card.fractions) : 'the linked fractions') + '.'; }
       }
     },
@@ -2970,7 +2988,7 @@ const S2 = (function () {
     for (const f of v.fractions.filter(q => q.phaseKey === 'el')) {
       const [a, b] = TR.collectedRange(f, v.plumb); let integ = 0, pu = null, py = null, over = 0, chg = 0, disc = 0, prevStep = null;
       for (let i = 0; i < v.n; i++) { const u = v.u[i]; if (u < a || u >= b) continue; if (v.A.disc[i]) { disc++; continue; } const y = v.y[i]; if (pu != null && u > pu) integ += (u - pu) * (y + py) / 2; pu = u; py = y; over += v.A.nOver[i]; if (prevStep != null && v.A.step[i] !== prevStep) chg++; prevStep = v.A.step[i]; }
-      out[f.id] = { share: tot > 0 ? integ / tot : NaN, over, chg, disc };
+      out[f.id] = { share: tot > 0 && pu != null ? integ / tot : NaN, over, chg, disc };
     }
     return out;
   }
@@ -2986,7 +3004,7 @@ const UI = (function () {
   const $ = (s, r) => (r || document).querySelector(s), $$ = (s, r) => [...(r || document).querySelectorAll(s)];
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
   function el(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
-  const TAGS = { E: 'Existing', P: 'Proposed', F: 'Future', A: 'Assumed', S: 'simulated', H: 'To verify on hardware' };
+  const TAGS = { E: 'Existing', P: 'Proposed', F: 'Future', A: 'Assumed', S: 'simulated', H: 'To verify on hardware', D: 'Development assumption' };
   // Display rule (section 0): engineer-scope tags only in the Engineer view; 'always' tags where a Proposed
   // setting affects displayed data or a card, and on Future controls.
   function tag(k, scope) { return '<span class="tag' + (k === 'F' ? ' fut' : '') + '" data-scope="' + (scope || 'engineer') + '">' + TAGS[k] + '</span>'; }
@@ -3075,7 +3093,7 @@ const UI = (function () {
     const key = [M.procLabel(), al.detector, al.fractions, step, save, w].join('|');
     if (key === stCache) return; stCache = key;
     $('#status').innerHTML = '<span>Processing: <b>' + esc(M.procLabel()) + '</b></span>' +
-      (al.detector === 'n/a' ? '' : '<span>Alignment: <b>' + esc(al.detector) + '</b>' + (al.fractions === 'Uncertain' && al.detector !== 'Uncertain' ? '; fraction assignment <b>Uncertain</b>' : '') + '</span>') +
+      (al.detector === 'n/a' ? '' : '<span>Alignment: <b>' + esc(al.detector) + '</b>' + (al.fractions === 'Uncertain' && al.detector !== 'Uncertain' ? '; fractions <b>uncertain</b>' : '') + '</span>') +
       (step ? '<span>Sensitivity: <b>step ' + step + ' of ' + nst + '</b></span>' : '') +
       (R ? '<span>Last save: <b>' + esc(save) + '</b></span>' : '') +
       (w ? '<span class="st-warn" title="' + esc(w) + '">Warning: ' + esc(w) + '</span>' : '<span class="muted">No open warnings</span>');
@@ -3109,7 +3127,7 @@ const UI = (function () {
     closePopover(); const r = anchor.getBoundingClientRect(); pop = el('<div class="popover"></div>'); pop.append(contentEl); document.body.append(pop);
     const w = pop.offsetWidth, h = pop.offsetHeight; pop.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left)) + 'px';
     pop.style.top = (r.bottom + 4 + h > window.innerHeight - 8 ? Math.max(8, r.top - h - 4) : r.bottom + 4) + 'px';
-    pop._onClose = onClose; const me = pop, onKey = e => { if (e.key === 'Escape' && pop === me) { closePopover(); if (anchor.focus) anchor.focus(); } }; document.addEventListener('keydown', onKey); pop._off = () => document.removeEventListener('keydown', onKey);
+    pop._onClose = onClose; const me = pop, onKey = e => { if (e.key === 'Escape' && pop === me) { closePopover(); const a = anchor.isConnected ? anchor : anchor.id ? document.getElementById(anchor.id) : anchor.dataset && anchor.dataset.id ? document.querySelector('.decb[data-id="' + anchor.dataset.id + '"]') : null; if (a && a.focus) a.focus(); } }; document.addEventListener('keydown', onKey); pop._off = () => document.removeEventListener('keydown', onKey);
     setTimeout(() => document.addEventListener('mousedown', outside), 0);
     function outside(e) { if (pop && !pop.contains(e.target) && e.target !== anchor) { closePopover(); document.removeEventListener('mousedown', outside); } }
   }
@@ -3367,7 +3385,7 @@ const UI = (function () {
       bands: () => [{ x0: 0, x1: 20, label: 'Baseline', fill: '#E8ECEF' }],
       series: [
         { key: 'wf', label: 'Latest pulse', color: C.v20, width: 1.25, panel: 'main', src: () => ({ x: pulse.x, y: pulseLog ? pulse.ly : pulse.y, n: pulse.n, gen: pulse.gen + (pulseLog ? 0.5 : 0) }), fmt: v => v.toFixed(2) + ' mV' },
-        { key: 'irf', label: 'IRF (reference shape)', color: C.irf, dash: 'dash', width: 1, panel: 'main', src: () => ({ x: pulse.ix, y: pulseLog ? pulse.liy : pulse.iy, n: pulse.n ? 600 : 0, gen: pulse.gen + (pulseLog ? 0.5 : 0) }), fmt: v => v.toFixed(2) + ' mV' }
+        { key: 'irf', label: 'IRF', color: C.irf, dash: 'dash', width: 1, panel: 'main', src: () => ({ x: pulse.ix, y: pulseLog ? pulse.liy : pulse.iy, n: pulse.n ? 600 : 0, gen: pulse.gen + (pulseLog ? 0.5 : 0) }), fmt: v => v.toFixed(2) + ' mV' }
       ]
     });
     built = true;
@@ -3447,12 +3465,12 @@ const RC = (function () {
   const extraSeries = [], extraPanels = [], extraInfo = [], runRows = [];
   const XT = { vol: 'Volume (mL)', cv: 'Column volumes (CV)', min: 'Time (min)' };
   function R() { return S.run; }
-  function sa() { const r = R(); return !!(r && r.standalone); }
+  function sa() { const r = R(); return r ? !!r.standalone : S.setup.source === 'standalone'; }
   function toX(v) { const r = R(); if (!r) return v; if (view.x === 'cv') return v / r.cv; if (view.x === 'min') return TR.timeAtVol(r.ph, v); return v; }
   function fromX(x) { const r = R(); if (!r) return x; if (view.x === 'cv') return x * r.cv; if (view.x === 'min') return TR.pumpVolAt(r.ph, x); return x; }
   function xDomain() {
     const r = R(), tpl = r ? r.tpl : M.template(), ph = r ? r.ph : TR.buildPhases(tpl);
-    if (sa()) return [0, r.timerMin];
+    if (sa()) return [0, r ? r.timerMin : (S.setup.timerMin || Math.ceil(ph.totalMin + 2))];
     if (view.x === 'min') return [-1, (r ? r.timerMin : ph.totalMin + 2) - 1];
     const v = [-1, ph.totalVol + 1]; return view.x === 'cv' ? [v[0] / tpl.cv, v[1] / tpl.cv] : v;
   }
@@ -3531,6 +3549,7 @@ const RC = (function () {
   }
   function rulerInfo(a, b) {
     const r = R(); if (!r) return '';
+    if (sa()) { const xa = Math.min(a, b), xb = Math.max(a, b), i0 = TR.lowerBound(r.x.acq, r.derivedN, xa), i1 = TR.lowerBound(r.x.acq, r.derivedN, xb); let s = 0, n = 0; for (let i = i0; i < i1; i++) { const y = r.y.act[i]; if (y === y) { s += y; n++; } } return 'R1 ' + fmt.min1(xa) + ', R2 ' + fmt.min1(xb) + ' min · Δ ' + fmt.min1(xb - xa) + ' min · mean ' + (n ? fmt.sig3(s / n) + ' V·ns' : '–'); }
     const va = fromX(Math.min(a, b)), vb = fromX(Math.max(a, b)), ta = TR.timeAtVol(r.ph, va), tb = TR.timeAtVol(r.ph, vb);
     const A = r.acq, i0 = TR.lowerBound(r.x.vol, r.derivedN, va), i1 = TR.lowerBound(r.x.vol, r.derivedN, vb); let s = 0, n = 0;
     for (let i = i0; i < i1; i++) { const y = r.y.act[i]; if (y === y) { s += y; n++; } }
@@ -3567,7 +3586,7 @@ const RC = (function () {
     $$('#rX button').forEach(b => b.onclick = () => { RC.view.x = b.dataset.v; syncSeg(); chart.resetZoom(); chart.invalidate(); UI.emitDirty('xmode'); });
     $$('#rLog button').forEach(b => b.onclick = () => { RC.view.log = b.dataset.v === '1'; syncSeg(); chart.invalidate(); });
     $$('#rPLog button').forEach(b => b.onclick = () => { pulseLog = b.dataset.v === '1'; $$('#rPLog button').forEach(x => x.classList.toggle('on', x === b)); pulseChart.invalidate(); });
-    $('#rRul').onchange = e => { chart.rulersOn = e.target.checked; if (chart.rulersOn) { const R = S.run, xs = R && R.derivedN ? R.x[RC.sa() ? 'acq' : RC.view.x] : null, [a, b0] = chart.xRange(), b = xs ? Math.min(b0, xs[R.derivedN - 1]) : b0; chart.rulers = [a + (b - a) * 0.4, a + (b - a) * 0.6]; } chart.invalidateOver(); chart.updateReadout(); };
+    $('#rRul').onchange = e => { chart.rulersOn = e.target.checked; if (chart.rulersOn) { const R = S.run, xs = R && R.derivedN ? R.x[RC.sa() ? 'acq' : RC.view.x] : null, [a, b0] = chart.xRange(), b = xs ? Math.min(b0, xs[R.derivedN - 1]) : b0, h = Math.max((b - a) * 0.1, 20 * (b0 - a) / chart.pw), r0 = Math.max(a, (a + b) / 2 - h); chart.rulers = [r0, r0 + 2 * h]; } chart.invalidateOver(); chart.updateReadout(); };
     $('#rReset').onclick = () => chart.resetZoom();
     $('#rExp').onclick = toggleExpand;
     $('#rLogF').onchange = e => { logFilter = e.target.value; logN = -1; };
@@ -3590,7 +3609,7 @@ const RC = (function () {
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && expanded) toggleExpand(); });
     window.addEventListener('resize', layoutBottom);
     built = true; syncSeg(); layoutBottom();
-    M.on(ev => { if (ev === 'proc' || ev === 'run' || ev === 'series' || ev === 'setup') { chart.cfg.panels = RC.panels(); chart.setSeries(RC.seriesFor()); chart.cfg.legendExtras = RC.legendExtras(); chart.buildLegend(); chart.relayout(); pulse.blk = -1; } if (ev === 'cards') cardsKey = ''; if (ev === 'notes') chart.invalidateBase(); });
+    M.on(ev => { if (ev === 'proc' || ev === 'run' || ev === 'series' || ev === 'setup') { chart.cfg.panels = RC.panels(); chart.setSeries(RC.seriesFor()); chart.cfg.legendExtras = RC.legendExtras(); chart.buildLegend(); chart.relayout(); pulse.blk = -1; } if (ev === 'cards') cardsKey = ''; if (ev === 'notes') chart.invalidateBase(); if (ev === 'setup') syncSeg(); });
   }
   function layoutBottom() { const rb = $('#runBottom'); if (!rb) return; const w = rb.getBoundingClientRect().width; if (!w) return; const narrow = w < (S.engineer ? 1200 : 980); rb.classList.toggle('narrow', narrow); $('#cardPanel').style.display = narrow && narrowTab === 'log' ? 'none' : ''; $('#logPanel').style.display = narrow && narrowTab === 'cards' ? 'none' : ''; ensureTabs(narrow); }
   function ensureTabs(narrow) {
@@ -3611,7 +3630,7 @@ const RC = (function () {
       if (S.demo.laserEarly && sm.canOverride) { if (!S.readiness.override) { S.readiness.override = { reason: 'Demo control: AKTA run started before the laser was stable.', by: S.setup.operator, t: S.simT }; M.audit('override', 'Readiness override recorded: ' + S.readiness.override.reason); } }
       else if (!(S.readiness && S.readiness.override && sm.canOverride)) return;
     }
-    const R = M.newRun(); RC.view.x = RC.view.x || 'vol'; syncSeg(); chart.resetZoom(); UI.emitDirty();
+    const R = M.newRun(); RC.view.x = R.standalone ? 'vol' : (RC.view.x || 'vol'); syncSeg(); chart.resetZoom(); UI.emitDirty();
   }
   async function endRun() {
     const R = S.run; if (!R || R.state === 'complete') return;
@@ -3619,20 +3638,20 @@ const RC = (function () {
     if (r.value) { M.finishRun(R, 'user'); UI.emitDirty(); }
   }
   function noteDlg(kind) {
-    const R = S.run; if (!R) return;
-    const c = el('<form style="width:320px"><div style="font-weight:bold;margin-bottom:4px">' + (kind === 'note' ? 'Add note' : 'Mark event') + '</div><div class="small muted" style="margin-bottom:6px">At ' + fmt.ml(R.acq.n ? R.acq.u[R.acq.n - 1] : 0) + ' mL.</div><div class="inl" style="display:flex;gap:6px"><input type="text" id="ntText" style="flex:1" placeholder="' + (kind === 'note' ? 'Note' : 'Event, for example sample change') + '"><button class="btn primary" type="submit">Add</button></div></form>');
-    c.onsubmit = e => { e.preventDefault(); const t = $('#ntText', c).value.trim(); if (!t) return; M.addNote(R, kind, t); chart.invalidateBase(); UI.closePopover(); };
+    const R = S.run; if (!R) return; const at = R.acq.n - 1;
+    const c = el('<form style="width:320px"><div style="font-weight:bold;margin-bottom:4px">' + (kind === 'note' ? 'Add note' : 'Mark event') + '</div><div class="small muted" style="margin-bottom:6px">At ' + (R.standalone ? fmt.min1((at >= 0 ? R.acq.t[at] : 0) / 60) + ' min' : fmt.ml(at >= 0 ? R.acq.u[at] : 0) + ' mL') + '.</div><div class="inl" style="display:flex;gap:6px"><input type="text" id="ntText" style="flex:1" placeholder="' + (kind === 'note' ? 'Note' : 'Event, for example sample change') + '"><button class="btn primary" type="submit">Add</button></div></form>');
+    c.onsubmit = e => { e.preventDefault(); const t = $('#ntText', c).value.trim(); if (!t) return; M.addNote(R, kind, t, at); chart.invalidateBase(); UI.closePopover(); };
     UI.popover($(kind === 'note' ? '#rNote' : '#rMark'), c); setTimeout(() => $('#ntText', c).focus(), 0);
   }
   function controls() {
     const R = S.run, sm = M.readinessSummary(), st = R ? R.state : 'idle';
     const canStart = !R && S.fault === 'none' && M.presetCheck().ok && (sm.ready || (sm.canOverride && ((S.readiness && S.readiness.override) || S.demo.laserEarly)));
     $('#rStart').disabled = !canStart; $('#rPause').disabled = st !== 'acquiring'; $('#rCont').disabled = st !== 'paused';
-    $('#rStart').classList.toggle('hidden', !!R); $('#rPause').classList.toggle('hidden', st === 'paused'); $('#rCont').classList.toggle('hidden', st !== 'paused'); $('#rEnd').disabled = !(st === 'acquiring' || st === 'paused');
+    const live = st === 'acquiring' || st === 'paused'; $('#rStart').classList.toggle('hidden', !!R); $('#rPause').classList.toggle('hidden', st !== 'acquiring'); $('#rCont').classList.toggle('hidden', st !== 'paused'); for (const q of ['#rEnd', '#rMark', '#rNote', '#scr-run .scr-h .sep']) $(q).classList.toggle('hidden', !live); $('#rEnd').disabled = !(st === 'acquiring' || st === 'paused');
     $('#rMark').disabled = $('#rNote').disabled = !R || st === 'complete';
     let note = '';
     if (!R) note = sm.ready ? '' : canStart ? (S.readiness && S.readiness.override ? 'Override recorded. ' : 'Laser not yet stable. ') + 'I1 will flag early data.' : sm.text;
-    else if (st === 'complete') note = 'Review the fractions next.';
+    else if (st === 'complete') note = R.standalone ? 'Open the Record next.' : 'Review the fractions next.';
     else if (UI.isFF()) note = 'Fast-forwarding.';
     const ne = $('#rCtlNote'); if (ne.textContent !== note) { ne.textContent = note; ne.title = note; }
   }
@@ -3660,7 +3679,7 @@ const RC = (function () {
     const ph = tA < 0 ? null : R.ph.list[TR.phaseIdxAtTime(R.ph, tA)];
     const vp = TR.pumpVolAt(R.ph, Math.max(0, tA));
     const lad = TR.LADDERS[R.pmt], st = lad[A.cur - 1], al = M.alignmentState(), disc = A.disc.subarray(0, n).reduce((a, b) => a + b, 0);
-    const sys = R.state === 'complete' ? 'Complete. Acquisition time ' + fmt.clock(R.endAt) + '.' : R.state === 'paused' ? 'Paused. The AKTA run continues.' : (tA < 0 ? 'Acquiring buffer. AKTA run starts in ' + fmt.min1(-tA) + ' min.' : (tA > R.ph.totalMin ? 'Acquiring after the AKTA method ended.' : 'Acquiring. ' + ph.name + (ph.hold && tA >= ph.tPump ? ', hold, no flow' : ', ' + fmt.ml(vp - ph.v0) + ' mL in') + '.'));
+    const sys = R.state === 'complete' ? 'Complete. Acquisition time ' + fmt.clock(R.endAt) + '.' : R.state === 'paused' ? (R.standalone ? 'Paused.' : 'Paused. The AKTA run continues.') : R.standalone ? 'Acquiring. ' + fmt.min1(tS / 60) + ' min in.' : (tA < 0 ? 'Acquiring buffer. AKTA run starts in ' + fmt.min1(-tA) + ' min.' : (tA > R.ph.totalMin ? 'Acquiring after the AKTA method ended.' : 'Acquiring. ' + ph.name + (ph.hold && tA >= ph.tPump ? ', hold, no flow' : ', ' + fmt.ml(vp - ph.v0) + ' mL in') + '.'));
     const row = (k2, u, v) => '<tr><td class="k">' + k2 + (u ? ' <span class="un">(' + u + ')</span>' : '') + '</td><td class="v">' + v + '</td></tr>';
     const fl = n && i >= 0 ? R.y.act[i] : NaN, use = n ? A.ruse[i] : NaN;
     const html = '<div class="sysstate">' + esc(sys) + '</div><table class="rv">' +
@@ -3668,7 +3687,7 @@ const RC = (function () {
       row('Sensitivity', '', '<span title="OD ' + st.nd + ', ' + st.range * 1000 + ' mV">' + A.cur + ' of ' + lad.length + '</span>') +
       row('Input range', '', rangeBar(use, use < S.th.lowPrec ? '<span class="flag w" title="Pulse under ' + Math.round(S.th.lowPrec * 100) + ' % of the input range (provisional)">Low precision</span>' : use > TR.ACQ.limit ? '<span class="flag f">Above 90 % limit</span>' : '')) +
       row('Blocks', '', fmt.int(n - disc) + ' (' + fmt.int(disc) + ' discarded)').replace('<tr>', '<tr class="eng-only">') +
-      (R.setupSnap.beamPerBlock ? row('Beam monitor', '% of start', n ? fmt.pct1(A.bm[i] / (R.bmRef || A.bm[i])) : '–') : '') +
+      (R.setupSnap.beamPerBlock ? row('Beam monitor', '% of start', n ? fmt.pct1(A.bm[i] / (R.bmRef || A.bm[i])) : '–').replace('<tr>', '<tr class="eng-only">') : '') +
       (al.detector === 'n/a' ? '' : row('Alignment', '', esc(al.detector === 'Aligned' && al.fractions === 'Uncertain' ? 'Fractions uncertain' : al.detector))) + RC.runRows.map(f => f(R, i, row)).join('') + '</table>';
     if (box._h !== html) { box.innerHTML = html; box._h = html; }
   }
@@ -3753,7 +3772,7 @@ const RC = (function () {
 /* ---------- Fraction review (Validate, interpret and decide) ---------- */
 (function () {
   const { $, $$, esc, el, tag } = UI, S = M.S, fmt = M.fmt, C = CH.C;
-  let built = false, ov = null, zm = null, pc = null, rows = [], sel = new Set(), focus = null, sortKey = null, sortDir = 1, showShare = false, tab = 'frac', lastKey = '', flManual = null, dataKey = '', userPick = false;
+  let built = false, ov = null, zm = null, pc = null, rows = [], sel = new Set(), focus = null, sortKey = null, sortDir = 1, showShare = false, tab = 'frac', lastKey = '', flManual = null, dataKey = '', userPick = false, showMp = false;
   const mp = { x: new Float64Array(600), y: new Float64Array(600), iy: new Float64Array(600), n: 0, gen: 0 };
   for (let j = 0; j < 600; j++) mp.x[j] = j * 0.2;
   const ANALYSES = [['sec', 'HPLC-SEC', 'Purity (monomer, HMWS, LMWS)'], ['lun', 'Lunatic', 'A280 concentration'], ['proa', 'Protein A HPLC', 'Titre'], ['none', 'No action', '']];
@@ -3831,9 +3850,9 @@ const RC = (function () {
     { k: 'a', h: 'Volume <span class="unit">(mL)</span>', num: true, v: f => f.a, f: f => fmt.ml(f.a) + '–' + fmt.ml(f.b) },
     { k: 'uvMean', h: 'UV 280 mean / max <span class="unit">(mAU)</span>', num: true, v: f => f.uvMean, f: f => fmt.mau(f.uvMean) + ' / ' + fmt.mau(f.uvMax) + (f.uvSat ? ' <span class="flag w" title="UV 280 at its 3,800 mAU ceiling">sat.</span>' : '') },
     { k: 'fMean', h: 'Fluor. mean / max <span class="unit">(V·ns)</span>', num: true, v: f => f.fMean, f: f => fmt.sig3(f.fMean) + ' / ' + fmt.sig3(f.fMax) },
-    { k: 'qc', h: 'QC', v: f => f.chg + f.over + f.disc * 10 + f.laser * 10, f: f => qcFlags(f) },
+    { k: 'qc', h: 'QC', wrap: true, v: f => f.chg + f.over + f.disc * 10 + f.laser * 10, f: f => qcFlags(f) },
     { k: 'share', h: 'Share <span class="unit">(%)</span>', num: true, opt: true, tip: 'Relative signal-area contribution only. Not equivalent to protein mass, yield or recovery.', v: f => f.share, f: f => isFinite(f.share) ? (f.share * 100).toFixed(1) : '–' },
-    { k: 'cards', h: 'Cards', v: f => f.linked.length, f: f => f.linked.length ? f.linked.join(', ') : '' },
+    { k: 'cards', h: 'Cards', wrap: true, v: f => f.linked.length, f: f => f.linked.length ? f.linked.join(', ') : '' },
     { k: 'dec', h: 'Decision', v: f => decText(dec(f.id)), f: f => '<button class="btn sm decb" data-id="' + f.id + '" title="Choose offline analyses">' + esc(decText(dec(f.id))) + (dec(f.id).note ? ' *' : '') + '</button>' }
   ];
   function qcFlags(f) {
@@ -3854,7 +3873,7 @@ const RC = (function () {
     rows = R ? M.fractionStats(R) : [];
     if (sortKey) { const c = COLS.find(x => x.k === sortKey); rows.sort((a, b) => { const va = c.v(a), vb = c.v(b); return (va > vb ? 1 : va < vb ? -1 : 0) * sortDir; }); }
     $('#frTbl thead').innerHTML = '<tr>' + cols.map(c => '<th class="sortable' + (c.num ? ' num' : '') + '" data-k="' + c.k + '"' + (c.tip ? ' title="' + esc(c.tip) + '"' : '') + '>' + c.h.replace(/( <span class="unit">.*)?$/, (sortKey === c.k ? (sortDir > 0 ? ' ▲' : ' ▼') : '') + '$1') + '</th>').join('') + '</tr>';
-    $('#frTbl tbody').innerHTML = rows.map(f => '<tr class="clickable' + (sel.has(f.id) ? ' sel' : '') + '" data-id="' + f.id + '">' + cols.map(c => '<td class="' + (c.num ? 'num' : '') + '">' + (c.f ? c.f(f) : esc(c.v(f))) + '</td>').join('') + '</tr>').join('') || '<tr><td colspan="12" class="muted">No fractions yet.</td></tr>';
+    $('#frTbl tbody').innerHTML = rows.map(f => '<tr class="clickable' + (sel.has(f.id) ? ' sel' : '') + '" data-id="' + f.id + '">' + cols.map(c => '<td class="' + (c.num ? 'num' : c.wrap ? 'wrap' : '') + '">' + (c.f ? c.f(f) : esc(c.v(f))) + '</td>').join('') + '</tr>').join('') || '<tr><td colspan="12" class="muted">No fractions yet.</td></tr>';
     $$('#frTbl th').forEach(th => th.onclick = () => { if (sortKey === th.dataset.k) sortDir = -sortDir; else { sortKey = th.dataset.k; sortDir = 1; } lastKey = ''; });
     $$('#frTbl tbody tr[data-id]').forEach(tr => tr.onclick = e => {
       if (e.target.closest('.decb')) return; const id = tr.dataset.id;
@@ -3866,7 +3885,7 @@ const RC = (function () {
     $$('.decb').forEach(b => b.onclick = e => { e.stopPropagation(); decisionPopover(b, b.dataset.id); });
     if (focus !== lastFocus) { lastFocus = focus; const w = $('#frTblWrap'), tr = $('#frTbl tbody tr[data-id="' + focus + '"]'); if (tr) { const r = tr.getBoundingClientRect(), wr = w.getBoundingClientRect(), hh = $('#frTbl thead').offsetHeight; if (r.top < wr.top + hh) w.scrollTop -= wr.top + hh - r.top; else if (r.bottom > wr.bottom) w.scrollTop += r.bottom - wr.bottom; } }
     const al = M.alignmentState();
-    $('#frNote').innerHTML = R ? (rows.length + ' fractions · ' + (al.fractions === 'Uncertain' ? 'fraction assignment Uncertain' : 'volume-aligned<span class="eng-only"> (V1 ' + fmt.ml(S.setup.V1) + ' mL, V2 ' + fmt.ml(S.setup.V2) + ' mL)</span>')) : '';
+    $('#frNote').innerHTML = R ? (rows.length + ' fractions · ' + (al.fractions === 'Uncertain' ? 'assignment uncertain' : 'volume-aligned<span class="eng-only"> (V1 ' + fmt.ml(S.setup.V1) + ' mL, V2 ' + fmt.ml(S.setup.V2) + ' mL)</span>')) : '';
     $('#sampCnt').textContent = Object.entries(S.decisions).filter(([k, d]) => d.sec || d.lun || d.proa).length;
   }
   function decisionPopover(anchor, id) {
@@ -3887,29 +3906,29 @@ const RC = (function () {
     const R = S.run, box = $('#frSide');
     const key = JSON.stringify([tab, focus, [...sel], S.decisions, R ? R.derivedN : 0, R ? R.rules.cards.map(c => c.status) : 0, M.procLabel(), S.th.flPct, flManual, M.plumbing(), M.alignmentState().fractions]);
     if (!force && key === sideKey) return; sideKey = key;
-    $('#frNav').innerHTML = tab === 'frac' && R && R.fractions.length ? '<button class="btn sm" id="frPrev" title="Previous fraction">Prev</button> <button class="btn sm" id="frNext" title="Next fraction">Next</button>' : '';
+    $('#frNav').innerHTML = tab === 'frac' && R && R.fractions.length ? '<label class="chk small eng-only" title="Median pulse of the fraction"><input type="checkbox" id="frMp"' + (showMp ? ' checked' : '') + '> Pulse</label> <button class="btn sm" id="frPrev" title="Previous fraction">Prev</button> <button class="btn sm" id="frNext" title="Next fraction">Next</button>' : '';
+    const mpb = $('#frMp'); if (mpb) mpb.onchange = () => { showMp = mpb.checked; const g = $('.fr-detail-grid'); if (g) g.classList.toggle('show-mp', showMp); };
     if ($('#frPrev')) { const ids = R.fractions.map(f => f.id); $('#frPrev').onclick = () => { const i = Math.max(0, ids.indexOf(focus) - 1); focus = ids[i]; sel = new Set([focus]); selChanged(); }; $('#frNext').onclick = () => { const i = Math.min(ids.length - 1, ids.indexOf(focus) + 1); focus = ids[i]; sel = new Set([focus]); selChanged(); }; }
     if (tab === 'samples') { box.innerHTML = samplesHtml(); box.style.overflow = 'auto'; const cb = $('#sampCopy'); if (cb) cb.onclick = () => UI.copyText(samplesText(), cb); zm._mounted = false; return; }
     box.style.overflow = 'hidden';
     const f = fr(focus);
     if (!R || !f) { box.innerHTML = '<div class="note">Select a fraction in the table or drag across the chart.</div>'; zm._mounted = false; return; }
     const st = rows.find(r => r.id === f.id) || M.fractionStats(R).find(r => r.id === f.id), d = dec(f.id), b = flBounds(), pool = R.setupSnap.source === 'import' ? M.uvPool(R) : null;
-    if (!zm._mounted) { box.innerHTML = '<div style="flex:1 1 60%;min-height:170px" id="zmHost"></div><div class="fr-detail-grid" style="flex:1 1 40%;min-height:0;display:grid;grid-template-columns:minmax(0,0.85fr) minmax(0,1.15fr);gap:8px"><div id="mpHost" class="eng-only" style="min-height:0"></div><div id="frDet" style="overflow:auto;font-size:13.5px;min-height:0"></div></div>'; $('#zmHost').append(zm.host); zm.resize(); zm._mounted = true; mountPulse(); }
+    if (!zm._mounted) { box.innerHTML = '<div style="flex:1 1 0;min-height:150px" id="zmHost"></div><div class="fr-detail-grid' + (showMp ? ' show-mp' : '') + '" style="flex:0 1 auto;max-height:60%;min-height:0;display:grid"><div id="mpHost" class="eng-only" style="min-height:0"></div><div id="frDet" style="overflow:auto;font-size:13.5px;min-height:0"></div></div>'; $('#zmHost').append(zm.host); zm.resize(); zm._mounted = true; mountPulse(); }
     zm.invalidate();
     const cards = R.rules.cards.filter(c => c.fractions && c.fractions.includes(f.id));
     const shifted = Math.abs(st.ca - f.a) > 0.005 || Math.abs(st.cb - f.b) > 0.005, unc = st.assign === 'Uncertain';
-    const sub = [shifted ? 'Collected liquid ' + fmt.ml(st.ca) + ' to ' + fmt.ml(st.cb) + ' mL' : '', unc ? '<span title="' + esc(M.alignmentState().issues.join(' ')) + '">Assignment Uncertain</span>' : ''].filter(Boolean);
+    const sub = [shifted ? 'Collected liquid ' + fmt.ml(st.ca) + ' to ' + fmt.ml(st.cb) + ' mL' : '', unc ? '<span title="' + esc(M.alignmentState().issues.join(' ')) + '">Assignment uncertain</span>' : ''].filter(Boolean);
     const bnd = st.phaseKey !== (R.tpl.fractions.elPhase || 'el') ? [] : [pool ? '<span title="UV 280 above 100 mAU">UV pool ' + fmt.ml(pool.a) + ' to ' + (pool.b != null ? fmt.ml(pool.b) : '…') + ' mL</span>' : '',
-      b ? '<span title="Fluorescence ' + S.th.flPct + ' % of peak; visual comparison only">Fl. ' + S.th.flPct + ' % ' + (b.a != null ? fmt.ml(b.a) : '…') + ' to ' + (b.b != null ? fmt.ml(b.b) : '…') + ' mL' + (b.manual ? ', moved' : '') + '</span><label class="eng-only"> Level <input type="number" id="flPct" min="1" max="50" step="1" value="' + S.th.flPct + '" style="width:52px;height:20px"> %</label>' + (flManual ? ' <button class="link small" id="flAuto">Reset</button>' : '') : ''].filter(Boolean);
+      b ? '<span title="Fluorescence ' + S.th.flPct + ' % of peak; visual comparison only">Fl. ' + S.th.flPct + ' % ' + (b.a != null ? fmt.ml(b.a) : '…') + ' to ' + (b.b != null ? fmt.ml(b.b) : '…') + ' mL' + (b.manual ? ', moved' : '') + '</span>' + (flManual ? ' <button class="link small" id="flAuto">Reset</button>' : '') : ''].filter(Boolean);
     // order: fraction, linked cards and decision, confirmations, then the visual boundary comparison for the zoom chart
     $('#frDet').innerHTML = '<div><b>' + f.id + '</b> · ' + esc(st.phase) + ' · ' + fmt.ml(f.a) + ' to ' + fmt.ml(f.b) + ' mL · ' + fmt.int(st.nBlocks) + ' blocks</div>' +
       (sub.length ? '<div class="muted">' + sub.join(' · ') + '</div>' : '') +
-      '<div style="margin-top:6px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px">' + (cards.length ? '<span><b>Linked cards</b> ' + cards.map(c => '<span class="flag" title="' + esc(c.obs && c.obs.indexOf(c.title) === 0 ? c.obs : c.title + (c.obs ? '. ' + c.obs : '')) + '">' + c.rule + (c.status !== 'open' ? ' ' + c.status : '') + '</span>').join('') + '</span>' : '') +
+      '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px">' + (cards.length ? '<span><b>Linked cards</b> ' + cards.map(c => '<span class="flag" title="' + esc(c.obs && c.obs.indexOf(c.title) === 0 ? c.obs : c.title + (c.obs ? '. ' + c.obs : '')) + '">' + c.rule + (c.status !== 'open' ? ' ' + c.status : '') + '</span>').join('') + '</span>' : '') +
       '<span><b>Decision</b> <button class="btn sm" id="frDec">' + esc(decText(d)) + '</button></span></div>' + (d.note ? '<div class="small">Note: ' + esc(d.note) + '</div>' : '') +
       (cards.filter(c => c.confirm).map(c => '<div class="small">' + c.rule + ': ' + esc(c.confirm) + '</div>').join('')) +
-      (bnd.length ? '<div class="muted" style="margin-top:6px">' + bnd.join(' · ') + '</div>' : '');
+      (bnd.length ? '<div class="muted">' + bnd.join(' · ') + '</div>' : '');
     $('#frDec').onclick = () => decisionPopover($('#frDec'), f.id);
-    const fp = $('#flPct'); if (fp) fp.onchange = () => { const v = Math.max(1, Math.min(50, +fp.value || 5)); M.audit('setting', 'Fluorescence boundary level set to ' + v + ' % of peak (visual comparison only).'); S.th.flPct = v; flManual = null; zm.invalidate(); side(true); };
     const fa = $('#flAuto'); if (fa) fa.onclick = () => { flManual = null; M.audit('fraction review', 'Fluorescence boundaries reset to automatic.'); zm.invalidate(); side(true); };
     updMedianPulse(f);
   }
@@ -4012,13 +4031,13 @@ const REC = (function () {
     const R = S.run, s = R ? R.setupSnap : S.setup, al = M.alignmentState(), p = M.plumbing(), pi = M.presetInfo(s.pmt);
     const tpl = R ? R.tpl : M.template(), ph = R ? R.ph : TR.buildPhases(tpl), src = s.source;
     const out = {};
-    out.purpose = purpose != null ? purpose : 'Monitor the ' + tpl.name + ' run of ' + s.sample + ' (' + s.runName + ') with TRIFLE total fluorescence and identify fractions for offline analysis.';
+    out.purpose = purpose != null ? purpose : (src === 'standalone' ? 'Monitor ' + s.sample + ' (' + s.runName + ') with TRIFLE total fluorescence, without AKTA data.' : 'Monitor the ' + tpl.name + ' run of ' + s.sample + ' (' + s.runName + ') with TRIFLE total fluorescence and identify fractions for offline analysis.');
     out.methods = [
-      'Instrument: TRIFLE-01 (pulsed UV laser, 10 Hz; PMT; six-position ND filter wheel; PicoScope 6000 series, 8-bit, 0.2 ns sampling). Software: TRIFLE mock-up, simulated data.',
+      'Instrument: TRIFLE (pulsed UV laser, 10 Hz; PMT; six-position ND filter wheel; PicoScope 6000 series, 8-bit, 0.2 ns sampling). Software: TRIFLE mock-up, simulated data.',
       'Preset: ' + pi.id + ' (PMT ' + s.pmt + ' mV, checksum ' + pi.checksum + '; ' + pi.ladderFile + ', ' + pi.irfFile + ').',
       ...(s.rangeMap === 'shift' ? ['Input ranges simulated one setting larger than stated (what-if, to verify on hardware).'] : []),
       'Auto-ranging: ' + (s.autorange === 'v20' ? 'v2.0 reference' : 'Proposed (block median input, corrected no-signal test, baseline not scaled)') + '. Processing: ' + M.procLabel() + '.',
-      'Chromatography: ' + (s.system === 'avant' ? 'AKTA avant 150' : 'AKTA pure') + ', method ' + tpl.name + '; ' + ({ import: 'phases and fractions from the imported UNICORN result export', manual: 'phases from manual event marks', standalone: 'none (standalone TRIFLE)' }[src]) + '.',
+      'Chromatography: ' + (src === 'standalone' ? 'none (standalone TRIFLE)' : (s.system === 'avant' ? 'AKTA avant 150' : 'AKTA pure') + ', method ' + tpl.name + '; ' + ({ import: 'phases and fractions from the imported UNICORN result export', manual: 'phases from manual event marks' }[src])) + '.',
       ...(src === 'standalone' ? ['Alignment: not used (standalone TRIFLE, time axis).'] : [
         'Delay volumes: V1 (UV to TRIFLE) ' + fmt.ml(s.V1) + ' mL, V2 (TRIFLE to collector) ' + fmt.ml(s.V2) + ' mL, UNICORN fraction delay ' + fmt.ml(p.fracDelay) + ' mL.',
         'Alignment method: ' + (src === 'manual' || !s.flowTrace ? 'delay volumes applied in the volume domain, without a flow trace.' : 'cumulative volume from the integrated AKTA flow trace; delay volumes applied in the volume domain.')
@@ -4040,7 +4059,7 @@ const REC = (function () {
         'Sensitivity changes: ' + R.acq.changes.length + '.',
         'Laser: ' + (R.laserStableAtStart ? 'stable (provisional) at run start.' : 'not stable at run start; see I1.') + (R.override ? ' Readiness override: ' + stop(R.override.reason) : ''),
         'Pre-run buffer baseline: ' + (R.readyAcq ? 'measured at Readiness.' : 'not measured; rule P3 not evaluated.'),
-        'Alignment: detector ' + al.detector + ', fraction assignment ' + al.fractions + '.' + (al.issues.length ? ' ' + al.issues.join(' ') : ''),
+        'Alignment: detector ' + al.detector.toLowerCase() + ', fraction assignment ' + al.fractions.toLowerCase() + '.' + (al.issues.length ? ' ' + al.issues.join(' ') : ''),
         'Evidence cards: ' + (cards.length ? cards.length + ', ' + (nOpen || 'none') + ' open. ' + Object.keys(byRule).sort(ruleOrder).map(k => k + (byRule[k] > 1 ? ' ×' + byRule[k] : '')).join(', ') + '.' : 'none.'),
         'Open observations and hypotheses:' + (open.length ? '' : ' none.'), ...open,
         ...(noted.length ? ['Closed with a note:', ...noted] : [])
@@ -4050,7 +4069,7 @@ const REC = (function () {
     out.attachments = [
       ...(src === 'standalone' ? [] : ['UNICORN result report']),
       'TRIFLE block data: ' + fileBase() + '_blocks.csv',
-      'TRIFLE fraction table: ' + fileBase() + '_fractions.csv',
+      ...(src === 'standalone' ? [] : ['TRIFLE fraction table: ' + fileBase() + '_fractions.csv']),
       'TRIFLE metadata, settings and audit trail: ' + fileBase() + '_metadata.json',
       'Chromatogram figure: ' + fileBase() + '_chromatogram.png',
       ...(src === 'standalone' ? [] : ['HPLC-SEC, Lunatic and Protein A HPLC results for the fractions in section 5'])
@@ -4063,9 +4082,9 @@ const REC = (function () {
   function build() {
     const r = $('#scr-record');
     r.innerHTML = '<div class="scr-h"><h1>Record</h1></div>' +
-      '<div class="grid2 rec-grid"><div class="panel"><div class="ph"><h3>Notebook-ready summary</h3><span class="sp"></span><button class="btn sm" id="recCopyAll">Copy all</button></div><div class="pb" id="recBody"></div></div>' +
-      '<div class="stack"><div class="panel"><div class="ph"><h3>Exports</h3></div><div class="pb stack" style="gap:8px" id="recExports"></div></div>' +
-      '<div class="panel eng-only"><div class="ph"><h3>Provenance</h3></div><div class="pb" id="recProv"></div></div></div></div>' +
+      '<div class="grid2 rec-grid"><div class="stack"><div class="panel"><div class="ph"><h3>Exports</h3></div><div class="pb stack" style="gap:8px" id="recExports"></div></div>' +
+      '<div class="panel eng-only"><div class="ph"><h3>Provenance</h3></div><div class="pb" id="recProv"></div></div></div>' +
+      '<div class="panel"><div class="ph"><h3>Notebook-ready summary</h3><span class="sp"></span><button class="btn sm" id="recCopyAll">Copy all</button></div><div class="pb" id="recBody"></div></div></div>' +
       '<div class="panel" style="margin-top:12px"><div class="ph"><h3>Audit trail</h3></div><div class="pb tbl-wrap" style="padding:0;max-height:360px"><table class="tbl" id="recAudit"><thead><tr><th>Time</th><th>Type</th><th>Entry</th><th>By</th></tr></thead><tbody></tbody></table></div></div>';
     built = true;
     $('#recCopyAll').onclick = e => UI.copyText(allText(), e.target);
@@ -4081,7 +4100,7 @@ const REC = (function () {
     let fig = '';
     const rc = runChart();
     if (R && rc && rc.W) { try { fig = '<img class="rec-fig" alt="Chromatogram with TRIFLE fluorescence and UV 280" style="width:100%;border:1px solid var(--border);margin-bottom:6px" src="' + rc.toPNG(R.id + ', ' + M.procLabel()) + '">'; } catch (e) { fig = ''; } }
-    $('#recBody').innerHTML = '<div class="rec-print-only" style="border-bottom:1px solid #999;margin-bottom:8px;padding-bottom:4px"><b>TRIFLE notebook-ready summary</b><br>' + esc((R ? R.setupSnap : S.setup).eln + ' · ' + (R ? R.id : 'no run') + ' · ' + (R ? R.setupSnap : S.setup).runName + ' · printed ' + M.stamp(S.simT) + ' · TRIFLE-01 mock-up, simulated data') + '</div>' +
+    $('#recBody').innerHTML = '<div class="rec-print-only" style="border-bottom:1px solid #999;margin-bottom:8px;padding-bottom:4px"><b>TRIFLE notebook-ready summary</b><br>' + esc((R ? R.setupSnap : S.setup).eln + ' · ' + (R ? R.id : 'no run') + ' · ' + (R ? R.setupSnap : S.setup).runName + ' · printed ' + M.stamp(S.simT) + ' · TRIFLE mock-up, simulated data') + '</div>' +
       '<div class="rec-sec"><div class="rh"><h3>1. Purpose</h3><span class="sp"></span><button class="btn sm" data-copy="1">Copy</button></div><textarea id="recPurpose" rows="2" style="width:100%">' + esc(s.purpose) + '</textarea></div>' +
       sec(2, 'Methods', s.methods) + sec3(s, fig) + sec(4, 'Data quality', s.quality) + sec(5, 'Fraction decisions', s.decisions) + sec(6, 'Attachments', s.attachments);
     $('#recPurpose').onchange = e => { purpose = e.target.value; M.audit('record', 'Purpose edited.'); };
@@ -4091,7 +4110,7 @@ const REC = (function () {
   function exportsPanel() {
     const R = S.run, dis = R ? '' : ' disabled', csv = (R ? R.setupSnap : S.setup).csvJson;
     const box = $('#recExports');
-    box.innerHTML = '<div class="toolbar"><button class="btn" id="exBlocks"' + dis + '>Block data (CSV)</button><button class="btn" id="exFr"' + dis + '>Fraction table (CSV)</button><button class="btn" id="exJson">Metadata (JSON)</button><button class="btn" id="exPng"' + dis + '>Chromatogram (PNG)</button><span id="exStage2"></span></div>' +
+    box.innerHTML = '<div class="toolbar"><button class="btn" id="exBlocks"' + dis + '>Block data (CSV)</button><button class="btn" id="exFr"' + (R && R.fractions.length ? '' : ' disabled') + '>Fraction table (CSV)</button><button class="btn" id="exJson">Metadata (JSON)</button><button class="btn" id="exPng"' + dis + '>Chromatogram (PNG)</button><span id="exStage2"></span></div>' +
       '<div class="callout small"><b>Instrument record</b> ' + tag('E') + ' Run folder (.pkl and settings). Move it to SharePoint, then delete the local copy.' + (csv ? ' CSV and JSON metadata are written alongside. ' + tag('P') : '') + '</div>';
     if (R) { $('#exBlocks').onclick = () => exportBlocks(); $('#exFr').onclick = () => exportFractions(); $('#exPng').onclick = () => exportPng(); }
     $('#exJson').onclick = () => exportJson();
@@ -4116,13 +4135,13 @@ const REC = (function () {
   function exportFractions() {
     const R = S.run, st = M.fractionStats(R);
     const lines = ['fraction,phase,volume_start_mL,volume_end_mL,collected_start_mL,collected_end_mL,CV_start,CV_end,uv280_mean_mAU,uv280_max_mAU,uv_saturated,fluor_mean_Vns,fluor_max_Vns,processing,sensitivity_changes,waveforms_over_90pct,discarded_blocks,laser_flags,low_precision_share,assignment,share_of_integrated_fluorescence_pct,cards,decision,decision_note'];
-    for (const f of st) { const d = S.decisions[f.id] || {}; lines.push([f.id, f.phase, f.a.toFixed(3), f.b.toFixed(3), f.ca.toFixed(3), f.cb.toFixed(3), f.cvA.toFixed(3), f.cvB.toFixed(3), isFinite(f.uvMean) ? f.uvMean.toFixed(1) : '', isFinite(f.uvMax) ? f.uvMax.toFixed(1) : '', f.uvSat, num(f.fMean), num(f.fMax), '"' + M.procLabel() + '"', f.chg, f.over, f.disc, f.laser, f.lowShare.toFixed(3), f.assign, isFinite(f.share) ? (f.share * 100).toFixed(2) : '', '"' + f.linked.join(' ') + '"', '"' + ['sec', 'lun', 'proa', 'none'].filter(k => d[k]).join(' ') + '"', '"' + (d.note || '').replace(/"/g, "'") + '"'].join(',')); }
+    for (const f of st) { const d = S.decisions[f.id] || {}; lines.push([f.id, f.phase, f.a.toFixed(3), f.b.toFixed(3), f.ca.toFixed(3), f.cb.toFixed(3), f.cvA.toFixed(3), f.cvB.toFixed(3), isFinite(f.uvMean) ? f.uvMean.toFixed(1) : '', isFinite(f.uvMax) ? f.uvMax.toFixed(1) : '', f.uvSat, num(f.fMean), num(f.fMax), '"' + M.procLabel() + '"', f.chg, f.over, f.disc, f.laser, f.lowShare.toFixed(3), f.assign, isFinite(f.share) ? (f.share * 100).toFixed(2) : '', '"' + f.linked.join(' ') + '"', '"' + [['sec', 'HPLC-SEC'], ['lun', 'Lunatic'], ['proa', 'Protein A HPLC'], ['none', 'No action']].filter(k => d[k[0]]).map(k => k[1]).join('; ') + '"', '"' + (d.note || '').replace(/"/g, "'") + '"'].join(',')); }
     const name = fileBase() + '_fractions.csv'; saved(name, UI.download(name, lines.join('\n'), 'text/csv'));
   }
   function exportJson() {
     const R = S.run;
     const meta = {
-      generator: 'TRIFLE mock-up (simulated data)', instrument: 'TRIFLE-01', exported: M.stamp(S.simT), seed: TR.SEED,
+      generator: 'TRIFLE mock-up (simulated data)', instrument: 'TRIFLE', exported: M.stamp(S.simT), seed: TR.SEED,
       labels: { Existing: 'Implemented in the current TRIFLE Python control software, version 2.0', Proposed: 'Designed here, not yet built or experimentally verified', Future: 'Needs further development and access to GSK systems' },
       versions: { trifle: '2.0 (reference algorithms)', mockup: 'Stage ' + (window.STAGE2 ? '2' : '1') },
       setup: R ? R.setupSnap : S.setup, processing: { mode: M.procLabel(), options: S.proc }, thresholds_provisional: S.th, preset: M.presetInfo((R ? R.setupSnap : S.setup).pmt),
@@ -4650,12 +4669,13 @@ const ENG = (function () {
     ['P', 'Designed here, not yet built or experimentally verified.'],
     ['F', 'Needs further development and access to GSK systems.'],
     ['A', 'An inference the instrument team has not confirmed.'],
-    ['H', 'Read from the v2.0 source code and not yet checked on the instrument.']
+    ['H', 'Read from the v2.0 source code and not yet checked on the instrument.'],
+    ['D', 'A Stage 2 modelling choice, such as a fit weighting or linearity limit, not validated.']
   ];
   function build() {
     $('#scr-testing').innerHTML = '<div class="scr-h"><h1>About this mock-up</h1></div><div class="stack" style="max-width:1040px">' +
       '<p class="muted" style="margin:0">Every number comes from a seeded simulation. The v2.0 calculations run for real on that data.</p>' +
-      '<div class="panel"><div class="ph"><h3>What this mock-up is testing</h3></div><div class="pb"><p style="margin:0 0 8px">Evaluation objectives for a future GSK assessment. These are not results.</p><div class="tbl-wrap"><table class="tbl"><thead><tr><th class="nosort">GSK objective</th><th class="nosort">Prototype feature</th><th class="nosort">Evidence to collect in a real evaluation</th></tr></thead><tbody>' + ROWS.map(r => '<tr><td class="wrap">' + esc(r[0]) + '</td><td class="wrap">' + esc(r[1]) + '</td><td class="wrap">' + esc(r[2]) + '</td></tr>').join('') + '</tbody></table></div></div></div>' +
+      '<div class="panel"><div class="ph"><h3>What this mock-up is testing</h3></div><div class="pb"><p style="margin:0 0 8px">Evaluation objectives for a future GSK assessment. These are not results.</p><div class="tbl-wrap"><table class="tbl"><thead><tr><th class="nosort">GSK objective</th><th class="nosort">Prototype feature</th><th class="nosort">Evidence to collect</th></tr></thead><tbody>' + ROWS.map(r => '<tr><td class="wrap">' + esc(r[0]) + '</td><td class="wrap">' + esc(r[1]) + '</td><td class="wrap">' + esc(r[2]) + '</td></tr>').join('') + '</tbody></table></div></div></div>' +
       '<div class="panel"><div class="ph"><h3>Labels</h3></div><div class="pb"><table class="tbl lbl-tbl"><tbody>' + LABELS.map(([k, t]) => '<tr><td>' + UI.tag(k, 'always') + '</td><td class="wrap">' + esc(t) + '</td></tr>').join('') + '</tbody></table></div></div>' + (window.INTEGRATIONS_HTML ? window.INTEGRATIONS_HTML() : '') + '</div>';
   }
   UI.register('testing', { show() { build(); } });
@@ -4811,7 +4831,7 @@ const Q = (function () {
     let h = ''; if (!(i >= 0) || !R.derivedN) return h;
     const st = S2.status(R);
     if (!st.none) { const pk = R.ph.list[R.acq.phase[i]].key, k = S2.conc(R.y.act[i], R, pk); if (k.state !== 'mixed') h += row('Concentration', st.ok ? 'mg/mL' : '', st.ok ? (k.state === 'in' ? '<span title="Indicative">' + fmt.sig3(k.c) + '</span>' : k.state === 'above' || k.state === 'below' ? '<span title="Outside the calibrated linear range; fluorescence is relative only">' + esc(S2.concText(R.y.act[i], R, pk)) + '</span>' : esc(S2.concText(R.y.act[i], R, pk))) + ' ' + tag('P', 'always') : '<span class="state warn" style="font-weight:normal">Calibration not applicable</span>'); }
-    if (S.proc.decay) { const ref = S2.decayRef(R), v = R.y.decay[i], info = S2.irfInfo(R.pmt); h += row('Decay metric', 'ns', ref ? (isFinite(v) ? v.toFixed(2) : '–') + ' <span class="muted" style="font-weight:normal" title="IRF ' + info.fwhmNs.toFixed(1) + ' ns FWHM; 0.2 ns sampling">± ' + ref.sd.toFixed(2) + ' SD</span>' : '<span class="muted" style="font-weight:normal">SD not yet measured</span>'); }
+    if (S.proc.decay) { const ref = S2.decayRef(R), v = R.y.decay[i], info = S2.irfInfo(R.pmt); h += row('Decay metric', 'ns', ref ? (isFinite(v) ? v.toFixed(2) + ' <span class="muted" style="font-weight:normal" title="IRF ' + info.fwhmNs.toFixed(1) + ' ns FWHM; 0.2 ns sampling">± ' + ref.sd.toFixed(2) + ' SD</span>' : '–') : '<span class="muted" style="font-weight:normal">SD not yet measured</span>'); }
     return h;
   });
   function addFrCols() {
@@ -4891,9 +4911,9 @@ const Q = (function () {
     cFit.invalidate(); cAcq.cfg.series[0].label = 'Fluorescence, ' + M.procLabel(); cAcq.buildLegend(); cAcq.invalidate();
     // records
     const st = S2.status(S.run), recs = S.cal.records;
-    $('#calRec').innerHTML = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Active</th><th>ID</th><th>Date</th><th>Material</th><th>Standard lot</th><th>PMT preset</th><th>Processing mode</th><th class="num">Linear range <span class="unit">(mg/mL)</span></th><th>Expiry</th></tr></thead><tbody>' +
-      recs.map(r => '<tr><td><input type="radio" name="calAct" value="' + r.id + '"' + (r.id === S.cal.activeId ? ' checked' : '') + '></td><td>' + r.id + '</td><td>' + r.date + '</td><td>' + esc(r.materialName) + '</td><td>' + r.lot + '</td><td>' + r.presetId + '</td><td class="wrap">' + esc(r.mode) + '</td><td class="num">' + (r.fit.n ? r.fit.lo + '–' + r.fit.hi : 'none') + '</td><td>' + r.expiry + '</td></tr>').join('') +
-      '<tr><td><input type="radio" name="calAct" value=""' + (!S.cal.activeId ? ' checked' : '') + '></td><td colspan="8" class="muted">No calibration: fluorescence relative only</td></tr></tbody></table></div>' +
+    $('#calRec').innerHTML = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Active</th><th>ID</th><th>Date</th><th>Material</th><th>PMT preset</th><th>Processing mode</th><th class="num">Linear range <span class="unit">(mg/mL)</span></th><th>Expiry</th></tr></thead><tbody>' +
+      recs.map(r => '<tr><td><input type="radio" name="calAct" value="' + r.id + '"' + (r.id === S.cal.activeId ? ' checked' : '') + '></td><td>' + r.id + '</td><td>' + r.date + '</td><td title="Standard lot ' + esc(r.lot) + '">' + esc(r.materialName) + '</td><td>' + r.presetId + '</td><td class="wrap">' + esc(r.mode) + '</td><td class="num">' + (r.fit.n ? r.fit.lo + '–' + r.fit.hi : 'none') + '</td><td>' + r.expiry + '</td></tr>').join('') +
+      '<tr><td><input type="radio" name="calAct" value=""' + (!S.cal.activeId ? ' checked' : '') + '></td><td colspan="7" class="muted">No calibration: fluorescence relative only</td></tr></tbody></table></div>' +
       '<div style="margin-top:8px">' + (st.none ? UI.stateHtml('na', 'No calibration active') : st.ok ? UI.stateHtml('ok', 'Applicable to ' + (S.run ? 'this run' : 'the current setup')) : UI.stateHtml('warn', 'Calibration not applicable') + ' <span class="small">' + esc(cap(st.reasons.join('; '))) + '. Rule I7.</span>') + '</div>' +
       '<div class="toolbar" style="margin-top:8px"><button class="btn" id="calSave"' + (f.n ? '' : ' disabled') + '>Save as calibration record</button></div>';
     $$('input[name=calAct]').forEach(rb => rb.onchange = () => { S.cal.activeId = rb.value || null; M.audit('calibration', rb.value ? 'Calibration ' + rb.value + ' made active.' : 'No calibration active.'); calChanged(); });
@@ -4945,6 +4965,8 @@ const Q = (function () {
     step();
   }
   function cmpRender() {
+    const none = !!(S.run && S.run.standalone); $('#scr-comparison').classList.toggle('cmp-none', none);
+    if (none) { if (cmpKey !== 'none') { cmpKey = 'none'; $('#cmpRuns').innerHTML = '<div class="note">Standalone TRIFLE: no chromatography data, so no run comparison.</div>'; $('#cmpNote').innerHTML = ''; } return; }
     ensureArchives();
     const entries = views();
     if (!sel.size && S.run) { sel.add(S.run.id); const e = entries.find(x => x.def && compat(x).ok); if (e) sel.add(e.key); refId = S.run.id; }
@@ -4974,11 +4996,11 @@ const Q = (function () {
     cmpChart.cfg.panels[1].yl = { title: 'Difference from reference', short: 'Difference', unit: rel ? '% points' : 'V·ns', sym: true, symMin: rel ? 2 : 0.05, zero: false };
     cmpChart.setSeries(series); cmpChart.relayout();
     // table
-    const fc = vs.map(x => ({ id: x.e.key, fc: S2.fracCompare(x.v), el: S2.phaseIntegral(x.v, 'el'), lp: S2.loadPlateau(x.v), v: x.v }));
+    const fc = vs.map(x => ({ id: x.e.key, fc: S2.fracCompare(x.v), el: x.v.live && S.run.state !== 'complete' && !(x.v.n && x.v.u[x.v.n - 1] >= (x.v.ph.list.find(p => p.key === 'el') || { v1: -Infinity }).v1) ? NaN : S2.phaseIntegral(x.v, 'el'), lp: S2.loadPlateau(x.v), v: x.v }));
     const refFc = fc.find(x => x.id === refId);
     const ids = vs.length ? vs[0].v.fractions.filter(f => f.phaseKey === 'el').map(f => f.id) : [];
     const pl = (n, one, many) => n + ' ' + (n === 1 ? one : many);
-    const flag = q => [q.chg ? '<span class="flag" title="' + pl(q.chg, 'sensitivity change', 'sensitivity changes') + ' inside the fraction">Sens. ×' + q.chg + '</span>' : '', q.over ? '<span class="flag f" title="' + pl(q.over, 'waveform', 'waveforms') + ' above 90 % of the input range">Over ×' + q.over + '</span>' : '', q.disc ? '<span class="flag w" title="' + pl(q.disc, 'discarded block', 'discarded blocks') + '">Disc. ×' + q.disc + '</span>' : ''].join('') || '<span class="muted">none</span>';
+    const flag = q => [q.chg ? '<span class="flag" title="' + pl(q.chg, 'sensitivity change', 'sensitivity changes') + ' inside the fraction">Sens. ×' + q.chg + '</span>' : '', q.over ? '<span class="flag f" title="' + pl(q.over, 'waveform', 'waveforms') + ' above 90 % of the input range">Over ×' + q.over + '</span>' : '', q.disc ? '<span class="flag w" title="' + pl(q.disc, 'discarded block', 'discarded blocks') + '">Disc. ×' + q.disc + '</span>' : ''].join('') || '';
     const diffPct = (a, b) => isFinite(a) && isFinite(b) && b ? ' <span class="muted">(' + S2.sgn((a / b - 1) * 100, 1) + ' %)</span>' : '';
     $('#cmpTbl').innerHTML = !vs.length ? '<div class="note" style="padding:8px 12px">' + (S.run ? 'Select runs to compare.' : 'Start a run to compare.') + '</div>' : '<table class="tbl"><thead><tr><th>Fraction</th>' + fc.map(x => '<th class="num">' + esc(x.id) + ' <span class="unit">(%)</span></th><th>QC</th>').join('') + '</tr></thead><tbody>' +
       ids.map(id => '<tr><td>' + id + '</td>' + fc.map(x => { const q = x.fc[id]; return q && isFinite(q.share) ? '<td class="num">' + (q.share * 100).toFixed(1) + '</td><td>' + flag(q) + '</td>' : '<td class="num">–</td><td></td>'; }).join('') + '</tr>').join('') +
@@ -5017,7 +5039,7 @@ const Q = (function () {
   window.ENG_EXTRA = {
     defs: { html: () => {
       const info = S2.irfInfo(S.setup.pmt), ref = S2.decayRef(S.run);
-      return '<div class="panel" style="max-width:820px"><div class="ph"><h3>Decay metric</h3>' + tag('P', 'always') + '<span class="tag" data-scope="always">Research hypothesis only</span></div><div class="pb small">' +
+      return '<div class="panel" style="max-width:820px"><div class="ph"><h3>Decay metric</h3>' + tag('P', 'always') + '<span class="tag" data-scope="always">Research display</span></div><div class="pb small">' +
         '<p><b>Definition.</b> Intensity-weighted mean delay after the IRF peak (' + info.peakNs.toFixed(1) + ' ns from window start), Σ (t − t<sub>peak</sub>) I(t) / Σ I(t) over 0 to 20 ns, with I(t) = −(v(t) − b) on the block median waveform and b its median baseline.</p>' +
         '<p>Computed only where input range use is between ' + Math.round(S.th.decayUseMin * 100) + ' and ' + Math.round(S.th.decayUseMax * 100) + ' %.</p>' +
         '<p><b>Precision.</b> Block-to-block SD on the load plateau, a steady phase. ' + (ref ? 'This run: ' + ref.mean.toFixed(3) + ' ± ' + ref.sd.toFixed(3) + ' ns from ' + fmt.int(ref.n) + ' blocks.' : 'Measured once the load is acquired with decay analysis on.') + ' IRF ' + info.fwhmNs.toFixed(2) + ' ns FWHM; sampling interval 0.2 ns.</p>' +
@@ -5040,7 +5062,7 @@ const Q = (function () {
       const ch = new CH.Chart(host, { ariaLabel: 'Reconvolution fit', topBand: 14, marginRight: 12, liveReadout: false, xDomain: () => [30, 75], xTitle: () => 'Time from window start (ns)',
         panels: [{ key: 'main', yl: { title: 'Intensity', unit: 'V', log: () => true, minLog: -6 } }, { key: 'res', px: 90, yl: { title: 'Weighted residual', short: 'Residual', unit: 'σ', sym: true, symMin: 3, zero: false } }],
         bands: () => [{ x0: fc.i0 * 0.2, x1: fc.i1 * 0.2, label: 'Fit range', fill: 'rgba(27,54,93,0.05)' }],
-        series: [{ key: 'd', label: 'Data (block median)', color: C.v20, width: 1, panel: 'main', src: () => ({ x, y: pos(fc.data), n: 600 }), fmt: v => v.toExponential(2) + ' V' }, { key: 'irf', label: 'IRF (reference)', color: C.irf, dash: 'dash', width: 1, panel: 'main', src: () => ({ x, y: pos(irfS), n: 600 }), fmt: v => v.toExponential(2) }, { key: 'f', label: 'Fit, τ ' + fc.tau.toFixed(2) + ' ns', color: C.prop, width: 1.25, panel: 'main', src: () => ({ x, y: fc.fit, n: 600 }), fmt: v => v.toExponential(2) + ' V' }, { key: 'r', label: 'Weighted residuals', color: C.text2, width: 1, panel: 'res', src: () => ({ x, y: fc.res, n: 600 }), fmt: v => v.toFixed(2) + ' σ' }] });
+        series: [{ key: 'd', label: 'Data (block median)', color: C.v20, width: 1, panel: 'main', src: () => ({ x, y: pos(fc.data), n: 600 }), fmt: v => v.toExponential(2) + ' V' }, { key: 'irf', label: 'IRF', color: C.irf, dash: 'dash', width: 1, panel: 'main', src: () => ({ x, y: pos(irfS), n: 600 }), fmt: v => v.toExponential(2) }, { key: 'f', label: 'Fit, τ ' + fc.tau.toFixed(2) + ' ns', color: C.prop, width: 1.25, panel: 'main', src: () => ({ x, y: fc.fit, n: 600 }), fmt: v => v.toExponential(2) + ' V' }, { key: 'r', label: 'Weighted residuals', color: C.text2, width: 1, panel: 'res', src: () => ({ x, y: fc.res, n: 600 }), fmt: v => v.toFixed(2) + ' σ' }] });
       $('#fitBlk').onchange = e => { fitBlock = (+e.target.value || 1) - 1; UI.screen('engineer').show(); };
     } }
   };
@@ -5059,7 +5081,7 @@ const Q = (function () {
       return { text: 'Calibration ' + st.rec.id + ' (' + st.rec.materialName + ', ' + st.rec.presetId + ', ' + st.rec.mode + ') is linear from ' + st.rec.fit.lo + ' to ' + st.rec.fit.hi + ' mg/mL. Indicative concentrations are shown only in elution and inside that range. Elsewhere fluorescence is relative only, and rule P6 lists the fractions above the range. Yield and recovery are not computed from fluorescence.', source: 'Calibration record ' + st.rec.id + '; rule P6' };
     }
     if (/decay|lifetime|tryptophan environment|conformation/.test(q)) {
-      if (!S.proc.decay) return { text: 'Decay-shape analysis is off. Switch it on under Processing to show the decay metric and rule P7. It is a Proposed research display and cannot identify a cause.', source: 'Processing options; rule P7' };
+      if (!S.proc.decay) return { text: 'Decay-shape analysis is off. Switch it on under Processing in Engineer view to show the decay metric and rule P7. It is a Proposed research display and cannot identify a cause.', source: 'Processing options; rule P7' };
       const p7 = R ? R.rules.cards.find(c => c.rule === 'P7') : null, ref = S2.decayRef(R), info = S2.irfInfo(R ? R.pmt : S.setup.pmt);
       const def = 'The decay metric is the intensity-weighted mean delay after the IRF peak, over 0 to 20 ns of the block median waveform. It is computed where input range use is ' + Math.round(S.th.decayUseMin * 100) + ' to ' + Math.round(S.th.decayUseMax * 100) + ' %.';
       if (p7) return { text: def + ' ' + p7.obs + ' Research hypothesis H3 is a possible change in tryptophan environment. Confirm with HPLC-SEC on ' + M.rangeIds(p7.fractions) + '.', source: 'Engineer view: Decay; card ' + p7.id + '; H3' };
