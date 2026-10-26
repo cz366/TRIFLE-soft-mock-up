@@ -24,9 +24,12 @@ const REC = (function () {
     });
     return out;
   }
-  function resultsHead(showAssign) {
-    return [['Fraction'], ['Phase'], ['Volume', 'mL'], ['UV 280 mean / max', 'mAU'], ['Fluor. mean / max', 'V·ns']].concat(showAssign ? [['Assignment']] : [], [['Cards']]);
+  function resultsHead(showAssign, showLt) {
+    return [['Fraction'], ['Phase'], ['Volume', 'mL'], ['UV 280 mean / max', 'mAU'], ['Fluor. mean / max', 'V·ns']].concat(showLt ? [['Species', '% of fluorescence']] : [], showAssign ? [['Assignment']] : [], [['Cards']]);
   }
+  // lifetime analysis: components with their names, and a fraction's leading species
+  function ltComps(R) { return LTM.components(R).map(c => c.tau.toFixed(2) + ' ns (' + (c.m >= 0 ? c.short : 'unassigned') + ')').join(', '); }
+  function ltShares(lt) { return lt ? lt.comps.filter(c => c.share >= 0.005).sort((a, b) => b.share - a.share).slice(0, 3).map(c => c.short + ' ' + (c.share * 100).toFixed(c.share < 0.1 ? 1 : 0)).join(', ') : ''; }
   function sections() {
     const R = S.run, s = R ? R.setupSnap : S.setup, al = M.alignmentState(), p = M.plumbing(), pi = M.presetInfo(s.pmt);
     const tpl = R ? R.tpl : M.template(), ph = R ? R.ph : TR.buildPhases(tpl), src = s.source;
@@ -41,13 +44,15 @@ const REC = (function () {
       ...(src === 'standalone' ? ['Alignment: not used (standalone TRIFLE, time axis).'] : [
         'Delay volumes: V1 (UV to TRIFLE) ' + fmt.ml(s.V1) + ' mL, V2 (TRIFLE to collector) ' + fmt.ml(s.V2) + ' mL, UNICORN fraction delay ' + fmt.ml(p.fracDelay) + ' mL.',
         'Alignment method: ' + (src === 'manual' || !s.flowTrace ? 'delay volumes applied in the volume domain, without a flow trace.' : 'cumulative volume from the integrated AKTA flow trace; delay volumes applied in the volume domain.')
-      ])
+      ]),
+      'Lifetime analysis (Proposed): global fit of every block decay as non-negative exponentials convolved with the stored IRF, lifetimes shared by the run, amplitudes per block (after Hales et al., J Chromatogr A 1641, 461968, 2021); number of components chosen by the data; 15 s time resolution; component names from the method template\'s expected species (assumed).'
     ].join('\n');
     if (R) {
-      const st = M.fractionStats(R), showAssign = st.some(f => f.assign === 'Uncertain');
-      out.resultsHead = resultsHead(showAssign);
-      out.resultsTable = st.map(f => [f.id, f.phase, fmt.ml(f.a) + '-' + fmt.ml(f.b), fmt.mau(f.uvMean) + ' / ' + fmt.mau(f.uvMax) + (f.uvSat ? ' (sat.)' : ''), fmt.sig3(f.fMean) + ' / ' + fmt.sig3(f.fMax)].concat(showAssign ? [f.assign] : [], [f.linked.join(' ')]));
+      const st = M.fractionStats(R), showAssign = st.some(f => f.assign === 'Uncertain'), showLt = !!(R.lt && R.lt.fit), lst = LTM.state(R);
+      out.resultsHead = resultsHead(showAssign, showLt);
+      out.resultsTable = st.map(f => [f.id, f.phase, fmt.ml(f.a) + '-' + fmt.ml(f.b), fmt.mau(f.uvMean) + ' / ' + fmt.mau(f.uvMax) + (f.uvSat ? ' (sat.)' : ''), fmt.sig3(f.fMean) + ' / ' + fmt.sig3(f.fMax)].concat(showLt ? [ltShares(f.lt)] : [], showAssign ? [f.assign] : [], [f.linked.join(' ')]));
       out.results = R.id + ': ' + fmt.int(R.acq.n) + ' blocks over ' + fmt.min1((R.state === 'complete' ? R.endAt : M.runTimeS(R)) / 60) + ' min. Fluorescence is relative (V·ns, ND-corrected); no recovery or purity is derived.' +
+        (showLt ? ' Lifetime analysis' + (lst === 'final' ? '' : ' (not final)') + ': ' + R.lt.fit.taus.length + ' components, ' + ltComps(R) + '; reduced χ² ' + R.lt.fit.chi2r.toFixed(2) + '. Species shares are shares of fluorescence, not mass or purity.' : '') +
         (st.length ? '\n' + out.resultsHead.map(h => h[0] + (h[1] ? ' (' + h[1] + ')' : '')).join('  ') + '\n' + out.resultsTable.map(r => r.join('  ').trimEnd()).join('\n') : '');
       const A = R.acq, n = R.derivedN; let disc = 0, over = 0, low = 0; for (let i = 0; i < n; i++) { disc += A.disc[i]; over += A.nOver[i]; low += R.low[i]; }
       const cards = R.rules.cards, byRule = {}; cards.forEach(c => { byRule[c.rule] = (byRule[c.rule] || 0) + 1; });
@@ -122,20 +127,21 @@ const REC = (function () {
   function exportBlocks() {
     const R = S.run, A = R.acq, n = R.derivedN, lad = TR.LADDERS[R.pmt], k = M.comboIdx();
     const fr = R.fractions, p = M.plumbing();
-    const lines = ['block,time_min,akta_time_min,volume_mL,CV,phase,fraction,fluor_v20_Vns,fluor_proposed_Vns,fluor_proposed_corrected_Vns,step,nd_od,range_mV,range_use_pct,waveforms_over_90pct,beam_monitor_rel,flags'];
+    const lt = R.lt && R.lt.fit ? R.lt : null, ltm = lt ? LTM.components(R).filter(c => c.m >= 0).map(c => c.m) : [];
+    const lines = ['block,time_min,akta_time_min,volume_mL,CV,phase,fraction,fluor_v20_Vns,fluor_proposed_Vns,fluor_proposed_corrected_Vns,step,nd_od,range_mV,range_use_pct,waveforms_over_90pct,beam_monitor_rel,flags' + ltm.map(m => ',species_' + lt.lib[m].key + '_Vns').join('')];
     for (let i = 0; i < n; i++) {
       const u = A.u[i], f = fr.find(q => { const [a, b] = TR.collectedRange(q, p); return u >= a && u < b; });
       const st = lad[A.step[i] - 1], flags = [A.disc[i] ? 'discarded' : '', R.low[i] ? 'low_precision' : '', A.nOver[i] > 2 ? 'overrun' : ''].filter(Boolean).join('|');
       const pr = A.F[k][i], pc = isFinite(A.bm[i]) ? pr / A.bm[i] : NaN;
-      lines.push([i + 1, (A.t[i] / 60).toFixed(4), M.aktaMin(R, A.t[i]).toFixed(4), u.toFixed(4), (u / R.cv).toFixed(4), '"' + R.ph.list[A.phase[i]].name + '"', f ? f.id : '', num(A.F[0][i]), num(pr), num(pc), A.step[i], st.nd, st.range * 1000, isFinite(A.ruse[i]) ? (A.ruse[i] * 100).toFixed(1) : '', A.disc[i] ? '' : A.nOver[i], isFinite(A.bm[i]) ? A.bm[i].toFixed(5) : '', flags].join(','));
+      lines.push([i + 1, (A.t[i] / 60).toFixed(4), M.aktaMin(R, A.t[i]).toFixed(4), u.toFixed(4), (u / R.cv).toFixed(4), '"' + R.ph.list[A.phase[i]].name + '"', f ? f.id : '', num(A.F[0][i]), num(pr), num(pc), A.step[i], st.nd, st.range * 1000, isFinite(A.ruse[i]) ? (A.ruse[i] * 100).toFixed(1) : '', A.disc[i] ? '' : A.nOver[i], isFinite(A.bm[i]) ? A.bm[i].toFixed(5) : '', flags].concat(ltm.map(m => i < lt.n ? num(lt.amp[m][i]) : '')).join(','));
     }
     const name = fileBase() + '_blocks.csv'; saved(name, UI.download(name, lines.join('\n'), 'text/csv'));
   }
   function num(v) { return isFinite(v) ? v.toPrecision(8) : ''; }
   function exportFractions() {
-    const R = S.run, st = M.fractionStats(R);
-    const lines = ['fraction,phase,volume_start_mL,volume_end_mL,collected_start_mL,collected_end_mL,CV_start,CV_end,uv280_mean_mAU,uv280_max_mAU,uv_saturated,fluor_mean_Vns,fluor_max_Vns,processing,sensitivity_changes,waveforms_over_90pct,discarded_blocks,laser_flags,low_precision_share,assignment,share_of_integrated_fluorescence_pct,cards,decision,decision_note'];
-    for (const f of st) { const d = S.decisions[f.id] || {}; lines.push([f.id, f.phase, f.a.toFixed(3), f.b.toFixed(3), f.ca.toFixed(3), f.cb.toFixed(3), f.cvA.toFixed(3), f.cvB.toFixed(3), isFinite(f.uvMean) ? f.uvMean.toFixed(1) : '', isFinite(f.uvMax) ? f.uvMax.toFixed(1) : '', f.uvSat, num(f.fMean), num(f.fMax), '"' + M.procLabel() + '"', f.chg, f.over, f.disc, f.laser, f.lowShare.toFixed(3), f.assign, isFinite(f.share) ? (f.share * 100).toFixed(2) : '', '"' + f.linked.join(' ') + '"', '"' + [['sec', 'HPLC-SEC'], ['lun', 'Lunatic'], ['proa', 'Protein A HPLC'], ['none', 'No action']].filter(k => d[k[0]]).map(k => k[1]).join('; ') + '"', '"' + (d.note || '').replace(/"/g, "'") + '"'].join(',')); }
+    const R = S.run, st = M.fractionStats(R), comps = R.lt && R.lt.fit ? LTM.components(R) : [];
+    const lines = ['fraction,phase,volume_start_mL,volume_end_mL,collected_start_mL,collected_end_mL,CV_start,CV_end,uv280_mean_mAU,uv280_max_mAU,uv_saturated,fluor_mean_Vns,fluor_max_Vns,processing,sensitivity_changes,waveforms_over_90pct,discarded_blocks,laser_flags,low_precision_share,assignment,share_of_integrated_fluorescence_pct,cards,decision,decision_note' + comps.map(c => ',species_' + (c.m >= 0 ? c.key : 'unassigned_' + (c.k + 1)) + '_pct').join('')];
+    for (const f of st) { const d = S.decisions[f.id] || {}; lines.push([f.id, f.phase, f.a.toFixed(3), f.b.toFixed(3), f.ca.toFixed(3), f.cb.toFixed(3), f.cvA.toFixed(3), f.cvB.toFixed(3), isFinite(f.uvMean) ? f.uvMean.toFixed(1) : '', isFinite(f.uvMax) ? f.uvMax.toFixed(1) : '', f.uvSat, num(f.fMean), num(f.fMax), '"' + M.procLabel() + '"', f.chg, f.over, f.disc, f.laser, f.lowShare.toFixed(3), f.assign, isFinite(f.share) ? (f.share * 100).toFixed(2) : '', '"' + f.linked.join(' ') + '"', '"' + [['sec', 'HPLC-SEC'], ['lun', 'Lunatic'], ['proa', 'Protein A HPLC'], ['none', 'No action']].filter(k => d[k[0]]).map(k => k[1]).join('; ') + '"', '"' + (d.note || '').replace(/"/g, "'") + '"'].concat(comps.map(c => { const q = f.lt && f.lt.comps.find(x => x.k === c.k); return q && isFinite(q.share) ? (q.share * 100).toFixed(2) : ''; })).join(',')); }
     const name = fileBase() + '_fractions.csv'; saved(name, UI.download(name, lines.join('\n'), 'text/csv'));
   }
   function exportJson() {
@@ -146,6 +152,7 @@ const REC = (function () {
       versions: { trifle: '2.0 (reference algorithms)', mockup: 'Stage ' + (window.STAGE2 ? '2' : '1') },
       setup: R ? R.setupSnap : S.setup, processing: { mode: M.procLabel(), options: S.proc }, thresholds_provisional: S.th, preset: M.presetInfo((R ? R.setupSnap : S.setup).pmt),
       alignment: M.alignmentState(), plumbing: M.plumbing(), run: R ? { id: R.id, blocks: R.acq.n, state: R.state, timer_min: R.timerMin, data_checksum: TR.fnv([R.acq.F[0], R.acq.F[3]], R.acq.n), laser_stable_at_start: R.laserStableAtStart, override: R.override, cards: R.rules.cards.map(c => ({ id: c.id, rule: c.rule, level: c.levelName, phase: c.phase, title: c.title, observation: c.obs, fractions: c.fractions, processing: c.mode, status: c.status, note: c.note, confirm: c.confirm || null })), notes: R.notes } : null,
+      lifetime_analysis: R && R.lt && R.lt.fit ? { label: 'Proposed', method: 'Global lifetime analysis: every block decay fitted as non-negative exponentials convolved with the stored IRF; lifetimes shared by the run, amplitudes per block (after Hales et al., J Chromatogr A 1641, 461968, 2021)', state: LTM.state(R), time_resolution_s: 2 * LTM.H + 1, bin_blocks: LTM.PER, bins: R.lt.fit.nBins, reduced_chi2: R.lt.fit.chi2r, components: LTM.components(R).map(c => ({ tau_ns: c.tau, se_ns: c.se, named_as: c.m >= 0 ? c.name : null, template_expected_ns: isFinite(c.exp) ? c.exp : null })), model_selection: R.lt.fit.hist.map(h => ({ components: h.K, reduced_chi2: h.chi2r, chi2_drop: h.gain != null ? h.gain : null, accepted: h.accepted, taus_ns: h.taus })), names_note: 'Component names come from the method template expected species (assumed); shares are fluorescence, not mass or purity.' } : null,
       decisions: S.decisions, audit_trail: S.audit, exports: S.exports
     };
     const name = fileBase() + '_metadata.json'; saved(name, UI.download(name, JSON.stringify(meta, null, 2), 'application/json'));

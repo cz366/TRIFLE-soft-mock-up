@@ -11,14 +11,14 @@
   function build() {
     const r = $('#scr-fractions'); r.classList.add('fixed'); r.style.overflow = 'auto';
     r.innerHTML = '<div class="scr-h"><h1>Fraction review</h1></div>' +
-      '<div class="run-top"><div class="chips" id="frChips" style="display:none"><span>Ranges one setting larger (what-if)</span></div><div class="toolbar" id="fTools"><div class="seg sm" id="fX"><button data-v="vol">mL</button><button data-v="cv">CV</button><button data-v="min">min</button></div><div class="seg sm" id="fLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div><span class="nowrap" style="display:inline-flex;align-items:center;gap:6px"><span class="lab">Drag to</span><div class="seg sm" id="fDrag"><button data-v="select" class="on">Select fractions</button><button data-v="zoom">Zoom</button></div></span><label class="chk small"><input type="checkbox" id="fRul"> Rulers</label><button class="btn sm" id="fReset">Reset zoom</button></div></div>' +
+      '<div class="run-top"><div class="chips" id="frChips" style="display:none"><span>Ranges one setting larger (what-if)</span></div><div class="toolbar" id="fTools"><div class="seg sm" id="fX"><button data-v="min">min</button><button data-v="vol">mL</button><button data-v="cv">CV</button></div><div class="seg sm" id="fLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div>' + RC.viewToggles('f') + '<span class="nowrap" style="display:inline-flex;align-items:center;gap:6px"><span class="lab">Drag to</span><div class="seg sm" id="fDrag"><button data-v="select" class="on">Select fractions</button><button data-v="zoom">Zoom</button></div></span><label class="chk small"><input type="checkbox" id="fRul"> Rulers</label><button class="btn sm" id="fReset">Reset zoom</button></div></div>' +
       '<div id="fEmpty" class="callout" style="display:none"></div>' +
       '<div class="fr-grid" id="frGrid" style="min-height:560px;grid-template-rows:minmax(0,56fr) minmax(0,44fr)">' +
       '<div class="panel" style="grid-column:1;grid-row:1"><div class="pb" style="padding:4px 8px"><div id="frOv" style="height:100%"></div></div></div>' +
       '<div class="panel fr-side" style="grid-column:2;grid-row:1"><div class="ph"><div class="ptabs" id="frTabs"><button data-v="frac" class="on">Fraction</button><button data-v="samples">Samples to send <span class="cnt" id="sampCnt">0</span></button></div><span class="sp"></span><span id="frNav" class="nowrap"></span></div><div class="pb" style="padding:4px 8px;display:flex;flex-direction:column;gap:6px;overflow:hidden" id="frSide"></div></div>' +
       '<div class="panel fr-table" style="grid-column:1 / 3;grid-row:2"><div class="ph"><h3>Fractions</h3><span class="note" id="frNote"></span><span class="sp"></span><label class="chk small" title="Relative signal-area contribution only. Not equivalent to protein mass, yield or recovery."><input type="checkbox" id="frShare"> Fluorescence share</label></div><div class="pb tbl-wrap" style="padding:0" id="frTblWrap"><table class="tbl" id="frTbl"><thead></thead><tbody></tbody></table></div></div>' +
       '</div>';
-    UI.processingButton($('#fTools'));
+    UI.processingButton($('#fTools')); RC.wireToggles($('#fTools'));
     $$('#fX button').forEach(b => b.onclick = () => { RC.view.x = b.dataset.v; sync(); ov.resetZoom(); ov.invalidate(); zoomTo(); UI.emitDirty('xmode'); });
     $$('#fLog button').forEach(b => b.onclick = () => { RC.view.log = b.dataset.v === '1'; sync(); ov.invalidate(); zm.invalidate(); });
     $$('#fDrag button').forEach(b => b.onclick = () => { ov.mode = b.dataset.v; $$('#fDrag button').forEach(x => x.classList.toggle('on', x === b)); });
@@ -37,11 +37,12 @@
     });
     zm = new CH.Chart(el('<div style="height:100%"></div>'), mkZoomCfg());
     built = true; sync();
-    M.on(ev => { if (ev === 'proc' || ev === 'run' || ev === 'series') { ov.cfg.panels = ovPanels(); ov.setSeries(ovSeries()); zm.cfg.panels = zmPanels(); zm.setSeries(zmSeries()); ov.cfg.legendExtras = RC.legendExtras(); for (const c of [ov, zm]) { c.buildLegend(); c.relayout(); } lastKey = ''; mp.fid = null; } if (ev === 'cards' || ev === 'data') lastKey = ''; });
+    M.on(ev => { if (ev === 'proc' || ev === 'run' || ev === 'series' || ev === 'lt') { ov.cfg.panels = ovPanels(); ov.setSeries(ovSeries()); zm.cfg.panels = zmPanels(); zm.setSeries(zmSeries()); ov.cfg.legendExtras = RC.legendExtras(); for (const c of [ov, zm]) { c.buildLegend(); c.relayout(); } lastKey = ''; mp.fid = null; } if (ev === 'cards' || ev === 'data') lastKey = ''; });
   }
-  // overview: main panel plus the strips that carry Proposed processing (beam monitor, difference)
-  function ovPanels() { return RC.panels().filter(p => p.key === 'main' || p.key === 'bm' || p.key === 'diff' || p.key === 'decay'); }
-  function ovSeries() { return RC.seriesFor().filter(s => s.panel === 'main' || s.panel === 'bm' || s.panel === 'diff' || s.panel === 'decay'); }
+  // overview: main panel, the decay map, UV 280 when the AKTA traces are on, and the strips that carry Proposed processing
+  const OV = ['main', 'map', 'uv', 'bm', 'diff', 'decay'];
+  function ovPanels() { return RC.panels().filter(p => OV.includes(p.key)); }
+  function ovSeries() { return RC.seriesFor().filter(s => OV.includes(s.panel)); }
   function zmPanels() { return RC.panels().slice(0, 1).map(p => ({ ...p, yl: { ...p.yl, title: 'Fluor.', unit: 'V·ns' } })); }
   function zmSeries() { return RC.seriesFor().filter(s => s.panel === 'main').map(s => ({ ...s, legend: false })); }
   function mkZoomCfg() {
@@ -68,7 +69,7 @@
     if (b.a != null) out.push(mk(0, b.a)); if (b.b != null) out.push(mk(1, b.b));
     return out;
   }
-  function sync() { $$('#fX button').forEach(b => b.classList.toggle('on', b.dataset.v === RC.view.x)); $$('#fLog button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === RC.view.log)); }
+  function sync() { $$('#fX button').forEach(b => b.classList.toggle('on', b.dataset.v === RC.view.x)); $$('#fLog button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === RC.view.log)); RC.syncToggles(); }
   function zoomTo() { if (!zm || !focus) return; zm.view = null; zm.zoomStack = []; zm.invalidate(); }
   function selChanged() { userPick = true; lastKey = ''; ov.invalidateOver(); zoomTo(); mp.fid = null; if (tab !== 'frac') { tab = 'frac'; $$('#frTabs button').forEach(x => x.classList.toggle('on', x.dataset.v === 'frac')); } side(true); }
   /* ---------- table ---------- */
@@ -97,7 +98,7 @@
   }
   function table() {
     const R = S.run; const cols = COLS.filter(c => (!c.opt || showShare) && (!c.show || c.show()));
-    const key = JSON.stringify([R ? R.derivedN : 0, R ? R.dataGen : 0, [...sel], sortKey, sortDir, showShare, COLS.map(c => c.show ? c.show() : 1), R ? R.rules.cards.length : 0, S.decisions, M.alignmentState().fractions, RC.view.x]);
+    const key = JSON.stringify([R ? R.derivedN : 0, R ? R.dataGen : 0, R && R.lt ? R.lt.gen : 0, [...sel], sortKey, sortDir, showShare, COLS.map(c => c.show ? c.show() : 1), R ? R.rules.cards.length : 0, S.decisions, M.alignmentState().fractions, RC.view.x]);
     if (key === lastKey) return; lastKey = key;
     rows = R ? M.fractionStats(R) : [];
     if (sortKey) { const c = COLS.find(x => x.k === sortKey); rows.sort((a, b) => { const va = c.v(a), vb = c.v(b); return (va > vb ? 1 : va < vb ? -1 : 0) * sortDir; }); }
@@ -133,7 +134,7 @@
   let sideKey = '';
   function side(force) {
     const R = S.run, box = $('#frSide');
-    const key = JSON.stringify([tab, focus, [...sel], S.decisions, R ? R.derivedN : 0, R ? R.rules.cards.map(c => c.status) : 0, M.procLabel(), S.th.flPct, flManual, M.plumbing(), M.alignmentState().fractions]);
+    const key = JSON.stringify([tab, focus, [...sel], S.decisions, R ? R.derivedN : 0, R && R.lt ? R.lt.gen : 0, R ? R.rules.cards.map(c => c.status) : 0, M.procLabel(), S.th.flPct, flManual, M.plumbing(), M.alignmentState().fractions]);
     if (!force && key === sideKey) return; sideKey = key;
     $('#frNav').innerHTML = tab === 'frac' && R && R.fractions.length ? '<label class="chk small eng-only" title="Median pulse of the fraction"><input type="checkbox" id="frMp"' + (showMp ? ' checked' : '') + '> Pulse</label> <button class="btn sm" id="frPrev" title="Previous fraction">Prev</button> <button class="btn sm" id="frNext" title="Next fraction">Next</button>' : '';
     const mpb = $('#frMp'); if (mpb) mpb.onchange = () => { showMp = mpb.checked; const g = $('.fr-detail-grid'); if (g) g.classList.toggle('show-mp', showMp); };
@@ -153,6 +154,7 @@
     // order: fraction, linked cards and decision, confirmations, then the visual boundary comparison for the zoom chart
     $('#frDet').innerHTML = '<div><b>' + f.id + '</b> · ' + esc(st.phase) + ' · ' + fmt.ml(f.a) + ' to ' + fmt.ml(f.b) + ' mL · ' + fmt.int(st.nBlocks) + ' blocks</div>' +
       (sub.length ? '<div class="muted">' + sub.join(' · ') + '</div>' : '') +
+      (st.lt ? '<div title="' + esc(LTUI.LTIP) + '"><b>Species</b> <span class="lt-cell">' + LTUI.compBar(st.lt.comps, 90) + '<span>' + esc(LTUI.compText(st.lt.comps, 4)) + '</span></span> <span class="muted small">share of fluorescence</span></div>' : '') +
       '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px">' + (cards.length ? '<span><b>Linked cards</b> ' + cards.map(c => '<span class="flag" title="' + esc(c.obs && c.obs.indexOf(c.title) === 0 ? c.obs : c.title + (c.obs ? '. ' + c.obs : '')) + '">' + c.rule + (c.status !== 'open' ? ' ' + c.status : '') + '</span>').join('') + '</span>' : '') +
       '<span><b>Decision</b> <button class="btn sm" id="frDec">' + esc(decText(d)) + '</button></span></div>' + (d.note ? '<div class="small">Note: ' + esc(d.note) + '</div>' : '') +
       (cards.filter(c => c.confirm).map(c => '<div class="small">' + c.rule + ': ' + esc(c.confirm) + '</div>').join('')) +
@@ -219,7 +221,7 @@
     ov.requestDraw(); if (zm._mounted) zm.requestDraw();
   }
   UI.register('fractions', {
-    show(o) { if (!built) build(); setTimeout(() => { ov.resize(); if (zm._mounted) zm.resize(); if (pc) pc.resize(); }, 0); lastKey = ''; sideKey = ''; zm._mounted = false; tab = o && o.anchor === 'samples' ? 'samples' : 'frac'; $$('#frTabs button').forEach(x => x.classList.toggle('on', x.dataset.v === tab)); table(); side(true); },
+    show(o) { if (!built) build(); sync(); setTimeout(() => { ov.resize(); if (zm._mounted) zm.resize(); if (pc) pc.resize(); }, 0); lastKey = ''; sideKey = ''; zm._mounted = false; tab = o && o.anchor === 'samples' ? 'samples' : 'frac'; $$('#frTabs button').forEach(x => x.classList.toggle('on', x.dataset.v === tab)); table(); side(true); },
     update, samplesText, select(id) { focus = id; sel = new Set([id]); selChanged(); },
     // a beforeKey that no longer exists (the Assignment column was removed) inserts before Cards, so Decision stays last
     addCol(col, beforeKey) { let k = COLS.findIndex(c => c.k === beforeKey); if (k < 0) k = COLS.findIndex(c => c.k === 'cards'); COLS.splice(k < 0 ? COLS.length : k, 0, col); lastKey = ''; },

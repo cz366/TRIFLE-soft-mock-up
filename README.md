@@ -4,7 +4,9 @@ An interactive mock-up of the TRIFLE control and analysis software, for review w
 
 - **One file:** `trifle_mockup.html` (Stage 1 plus Stage 2). Open it in Chrome or Edge. There is no install, no build step and no network access, so it works offline.
 - **Simulated data only.** Every number on screen comes from a seeded simulation (mulberry32, seed 20261009) of a GSK platform Protein A run. The calculations run for real on that data. Nothing is a static screenshot.
+- **TRIFLE's own view of the data.** The Run and Fraction review charts show what TRIFLE measures, not a UNICORN chromatogram: total fluorescence against time with the species that elute together, separated by their fluorescence decay (lifetime analysis, Proposed), a decay map of every pulse in the run, and a Decay panel with the measured decay, the fit and each species' component. UV 280, conductivity and pH are one click away (**AKTA traces**), each in its own strip.
 - **Verified against TRIFLE v2.0.** The v2.0 fluorescence and auto-ranging algorithms reproduce `trifle_reference_tests.json`, which is embedded in the file. Open **Engineer view → Diagnostics → Reference tests** to see each value checked (228 of 228 pass).
+- **Source:** `source/` holds the parts the file is built from, the build script and the browser test suite. See `source/DEVELOPING.md`.
 - **Stage 1 snapshot:** `stage1/trifle_mockup_stage1.html` is the Stage 1 build on its own, kept for comparison.
 - **Phone and hosted page.** Below 820 px wide the navigation moves into a Menu drawer and panels stack. When the page runs inside a hosting viewer, exports go through the viewer's save prompt and the Summary (PDF) button is hidden, because printing is not available there.
 
@@ -12,8 +14,8 @@ An interactive mock-up of the TRIFLE control and analysis software, for review w
 
 1. **Setup.** Tick Trained user and IP agreement. Setup holds only TRIFLE's own settings: run details, sign-in and acquisition (PMT preset, auto-ranging, options, run time). The AKTA method, phases and fractions come from the UNICORN export; in the mock-up, **Demo controls → AKTA run** picks the simulated run. The TRIFLE delay volumes are instrument configuration, in Engineer view → Alignment.
 2. **Readiness.** The checks run on their own. The laser warm-up panel shows the controller reading stepping down at about 18 min and reaching "stable (provisional)" at about 23.7 min. Confirm the PMT voltage. Under **Demo controls**, playback at 60× makes this take seconds.
-3. **Run.** Press **Start**. While the run is live, Pause (Continue while paused), End, Mark event and Add note take its place. Fluorescence, UV 280, conductivity and pH appear against volume, and Run values shows the TRIFLE readings: fluorescence, sensitivity, input range, alignment and, during elution, concentration. Evidence cards appear as rules fire: P1 (UV saturated), P2 with H1 (possible breakthrough, confirm by Protein A HPLC on FT09 and FT10), I2 (range overruns), P6 (above the calibrated range) and P3 with H2 at the end. **Demo controls → Fast-forward** finishes the run immediately.
-4. **Fraction review.** Select fractions in the table or drag across the chart. Compare the UV 100 mAU pool with the fluorescence boundaries, which are a visual comparison only. Elution fractions inside the calibrated range show an indicative concentration. Record decisions (HPLC-SEC, Lunatic, Protein A HPLC or no action).
+3. **Run.** Press **Start**. While the run is live, Pause (Continue while paused), End, Mark event and Add note take its place. Total fluorescence appears against time, with the decay map below it. After 150 blocks the lifetime analysis makes its first fit and the species appear as their own traces: scatter and buffer first, host-cell proteins at the load, then mAb and aggregates (HMW) at the elution. The Decay panel follows the cursor; click the chart to pin a time. Run values shows the TRIFLE readings: fluorescence, sensitivity, input range, alignment, the species at the latest block and, during elution, concentration. Evidence cards appear as rules fire: P1 (UV saturated), P2 with H1 (possible breakthrough, confirm by Protein A HPLC on FT09 and FT10), I2 (range overruns), P6 (above the calibrated range) and P3 with H2 at the end. **Demo controls → Fast-forward** finishes the run immediately.
+4. **Fraction review.** Select fractions in the table or drag across the chart. The Species column gives each fraction's share of fluorescence by species: the mAb share of FT10 shows the breakthrough behind P2 and H1, and the HMW share grows across the elution, from about 2 % in E03 to over 20 % in the tail. Turn on **AKTA traces** to compare the UV 100 mAU pool with the fluorescence boundaries, which are a visual comparison only. Elution fractions inside the calibrated range show an indicative concentration. Record decisions (HPLC-SEC, Lunatic, Protein A HPLC or no action).
 5. **Record.** One column: Exports first, then the notebook-ready summary and the audit trail. Export Block data (CSV), Fraction table (CSV), Metadata (JSON) and Chromatogram (PNG), or print Summary (PDF) to A4 (offline file only). Copy the notebook-ready sections. The audit trail lists every change.
 
 Other demo controls pick the simulated AKTA run (Protein A platform, AAV capture, free run, manual event marks or no AKTA data, which plots against time and has no fractions or run comparison), start before the laser is stable (rule I1) and use the old UNICORN fraction delay (rule I5, with fraction assignments marked Uncertain). The **Mock-up · simulated data** button in the header opens the About page: evaluation objectives, labels and planned integrations. In Engineer view you can simulate a fault (digitiser, filter wheel or laser), run a reproducibility check and work through **Discrepancies**.
@@ -23,11 +25,47 @@ Other demo controls pick the simulated AKTA run (Protein A platform, AAV capture
 | Area | Label | What it shows |
 |---|---|---|
 | Calibration | Proposed | Step-injection calibration with purified IgG: plateau detection, unweighted, 1/x or 1/x² linear fits, linear range, "possible inner-filter onset" and a calibration record tied to a PMT preset, processing mode and expiry date. Concentration is indicative, elution fractions only, and never used for yield or recovery. Rules P6 (above calibrated range) and I7 (calibration not applicable). |
-| Decay analysis | Proposed | Option A decay metric per block, a decay strip on the Run chart, a per-fraction decay column and rule P7 with hypothesis H3 (confirm by HPLC-SEC). The option is in Processing; while it is off, it shows only in Engineer view. Engineer view → Decay adds a reconvolution fit with the stored IRF, weighted residuals and χ², and the metric definition. |
+| Decay analysis | Proposed | Option A decay metric per block, a decay strip on the Run chart, a per-fraction decay column and rule P7 with hypothesis H3 (confirm by HPLC-SEC). P7 compares with the elution front, where fluorescence is at least 20 times the buffer baseline (see TRIFLE view). The option is in Processing; while it is off, it shows only in Engineer view. Engineer view → Decay adds a single-exponential reconvolution fit with the stored IRF, weighted residuals and χ², and the metric definition. |
 | Run comparison | Proposed | Overlays the current run on archived runs on a common volume axis (0.05 mL bins), in relative mode, with per-phase integrals and a per-fraction comparison. |
-| AAV template | Proposed | AAV affinity capture method (AAVX), with every volume and flow marked assumed. Empty and full capsid assessment is not a TRIFLE output. |
+| AAV template | Proposed | AAV affinity capture method (AAVX), with every volume and flow marked assumed. The lifetime analysis separates the co-eluting capsid populations and names them empty and full capsids (assumed, after the Roxijen introduction, March 2026, slide 15). It reports shares of fluorescence, not an empty-to-full particle ratio. |
 | Export packaging | Proposed | Summary (PDF), printed to A4, and Raw waveforms (HDF5): the estimated file size, with the planned group tree in Engineer view. No real HDF5 file is written. |
 | Integrations | Future | Live UNICORN link, IDBS E-WorkBook transfer, automatic data storage, a language-model Questions panel and legacy .pkl conversion, each with its GSK prerequisites. None is implemented. |
+
+## TRIFLE view and lifetime analysis (Proposed)
+
+The charts follow the Roxijen introduction (John Hales, March 2026): a total fluorescence chromatogram with the decay-associated chromatograms of the species under it, and decay curves with the measured points, the fit and each component.
+
+| Display | Where | What it shows |
+|---|---|---|
+| Species chromatograms | Run, Fraction review | Total fluorescence (primary ink) and one trace per species in V·ns, the same units, so the species add up to the total. Time axis by default (min; mL and CV still available). On the log axis only amplitudes above 2 standard errors are drawn. |
+| Decay map | Run, Fraction review | Every block's decay against run time: 0 to 30 ns after the window start, normalised per pixel column, 2.5 decades of log intensity on a single-hue ramp. Longer-lived species show as a taller band. Samples within 3 SD of the noise are white. The faint band near 25 ns is the stored IRF's late lobes (cable reflections), present in every pulse. |
+| Decay panel | Run | The decay at the cursor, the pinned time (click the chart; **Latest** releases it), the latest block while live, or the fluorescence maximum once complete. Points: mean decay over 15 s. Lines: the fit and each species. Strip: weighted residuals. Legend: each species' share. In Engineer view a Decay or Pulse switch brings back the raw pulse with the IRF. |
+| Species row, Species column | Run values, Fraction review | Stacked bar and the leading species: the latest block in Run values, and the mean decay of each fraction in the table and the fraction detail. |
+| Lifetimes tab | Engineer view → Diagnostics | Lifetimes with standard errors, the template's expected lifetimes and the simulated ones, the model-selection steps, the method, and the reduced χ² of every block. |
+| Exports | Record | Block CSV: one amplitude column per species. Fraction CSV: one share column per component. Metadata JSON: lifetimes, standard errors, names, reduced χ² and model selection. The notebook summary adds a Species column and a methods line. |
+
+**Method** (after Hales, Aoudjane, Aeppli and Dalby, *J Chromatogr A* 1641, 461968, 2021, and Uçan, Hales *et al.*, *J Chromatogr A* 1711, 464463, 2023):
+
+1. Each block (10 pulses) contributes the mean of its 10 waveforms, baseline removed, ND-corrected and sign-flipped, over a 40 ns window from 5 ns before the IRF peak. Clipped and discarded blocks are left out.
+2. Global analysis: every decay is a non-negative sum of K exponentials convolved with the stored IRF. The lifetimes are shared by the whole run; the amplitudes are free for every decay. Amplitudes against time are the decay-associated chromatograms. No elution profile is assumed and no reference decays are used.
+3. The lifetimes are found by Nelder–Mead on χ², with the amplitudes solved exactly by non-negative least squares for each decay (variable projection), on 20-block bins. A bin is a noise-weighted mean of decays, so it is itself a mixture of the same species. The bins are held as their coefficients on 17 orthonormal vectors that span every IRF-convolved exponential from 0.05 to 20 ns to within 10⁻⁷, so χ² is unchanged and each evaluation is about 4 times faster.
+4. The number of components is chosen by the data. Starting from one, a component is added only if χ² drops by more than 3 per bin (the number of amplitudes it adds), with lifetimes at least a factor 1.2 apart. The default run adds four components and rejects a fifth: reduced χ² 1.07.
+5. The species chromatograms use the mean decay over ±7 blocks (15 s time resolution). A fraction's composition uses the mean decay of all its blocks.
+6. Live, the first fit runs after 150 blocks and refits each time the data grow by 30 %, starting from the previous lifetimes, 12 ms per tick. A final fit runs when acquisition ends, 60 ms per tick, and takes about a second or two. The Run log records each change in the number of components and the final fit.
+7. Components are named after the method template's expected species: the nearest expected lifetime within a factor of 1.35, each species used once. A component with no match is shown as Unassigned. Names are labels, not identification. Shares are of fluorescence, not mass, purity, yield or recovery.
+
+**Simulation.** Species replace the single 3.5 ns lifetime of earlier builds. Each species decays as one exponential (a simplification: real proteins are multi-exponential and give more components than species). The template's expected lifetimes differ from the simulated ones on purpose, to show the naming tolerance.
+
+| Template | Species: simulated lifetime (template's expected lifetime) | Where it appears |
+|---|---|---|
+| Protein A | Scatter and buffer 0.25 ns (0.3); host-cell proteins 2.2 ns (2.0); mAb (IgG1) 3.5 ns (3.6); aggregates (HMW) 5.4 ns (5.3) | Scatter is every buffer's background (readiness buffer too). HCP is the flow-through. The 4 % rise over the last CV of the load is mAb breakthrough. HMW is 2 % of the product at the front of the elution peak and rises to 27 % in the far tail. The strip peak is 60 % HMW. The buffer excess in CIP equilibration and re-equilibration is mAb carry-over. |
+| AAV | Scatter and buffer 0.25 ns (0.3); lysate proteins 2.2 ns (2.0); empty capsids 3.1 ns (3.0); full capsids 4.4 ns (4.6) | Lysate in the flow-through and strip. Full capsids are 30 % of the capsid signal at the front of the elution peak and 50 % in the tail. |
+
+Each species' total is the same as before, so total fluorescence, the calibration and the evidence rules see the same signal. Pulse shapes differ, so auto-ranging differs in detail: the default run now has a data checksum of E9F1FA72 (was E57DAA8F), with the same 13,673 blocks. Per-block timing jitter (0.047 ns) scales every lifetime of a block together. With the default run the analysis recovers 0.248, 2.194, 3.508 and 5.370 ns.
+
+**Limits seen in the simulation.** Where one species dominates, a neighbouring lifetime picks up a small share from noise and the per-block timing jitter: about 0.5 % mAb in the Protein A load plateau (against 3.1 % in FT10, where the breakthrough is), and about 1.4 % empty capsids in the AAV lysate flow-through. Shares of a few per cent next to a large component need an offline check. Species with closer lifetimes than a factor 1.2 are not separated.
+
+**P7.** The decay-metric rule compared the elution with the load plateau. With species, the load plateau is host-cell protein, a different species, so P7 now compares with the first 40 blocks of the elution peak. Both the reference and the windows it tests use only blocks with fluorescence at least 20 times the pre-run buffer baseline, so that prompt scatter does not move the metric. In the default run with decay analysis on, P7 fires in the elution tail (+0.34 ns, E10 and E11), and H3 points to the species composition and HPLC-SEC.
 
 ## Labels
 
@@ -47,20 +85,20 @@ The Scientist view shows a tag only where it changes the conclusion. The Enginee
 **Simulation**
 
 - Seed 20261009, mulberry32 random streams per block and waveform. The simulated clock advances by a fixed step per tick, so two playbacks give identical data (checksum in Engineer view → Faults).
-- Waveform model: the 7-term IRF from the v2.0 settings convolved with a single exponential (τ about 3.5 ns), 8-bit quantisation, 600 samples at 0.2 ns. The IRF amplitude units are not recorded, and W is treated as σ.
+- Waveform model: the 7-term IRF from the v2.0 settings convolved with one exponential per species, weighted by each species' share of the signal (see TRIFLE view for the lifetimes), 8-bit quantisation, 600 samples at 0.2 ns. Calibration standards keep a single 3.5 ns lifetime. The IRF amplitude units are not recorded, and W is treated as σ.
 - PMT presets: 400 mV has gain 1 and noise 0.2 mV; 800 mV has gain 20 and noise 1.2 mV. The 800 mV values are assumed.
 - Laser warm-up: the controller reading steps down at about 18 min; "stable" means the 30 s moving median holds within the tolerance for the hold time.
 - Plumbing: V1 (UV to TRIFLE) 0.20 mL, V2 (TRIFLE to fraction collector) 0.15 mL, UNICORN fraction delay 0.35 mL (0.12 mL before TRIFLE was fitted).
 - Protein A method volumes and flows follow Appendix A of the Stage 1 prompt (HiScreen MabSelect PrismA, 4.657 mL CV). The 30 min NaOH hold adds time but not volume.
 - AAV template: the 1 mL AAVX column, phase volumes, flows and fraction sizes are assumed.
-- Archived runs (RUN-0128-01, RUN-0091-01 at 800 mV, UCL-AAV-0813) are simulated with varied seeds and peak scales.
+- Archived runs (RUN-0128-01, RUN-0091-01 at 800 mV, UCL-AAV-0813) are simulated with varied seeds and peak scales, with the same species as the live run.
 - Record size for the saving estimate: about 50 kB per block (10 waveforms × 600 samples × 8 bytes plus metadata).
 
 **Thresholds** (all provisional and editable in Engineer view → Rules)
 
 - Laser change during acquisition 2 % (I6), re-equilibration baseline 10 % (P3), range overrun counted above 90 % of the input range (I2).
 - Calibration linear range: every level within 5 % of the fit; default weighting 1/x; expiry 30 days. These are development assumptions.
-- Decay metric computed only where the signal uses 20 % to 90 % of the input range. P7 fires when the mean over a 0.5 mL window shifts from the load-plateau reference by more than 0.2 ns and more than 3 SD.
+- Decay metric computed only where the signal uses 20 % to 90 % of the input range. P7 fires when the mean over a 0.5 mL window shifts from the elution-front reference by more than 0.2 ns and more than 3 SD, using only blocks with fluorescence at least 20 times the buffer baseline.
 
 **Interface**
 
@@ -90,4 +128,5 @@ The interface cleanup removed some text the prompts describe, where it repeated 
 - The Engineer view switch has the tooltip "Simulated role", without "not access control"; the Questions caption drops "This is not a general assistant".
 - Per-row label tags are shown once per section instead of on every row.
 - Detail a scientist does not act on is in Engineer view only: Provenance on Record (the metadata export keeps it), the HDF5 group tree, the fraction median pulse (the Pulse box beside Prev and Next), the delay volumes in the fraction table note, the Blocks and Beam monitor rows in Run values, the I6 card's beam-monitor and controller caveats and the P7 card's IRF note (the metadata export keeps the beam-monitor and IRF notes). The fluorescence boundary level is set in Engineer view → Rules.
+- TRIFLE view (this build): the Run and Fraction review charts default to time, and UV 280 is no longer a second y axis on the fluorescence panel. UV 280, conductivity and pH are behind **AKTA traces**, each in its own strip, and the fraction cuts show on the Run chart only with them (Fraction review always shows them). The Engineer-only Pulse panel is now the Pulse view of the Decay panel.
 - The fraction table has no CV column; the x axis switches to CV, and the fraction CSV keeps CV_start and CV_end. Concentration cells read '–' outside elution and Above range or Below range outside the calibrated range.

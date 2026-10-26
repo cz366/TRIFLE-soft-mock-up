@@ -4,6 +4,7 @@
   const ROWS = [
     ['Faster access to useful measurements', 'Live acquisition and chromatogram', 'Time from acquisition to an interpretable result'],
     ['Better fraction investigation', 'Fraction review with evidence cards', 'Whether prioritised fractions match offline analytical findings'],
+    ['Resolve species that elute together', 'Lifetime analysis: species chromatograms, Decay panel and decay map (Proposed)', 'Agreement of species shares with HPLC-SEC, Protein A HPLC or capsid assays on the same fractions'],
     ['Fewer unnecessary offline analyses', 'Evidence-led suggestions for confirmation', 'Samples tested per run and what they found'],
     ['Improved reproducibility', 'Presets, readiness checks, QC flags', 'Repeatability and frequency of invalid runs'],
     ['Improved data availability', 'Structured export tied to experiment ID', 'Time to transfer and retrieve run data'],
@@ -96,7 +97,7 @@ const Q = (function () {
       if (R && !R.tpl.breakthroughRule) return A('Rule P2 and hypothesis H1 apply to mAb Protein A templates only. This run uses ' + R.tpl.name + '.', 'Rules P2, H1; method template');
       const p2 = R ? R.rules.cards.filter(c => c.rule === 'P2') : [], h1 = R ? R.rules.cards.find(c => c.rule === 'H1') : null;
       if (p2.length) return A('Possibly, but not confirmed. Rule P2: ' + p2[0].obs + ' H1 is a research hypothesis that mAb breakthrough may be starting. Total fluorescence cannot separate mAb from HCP. Confirm with ' + h1.confirm.replace(/\.$/, '') + '.', 'Cards ' + p2[0].id + ', ' + h1.id);
-      return A('No P2 observation in this run' + (R ? ' so far' : '') + '. P2 watches the fluorescence slope over the last 1 CV after the load plateau (limit 2 % per CV). Even if it fires, fluorescence cannot separate mAb from HCP, so breakthrough needs Protein A HPLC on the flowthrough fractions.', 'Rules P2 and H1');
+      return A('No P2 observation in this run' + (R ? ' so far' : '') + '. P2 watches the fluorescence slope over the last 1 CV after the load plateau (limit 2 % per CV). Total fluorescence cannot separate mAb from HCP; the mAb component of the lifetime analysis can (Proposed). Confirm breakthrough with Protein A HPLC on the flowthrough fractions.', 'Rules P2 and H1');
     }
     if (/trust|reliab|confiden/.test(q) && /peak|elution/.test(q) || /can i trust/.test(q)) {
       if (!R) return A('No run yet. After a run, the answer uses the elution fractions\' QC: range overruns, sensitivity changes, discarded blocks, laser flags and alignment.', 'Fraction table QC');

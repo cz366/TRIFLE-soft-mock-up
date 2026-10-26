@@ -45,7 +45,7 @@ const CH = (function () {
         if (s.legend === false) continue;
         const it = document.createElement('span'); it.className = 'ch-li' + (s.visible ? '' : ' off'); it.setAttribute('role', 'listitem'); it.tabIndex = 0;
         it.title = (s.tip || s.label) + (s.toggle === false ? '' : '. Click to show or hide.');
-        const sw = document.createElement('span'); sw.className = 'ch-sw ' + (s.dash || 'solid'); sw.style.borderTopColor = s.color; if (s.mode === 'points') { sw.className = 'ch-sw pt'; sw.style.background = s.color; }
+        const sw = document.createElement('span'); sw.className = 'ch-sw ' + (s.dash || 'solid'); sw.style.borderTopColor = s.color; if (s.mode === 'points') { sw.className = 'ch-sw pt' + (s.shape === 'dot' ? ' dot' : ''); sw.style.background = s.color; }
         const lab = document.createElement('span'); lab.className = 'ch-ll'; lab.textContent = s.label;
         const val = document.createElement('span'); val.className = 'ch-lv'; s._valEl = val;
         it.append(sw, lab, val); if (s.tag) { const tg = document.createElement('span'); tg.className = 'tag'; tg.dataset.scope = s.tagScope || 'always'; tg.textContent = s.tag; it.append(tg); }
@@ -279,6 +279,8 @@ const CH = (function () {
       else ctx.clearRect(this.px0 + c0, 0, c1 - c0 + 1, this.H);
       this.panels.forEach((p, pi) => {
         ctx.save(); ctx.beginPath(); ctx.rect(p.x + (full ? 0 : c0), p.y, full ? p.w : c1 - c0 + 1, p.h); ctx.clip();
+        // panels that paint their own content (decay map) draw the changed pixel columns first
+        if (p.cfg.draw) p.cfg.draw(ctx, p, this, full ? 0 : c0, full ? this.pw - 1 : c1);
         // low-precision shading (warning colour at 12 % opacity), drawn from the shading series
         for (const s of this.series) {
           if (!s.shade || !s.b || s.panel !== p.key) continue;
@@ -287,7 +289,8 @@ const CH = (function () {
         }
         for (const side of ['l', 'r']) {
           const sc = this.scales[pi][side]; if (!sc) continue;
-          const ordered = this.series.filter(s => s.visible && s.panel === p.key && (s.side || 'l') === side && !s.shadeOnly);
+          // drawing order follows the legend unless a series sets z (higher draws later, on top)
+          const ordered = this.series.filter(s => s.visible && s.panel === p.key && (s.side || 'l') === side && !s.shadeOnly).sort((a, b) => (a.z || 0) - (b.z || 0));
           for (const s of ordered) {
             if (s.mode === 'points') { this.drawPoints(ctx, p, sc, s); continue; }
             const b = s.b; if (!b) continue;
@@ -317,10 +320,13 @@ const CH = (function () {
     }
     drawPoints(ctx, p, sc, s) {
       const d = s.src(); if (!d) return; ctx.fillStyle = s.color; ctx.strokeStyle = s.color; ctx.lineWidth = 1;
+      const r = (s.size || 6) / 2;
       for (let i = 0; i < d.n; i++) {
         const x = this.xToPx(d.x[i]), y = this.yToPx(p, sc, d.y[i]); if (!isFinite(y)) continue;
         if (d.ylo) { const a = this.yToPx(p, sc, d.ylo[i]), b = this.yToPx(p, sc, d.yhi[i]); ctx.beginPath(); ctx.moveTo(x + 0.5, a); ctx.lineTo(x + 0.5, b); ctx.stroke(); }
-        const open = d.open && d.open[i]; if (open) { ctx.strokeRect(x - 3, y - 3, 6, 6); } else ctx.fillRect(x - 3, y - 3, 6, 6);
+        const open = d.open && d.open[i];
+        if (s.shape === 'dot') { ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI); if (open) ctx.stroke(); else ctx.fill(); }
+        else if (open) ctx.strokeRect(x - r, y - r, 2 * r, 2 * r); else ctx.fillRect(x - r, y - r, 2 * r, 2 * r);
       }
     }
     drawOver() {

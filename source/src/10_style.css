@@ -171,6 +171,7 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 .ch-sw { display: inline-block; width: 18px; height: 0; border-top: 2px solid; }
 .ch-sw.dash { border-top-style: dashed; } .ch-sw.dot { border-top-style: dotted; } .ch-sw.dashdot { border-top-style: dashed; }
 .ch-sw.pt { width: 7px; height: 7px; border: 0; }
+.ch-sw.pt.dot { border-radius: 50%; }
 .ch-sw.box { width: 12px; height: 10px; border: 0; }
 .ch-info { font-size: 13px; color: var(--text2); min-height: 16px; padding: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ch-plot { position: relative; flex: 1; min-height: 60px; }
@@ -188,11 +189,11 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 .chips span:last-child { border-right: 0; }
 .run-chart { flex: 1 1 58%; min-height: 0; display: flex; flex-direction: column; }
 .run-chart > .pb { flex: 1; min-height: 0; padding: 4px 8px 4px; display: flex; flex-direction: column; }
-.run-bottom { flex: 0 0 clamp(180px, 27%, 248px); display: grid; grid-template-columns: minmax(200px, 26fr) minmax(170px, 20fr) minmax(200px, 28fr) minmax(200px, 26fr); gap: 8px; min-height: 0; }
+.run-bottom { flex: 0 0 clamp(180px, 27%, 248px); display: grid; grid-template-columns: minmax(230px, 24fr) minmax(280px, 30fr) minmax(200px, 23fr) minmax(200px, 23fr); gap: 8px; min-height: 0; }
 .run-bottom > .panel { display: flex; flex-direction: column; min-height: 0; }
 .run-bottom > .panel > .pb { flex: 1; min-height: 0; overflow: auto; padding: 4px 8px; }
 .run-bottom > .panel > .ph { height: 28px; }
-.run-bottom.narrow { grid-template-columns: minmax(220px, 33fr) minmax(150px, 21fr) minmax(220px, 46fr); }
+.run-bottom.narrow { grid-template-columns: minmax(220px, 30fr) minmax(260px, 38fr) minmax(220px, 32fr); }
 .run-bottom.narrow .logcards-tabbed { display: flex; }
 .rv { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .rv td { padding: 0; height: 22px; white-space: nowrap; }

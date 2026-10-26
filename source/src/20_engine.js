@@ -164,6 +164,30 @@ const TR = (function () {
     for (let i = 0; i < NSAMP; i++) out[i] = st.tab[k * NSAMP + i] * (1 - f) + st.tab[(k + 1) * NSAMP + i] * f;
     return out;
   }
+  // Unit-area negative pulse for any lifetime: the IRF convolved with exp(-t/tau), computed directly
+  function unitShape(pmt, tau, out) {
+    const h = shapeTable(pmt).h; convExp(h, tau, out); const k = 1 / Math.abs(trapz(out, 0, NSAMP - 1, DX));
+    for (let i = 0; i < NSAMP; i++) out[i] *= k;
+    return out;
+  }
+
+  /* ---------- simulated species (read only by the simulator) ---------- */
+  // Each species decays as one exponential convolved with the IRF. Real proteins are multi-exponential;
+  // one lifetime per species is a simulation simplification. tau is the simulated lifetime (assumed). The
+  // lifetime analysis never reads tau: it estimates its own lifetimes from the data. exp is the method
+  // template's expected lifetime (assumed), used only to name the components the analysis finds.
+  const SPECIES = {
+    protA: [
+      { key: 'sc', name: 'Scatter and buffer', short: 'Scatter', tau: 0.25, exp: 0.3 },
+      { key: 'hcp', name: 'Host-cell proteins', short: 'HCP', tau: 2.2, exp: 2.0 },
+      { key: 'mab', name: 'mAb (IgG1)', short: 'mAb', tau: 3.5, exp: 3.6, product: true },
+      { key: 'hmw', name: 'Aggregates (HMW)', short: 'HMW', tau: 5.4, exp: 5.3 }],
+    aav: [
+      { key: 'sc', name: 'Scatter and buffer', short: 'Scatter', tau: 0.25, exp: 0.3 },
+      { key: 'hcp', name: 'Lysate proteins', short: 'Lysate', tau: 2.2, exp: 2.0 },
+      { key: 'empty', name: 'Empty capsids', short: 'Empty', tau: 3.1, exp: 3.0 },
+      { key: 'full', name: 'Full capsids', short: 'Full', tau: 4.4, exp: 4.6, product: true }]
+  };
 
   /* ---------- method templates and the phase model (8.2, 13, Appendix A) ---------- */
   const TEMPLATES = {
@@ -239,7 +263,7 @@ const TR = (function () {
   function buildProfile(tplId, ph, mods) {
     mods = mods || {};
     const L = ph.list, P = k => L.find(p => p.key === k), cv = ph.cv;
-    const res = { S: 0, Sbg: 0, Sft: 0, Smab: 0, Sstrip: 0, conc: 0, tau: 3.5, uv: 0, uvTrue: 0, cond: 0, ph: 0 };
+    const res = { S: 0, Sbg: 0, Sft: 0, Smab: 0, Sstrip: 0, conc: 0, tau: 3.5, uv: 0, uvTrue: 0, cond: 0, ph: 0 }, TS = SPECIES[tplId].map(s => s.tau);
     if (tplId === 'protA') {
       const Vv = 1.40, kF = mods.kF || 0.471, cMax = 25.0;
       const bg = { eq: 0.0080, load: 0.0080, w1: 0.0088, w2: 0.00824, el: 0.00784, strip: 0.00784, cipeq: 0.00808, naoh: 0.0090, reeq: 0.00920 };
@@ -254,11 +278,17 @@ const TR = (function () {
       const xA = pEl.v0 + ea * el.h, xB = pEl.v0 + eb * el.h;
       const elScale = mods.elutionScale || 1;
       function blend(tab, x, w) { let v = tab[L[0].key]; for (let i = 1; i < L.length; i++) v += (tab[L[i].key] - tab[L[i - 1].key]) * sig((x - (L[i].v0 + Vv)) / w); return v; }
+      // species split (sums to the same totals): the 4 % rise over the last CV of the load is mAb breakthrough;
+      // the buffer excess in CIP equilibration and re-equilibration is mAb carry-over; HMW rises from 2 % to 27 %
+      // of the product across the elution peak; the strip peak is mostly aggregate
+      const carry = { eq: 0, load: 0, w1: 0, w2: 0, el: 0, strip: 0, cipeq: 0.00008, naoh: 0, reeq: 0.0012 };
+      res.comp = [0, 0, 0, 0];
       res.at = function (x) {
-        const Sbg = blend(bg, x, 0.25);
-        let lev = ftA * sig((Math.min(x, xEnd) - xFront) / 0.35) * (1 + 0.04 * Math.min(1, Math.max(0, (Math.min(x, xEnd) - (pW1.v0 - cv)) / cv)));
+        const Sbg = blend(bg, x, 0.25), Sco = Math.max(0, blend(carry, x, 0.25));
+        const xl = Math.min(x, xEnd), base = ftA * sig((xl - xFront) / 0.35), bt = base * 0.04 * Math.min(1, Math.max(0, (xl - (pW1.v0 - cv)) / cv));
+        let lev = base + bt;
         if (x < pLoad.v0 + Vv - 2) lev = 0;
-        const Sft = lev * (x > xEnd ? Math.exp(-(x - xEnd) / 2.6) : 1);
+        const tail = x > xEnd ? Math.exp(-(x - xEnd) / 2.6) : 1, Sft = lev * tail, Sbt = lev > 0 ? bt * tail : 0;
         const uvFt = (x < pLoad.v0 + Vv - 2 ? 0 : 3950 * sig((Math.min(x, xEnd) - xFront) / 0.35)) * (x > xEnd ? Math.exp(-(x - xEnd) / 1.9) : 1);
         const c = cMax * elScale * lookup(el, x - pEl.v0);
         const Smab = kF * c * innerFilter(c);
@@ -266,9 +296,9 @@ const TR = (function () {
         const Sstrip = 0.15 * gs;
         res.Sbg = Sbg; res.Sft = Sft; res.Smab = Smab; res.Sstrip = Sstrip; res.conc = c;
         res.S = Sbg + Sft + Smab + Sstrip;
-        const w = Math.min(1, Math.max(0, (x - xA) / (xB - xA)));
-        const tauMab = x < pStrip.v0 ? 3.5 - 0.3 * w : 3.5;
-        res.tau = (Sbg * 3.5 + Sft * 3.5 + Smab * tauMab + Sstrip * 3.5) / res.S;
+        const w = Math.min(1, Math.max(0, (x - xA) / (xB - xA))), fH = 0.02 + 0.25 * w * w;
+        const cp = res.comp; cp[0] = Sbg - Sco; cp[1] = Sft - Sbt; cp[2] = Sco + Sbt + Smab * (1 - fH) + 0.4 * Sstrip; cp[3] = Smab * fH + 0.6 * Sstrip;
+        res.tau = (cp[0] * TS[0] + cp[1] * TS[1] + cp[2] * TS[2] + cp[3] * TS[3]) / res.S;
         res.uvTrue = blend(uvb, x, 0.3) + uvFt + 280 * c + 160 * gs;
         res.uv = Math.min(3800, res.uvTrue);
         res.cond = blend(cond, x, 0.35); res.ph = blend(pH, x, 0.6);
@@ -285,6 +315,7 @@ const TR = (function () {
       const xFront = pLoad.v0 + Vv + 0.15, xEnd = pW1.v0 + Vv;
       const el = peakShape(0.9, 0.12, 0.45, 0.002, 6000);
       function blend(tab, x, w) { let v = tab[L[0].key]; for (let i = 1; i < L.length; i++) v += (tab[L[i].key] - tab[L[i - 1].key]) * sig((x - (L[i].v0 + Vv)) / w); return v; }
+      res.comp = [0, 0, 0, 0];
       res.at = function (x) {
         const Sbg = blend(bg, x, 0.08);
         const varF = 1 + 0.15 * smoothNoise(SEED + (mods.varSeed || 7), x, [0.31, 0.53, 0.87, 1.4]);
@@ -297,7 +328,11 @@ const TR = (function () {
         const gs = Math.exp(-0.5 * ((x - (pStrip.v0 + Vv + 0.4)) / 0.3) ** 2);
         const Sstrip = 0.08 * gs;
         res.Sbg = Sbg; res.Sft = Sft; res.Smab = Smab; res.Sstrip = Sstrip; res.conc = 0;
-        res.S = Sbg + Sft + Smab + Sstrip; res.tau = 3.5;
+        res.S = Sbg + Sft + Smab + Sstrip;
+        // species split: full capsids elute slightly later than empty ones (30 % of capsids at the front, 50 % in the tail)
+        const fF = 0.30 + 0.20 * sig((x - (pEl.v0 + Vv + 0.95)) / 0.12), cp = res.comp;
+        cp[0] = Sbg; cp[1] = Sft + Sstrip; cp[2] = Smab * (1 - fF); cp[3] = Smab * fF;
+        res.tau = (cp[0] * TS[0] + cp[1] * TS[1] + cp[2] * TS[2] + cp[3] * TS[3]) / res.S;
         res.uvTrue = blend(uvb, x, 0.1) + uvFt + 480 * pk + 60 * gs;
         res.uv = Math.min(3800, res.uvTrue);
         res.cond = blend(cond, x, 0.1); res.ph = blend(pH, x, 0.2);
@@ -359,7 +394,19 @@ const TR = (function () {
     A.ladder = LADDERS[o.pmt];
     A.buf = new Float64Array(10 * NSAMP); A.shape = new Float64Array(NSAMP); A.med = new Float64Array(NSAMP); A.lastWave = new Float64Array(NSAMP); A.lastMed = new Float64Array(NSAMP); A.hasLast = false;
     A.irfPeak = shapeTable(o.pmt).stats.peakIdx;
+    // o.taus: one lifetime per simulated species; signalAt then also returns comp, the signal of each species
+    A.K = o.taus ? o.taus.length : 0;
+    if (A.K) { A.comp = new Float32Array(cap * A.K); A.tj = new Float32Array(cap); A.ush = new Float64Array(NSAMP); }
+    // o.keepDecays: keep each block's decay (mean of its 10 waveforms) for the lifetime analysis
+    if (o.keepDecays) { A.dw = new Float32Array(cap * LTN); A.dsd = new Float32Array(cap); A.clip = new Uint8Array(cap); A.mw = new Float64Array(NSAMP); A.ltJ0 = ltJ0(o.pmt); }
     return A;
+  }
+  // Pulse shape of block i of a multi-species acquisition: species fractions times their unit pulses.
+  // Every lifetime is scaled by the block's timing jitter tj.
+  function mixShape(A, i, out) {
+    const K = A.K, ts = A.o.taus, tmp = A.ush; out.fill(0);
+    for (let k = 0; k < K; k++) { const f = A.comp[i * K + k]; if (!(f > 0)) continue; unitShape(A.o.pmt, ts[k] * A.tj[i], tmp); for (let j = 0; j < NSAMP; j++) out[j] += f * tmp[j]; }
+    return out;
   }
   function genWaveform(A, i, w, S, E, tau, step, out, shapeBuf) {
     // rq: real input range; equals the stated range unless o.rangeMap is 'shift' (discrepancy 2 what-if)
@@ -396,26 +443,43 @@ const TR = (function () {
       const i = A.n, rb = mulberry32(hash(o.seed, o.stream, i, 0));
       const tMid = A.tCursor + 0.5, sg = o.signalAt(tMid, i);
       const disc = (o.pDisc || 0) > 0 && unif(rb) < o.pDisc;
-      const tauB = sg.tau + (o.tauJit || 0) * gauss(rb);
+      let tauB;
+      if (A.K) { // species fractions and timing jitter are stored first, so regenBlock rebuilds the same pulse
+        const K = A.K, c = sg.comp, jit = (o.tauJit || 0) * gauss(rb); let s = 0, tm = 0;
+        for (let k = 0; k < K; k++) s += Math.max(0, c[k]);
+        for (let k = 0; k < K; k++) A.comp[i * K + k] = s > 0 ? Math.max(0, c[k]) / s : (k === 0 ? 1 : 0);
+        A.tj[i] = 1 + jit / 3.5;
+        for (let k = 0; k < K; k++) tm += A.comp[i * K + k] * o.taus[k] * A.tj[i];
+        tauB = tm;
+      } else tauB = sg.tau + (o.tauJit || 0) * gauss(rb);
       A.t[i] = tMid; A.vp[i] = sg.vp || 0; A.u[i] = sg.u || 0; A.phase[i] = sg.phase || 0; A.S[i] = sg.S; A.E[i] = sg.E; A.tau[i] = tauB;
       A.step[i] = A.cur; A.bc[i] = A.blocksCompleted;
       if (disc) { // timed-out block: no waveforms; v2.0 re-decides on the same last waveform (no change)
         A.disc[i] = 1; for (let f = 0; f < 4; f++) A.F[f][i] = NaN; A.ruse[i] = NaN; A.ruseMax[i] = NaN; A.bm[i] = NaN; A.bmV[i] = NaN; A.decay[i] = NaN; A.predUse[i] = NaN; A.decision[i] = 0;
+        if (A.dw) A.dsd[i] = NaN;
         A.n++; made++; A.tCursor += ACQ.timeoutS; continue;
       }
       const st = A.ladder[A.cur - 1], T = T_of(st.nd), range = st.range, rq = realRange(range, o.rangeMap);
-      const sh = shapeFor(o.pmt, tauB, A.shape);
-      let f0 = 0, f1 = 0, f2 = 0, f3 = 0, ru = 0, ruMax = 0, over = 0;
+      const sh = A.K ? mixShape(A, i, A.shape) : shapeFor(o.pmt, tauB, A.shape);
+      let f0 = 0, f1 = 0, f2 = 0, f3 = 0, ru = 0, ruMax = 0, over = 0, clip = false;
       for (let w = 0; w < 10; w++) {
         const v = A.buf.subarray(w * NSAMP, (w + 1) * NSAMP);
         genWaveform(A, i, w, sg.S, sg.E, tauB, A.cur, v, sh);
         const a = tfcV20(v, T), p = tfcProposed(v, T, WIN0, WIN1);
         f0 += a.display_fluorescence_V_ns; f1 += p.display_fluorescence_V_ns; f2 += tfcMeanWindow(v, T, WIN0, WIN1); f3 += p.window_30_70ns_display_fluorescence_V_ns;
         let mn = Infinity; for (let j = 0; j < NSAMP; j++) if (v[j] < mn) mn = v[j];
+        if (mn <= -rq * (1 - 1e-9)) clip = true;
         const use = (p.baseline_median_V - mn) / rq; ru += use; if (use > ruMax) ruMax = use; if (use > ACQ.limit) over++;
       }
       A.F[0][i] = f0 / 10; A.F[1][i] = f1 / 10; A.F[2][i] = f2 / 10; A.F[3][i] = f3 / 10;
       A.ruse[i] = ru / 10; A.ruseMax[i] = ruMax; A.nOver[i] = over;
+      if (A.dw) { // block decay: mean of the 10 waveforms, baseline removed, ND-corrected, positive; per-sample noise SD
+        const m = A.mw, o0 = i * LTN, j0 = A.ltJ0;
+        for (let j = 0; j < NSAMP; j++) { let s = 0; for (let w = 0; w < 10; w++) s += A.buf[w * NSAMP + j]; m[j] = s / 10; }
+        const b = mean(m, 0, NBASE), q = rq / 127 / Math.sqrt(120); // quantisation floor for a mean of 10 waveforms
+        for (let j = 0; j < LTN; j++) A.dw[o0 + j] = -(m[j0 + j] - b) / T;
+        A.dsd[i] = Math.max(pstd(m, 0, NBASE), q) / T; A.clip[i] = clip ? 1 : 0;
+      }
       for (let j = 0; j < NSAMP; j++) A.med[j] = median10(A.buf, j);
       A.decay[i] = A.ruse[i] >= 0.05 ? decayMetric(A.med, A.irfPeak) : NaN;
       if (o.beamPerBlock) { const bmRel = sg.E * (1 + 0.003 * gauss(rb)); A.bm[i] = bmRel; A.bmV[i] = 0.28 * bmRel; } else { A.bm[i] = NaN; A.bmV[i] = NaN; }
@@ -441,11 +505,196 @@ const TR = (function () {
   }
   function regenBlock(A, i) { // regenerate the 10 waveforms of block i, identical to acquisition
     const out = []; if (A.disc[i]) return out;
-    const sh = shapeFor(A.o.pmt, A.tau[i], new Float64Array(NSAMP));
+    const sh = A.K ? mixShape(A, i, new Float64Array(NSAMP)) : shapeFor(A.o.pmt, A.tau[i], new Float64Array(NSAMP));
     for (let w = 0; w < 10; w++) out.push(genWaveform(A, i, w, A.S[i], A.E[i], A.tau[i], A.step[i], new Float64Array(NSAMP), sh));
     return out;
   }
   function medianWave(waves) { const buf = new Float64Array(10 * NSAMP); waves.forEach((w, k) => buf.set(w, k * NSAMP)); const m = new Float64Array(NSAMP); for (let j = 0; j < NSAMP; j++) m[j] = median10(buf, j); return m; }
+
+  /* ---------- TRIFLE lifetime analysis (Proposed; after Hales et al., J Chromatogr A 1641, 461968, 2021) ---------- */
+  // Global analysis: every block decay is a non-negative sum of K exponentials convolved with the stored IRF.
+  // The lifetimes are shared by the whole run and the amplitudes are free for every block, so the amplitudes
+  // against time are decay-associated chromatograms. No elution profile is assumed and no reference decays
+  // are used; the number of components is chosen by the data.
+  const LTN = 200; // decay window: 200 samples (40 ns) from 5 ns before the IRF peak
+  const LT = { min: 0.05, max: 20, sep: 1.2, gain: 3, kMax: 5, seeds: [0.3, 1.0, 2.0, 4.5, 7.0] };
+  function ltJ0(pmt) { return Math.max(0, shapeTable(pmt).stats.peakIdx - 25); }
+  function invSmall(M, n) { // Gauss-Jordan inverse with partial pivoting; null when (nearly) singular
+    const a = Float64Array.from(M), inv = new Float64Array(n * n); let scale = 0;
+    for (let i = 0; i < n; i++) { inv[i * n + i] = 1; scale = Math.max(scale, Math.abs(a[i * n + i])); }
+    for (let c = 0; c < n; c++) {
+      let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(a[r * n + c]) > Math.abs(a[p * n + c])) p = r;
+      const pv = a[p * n + c]; if (!(Math.abs(pv) > 1e-10 * scale)) return null;
+      if (p !== c) for (let k = 0; k < n; k++) { let t = a[p * n + k]; a[p * n + k] = a[c * n + k]; a[c * n + k] = t; t = inv[p * n + k]; inv[p * n + k] = inv[c * n + k]; inv[c * n + k] = t; }
+      for (let k = 0; k < n; k++) { a[c * n + k] /= pv; inv[c * n + k] /= pv; }
+      for (let r = 0; r < n; r++) { if (r === c) continue; const f = a[r * n + c]; if (f) for (let k = 0; k < n; k++) { a[r * n + k] -= f * a[c * n + k]; inv[r * n + k] -= f * inv[c * n + k]; } }
+    }
+    return inv;
+  }
+  // Basis: unit-area decays (1/ns) for the given lifetimes on the decay window, their Gram matrix and the
+  // inverse of the Gram matrix on every subset of components (for the exact non-negative solve)
+  function ltBasis(pmt, taus) {
+    const K = taus.length, j0 = ltJ0(pmt), g = new Float64Array(K * LTN), tmp = new Float64Array(NSAMP), G = new Float64Array(K * K);
+    for (let k = 0; k < K; k++) { unitShape(pmt, taus[k], tmp); for (let j = 0; j < LTN; j++) g[k * LTN + j] = -tmp[j0 + j]; }
+    for (let a = 0; a < K; a++) for (let b = a; b < K; b++) { let s = 0; for (let j = 0; j < LTN; j++) s += g[a * LTN + j] * g[b * LTN + j]; G[a * K + b] = G[b * K + a] = s; }
+    const subs = [];
+    for (let m = 1; m < (1 << K); m++) {
+      const idx = []; for (let k = 0; k < K; k++) if (m >> k & 1) idx.push(k);
+      const n = idx.length, sub = new Float64Array(n * n); for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) sub[r * n + c] = G[idx[r] * K + idx[c]];
+      const inv = invSmall(sub, n); if (inv) subs.push({ idx, inv, n });
+    }
+    // diagonal of the inverse Gram matrix: amplitude variance per unit sample variance (unconstrained)
+    const Gi = invSmall(G, K), dInv = new Float64Array(K); for (let k = 0; k < K; k++) dInv[k] = Gi ? Gi[k * K + k] : NaN;
+    return { pmt, K, taus: taus.slice(), g, G, subs, j0, dInv, p: new Float64Array(K), x: new Float64Array(K) };
+  }
+  // Non-negative least squares, exact for small K: the solution equals the unconstrained solution on its own
+  // support, so the best support with all amplitudes positive is the answer. Returns a'Ga - 2a'p.
+  function ltSolve(B, p, out) {
+    let best = 0; out.fill(0); const x = B.x;
+    for (const s of B.subs) {
+      const n = s.n, idx = s.idx, inv = s.inv; let ok = true, f = 0;
+      for (let r = 0; r < n; r++) { let v = 0; for (let c = 0; c < n; c++) v += inv[r * n + c] * p[idx[c]]; if (!(v > 0)) { ok = false; break; } x[r] = v; f -= v * p[idx[r]]; }
+      if (ok && f < best) { best = f; out.fill(0); for (let r = 0; r < n; r++) out[idx[r]] = x[r]; }
+    }
+    return best;
+  }
+  // Amplitudes (V·ns) of the decay y[o0 .. o0 + LTN); returns the residual sum of squares (V²)
+  function ltFitDecay(B, y, o0, out) {
+    const K = B.K, g = B.g, p = B.p; let yy = 0; p.fill(0);
+    for (let j = 0; j < LTN; j++) { const v = y[o0 + j]; yy += v * v; for (let k = 0; k < K; k++) p[k] += g[k * LTN + j] * v; }
+    return Math.max(0, yy + ltSolve(B, p, out));
+  }
+  // Bins for the global fit: noise-weighted means of consecutive block decays. The model is linear in the
+  // amplitudes, so a bin is itself a non-negative mixture of the same decays. Discarded and clipped blocks,
+  // and blocks for which skip(i) is true, are left out. w is the inverse noise variance of each bin.
+  function ltBins(A, i0, i1, per, skip) {
+    const nb = Math.max(0, Math.ceil((i1 - i0) / per)), y = new Float64Array(nb * LTN), w = new Float64Array(nb), at = new Int32Array(nb), nBl = new Int32Array(nb); let n = 0;
+    for (let b = 0; b < nb; b++) {
+      const a = i0 + b * per, e = Math.min(i1, a + per), o = n * LTN; let sw = 0, c = 0;
+      for (let i = a; i < e; i++) {
+        if (A.disc[i] || A.clip[i] || (skip && skip(i))) continue; const s = A.dsd[i]; if (!(s > 0)) continue;
+        const wi = 1 / (s * s), oi = i * LTN; sw += wi; c++; for (let j = 0; j < LTN; j++) y[o + j] += wi * A.dw[oi + j];
+      }
+      if (sw > 0) { for (let j = 0; j < LTN; j++) y[o + j] /= sw; w[n] = sw; at[n] = a; nBl[n] = c; n++; } else for (let j = 0; j < LTN; j++) y[o + j] = 0;
+    }
+    return { n, y, w, at, nBl };
+  }
+  // Compression for the global fit. Every candidate decay (any lifetime from LT.min to LT.max) lies, to 1e-6, in
+  // the span of a few orthonormal vectors U, found by Gram-Schmidt with pivoting over a dense lifetime grid. A bin
+  // is then kept as its coefficients c = U'y and its y'y; g'y = (U'g)'c is exact for g in the span, so chi-squared
+  // is unchanged and each evaluation costs K x M instead of K x 200 per bin.
+  const ltDictCache = {};
+  function ltDict(pmt) {
+    if (ltDictCache[pmt]) return ltDictCache[pmt];
+    const j0 = ltJ0(pmt), tmp = new Float64Array(NSAMP), cols = [], U = [];
+    for (let k = 0; k <= 160; k++) { unitShape(pmt, LT.min * Math.pow(LT.max / LT.min, k / 160), tmp); const c = new Float64Array(LTN); for (let j = 0; j < LTN; j++) c[j] = -tmp[j0 + j]; cols.push(c); }
+    const nrm = c => { let s = 0; for (let j = 0; j < LTN; j++) s += c[j] * c[j]; return Math.sqrt(s); }, scale = Math.max(...cols.map(nrm));
+    const orth = (q, c) => { let d = 0; for (let j = 0; j < LTN; j++) d += q[j] * c[j]; for (let j = 0; j < LTN; j++) c[j] -= d * q[j]; };
+    while (U.length < 40) {
+      let bi = -1, bn = 0; cols.forEach((c, i) => { const v = nrm(c); if (v > bn) { bn = v; bi = i; } });
+      if (bi < 0 || bn < 1e-7 * scale) break;
+      const q = Float64Array.from(cols[bi]); for (const u of U) orth(u, q); const qn = nrm(q); for (let j = 0; j < LTN; j++) q[j] /= qn;
+      U.push(q); for (const c of cols) orth(q, c);
+    }
+    const flat = new Float64Array(U.length * LTN); U.forEach((u, m) => flat.set(u, m * LTN));
+    return (ltDictCache[pmt] = { U: flat, M: U.length });
+  }
+  function ltCompress(bins, pmt) {
+    const D = ltDict(pmt), M = D.M, c = new Float64Array(bins.n * M), yy = new Float64Array(bins.n);
+    for (let b = 0; b < bins.n; b++) { const o = b * LTN; let s = 0; for (let j = 0; j < LTN; j++) s += bins.y[o + j] * bins.y[o + j]; yy[b] = s; for (let m = 0; m < M; m++) { let v = 0; const om = m * LTN; for (let j = 0; j < LTN; j++) v += D.U[om + j] * bins.y[o + j]; c[b * M + m] = v; } }
+    bins.cmp = { pmt, M, c, yy, U: D.U }; return bins;
+  }
+  function ltChi2(bins, B) {
+    const K = B.K, a = new Float64Array(K); let c2 = 0;
+    if (!bins.cmp || bins.cmp.pmt !== B.pmt) { for (let b = 0; b < bins.n; b++) c2 += bins.w[b] * ltFitDecay(B, bins.y, b * LTN, a); return c2; }
+    const { M, c, yy, U } = bins.cmp, h = new Float64Array(K * M), p = B.p;
+    for (let k = 0; k < K; k++) for (let m = 0; m < M; m++) { let v = 0; for (let j = 0; j < LTN; j++) v += U[m * LTN + j] * B.g[k * LTN + j]; h[k * M + m] = v; }
+    for (let b = 0; b < bins.n; b++) {
+      const o = b * M; for (let k = 0; k < K; k++) { let v = 0; for (let m = 0; m < M; m++) v += h[k * M + m] * c[o + m]; p[k] = v; }
+      c2 += bins.w[b] * Math.max(0, yy[b] + ltSolve(B, p, a));
+    }
+    return c2;
+  }
+  // Nelder-Mead as a generator that yields after every evaluation, so a long fit can run in slices
+  function* nmGen(f, x0, step, iters) {
+    const n = x0.length; let P = [x0.slice()]; for (let k = 0; k < n; k++) { const x = x0.slice(); x[k] += step; P.push(x); }
+    let F = []; for (const p of P) { F.push(f(p)); yield; }
+    for (let it = 0; it < iters; it++) {
+      const ord = F.map((v, i) => i).sort((a, b) => F[a] - F[b]); P = ord.map(i => P[i]); F = ord.map(i => F[i]);
+      if (F[n] - F[0] <= 1e-9 * Math.abs(F[0]) + 1e-12) break;
+      const c = new Array(n).fill(0); for (let i = 0; i < n; i++) for (let k = 0; k < n; k++) c[k] += P[i][k] / n;
+      const pt = t => c.map((v, k) => v + t * (P[n][k] - v));
+      const xr = pt(-1), fr = f(xr); yield;
+      if (fr < F[0]) { const xe = pt(-2), fe = f(xe); yield; if (fe < fr) { P[n] = xe; F[n] = fe; } else { P[n] = xr; F[n] = fr; } }
+      else if (fr < F[n - 1]) { P[n] = xr; F[n] = fr; }
+      else {
+        const xc = fr < F[n] ? pt(-0.5) : pt(0.5), fc = f(xc); yield;
+        if (fc < Math.min(fr, F[n])) { P[n] = xc; F[n] = fc; }
+        else for (let i = 1; i <= n; i++) { P[i] = P[i].map((v, k) => P[0][k] + 0.5 * (v - P[0][k])); F[i] = f(P[i]); yield; }
+      }
+    }
+    let b = 0; for (let i = 1; i <= n; i++) if (F[i] < F[b]) b = i;
+    return { x: P[b], f: F[b] };
+  }
+  function runGen(g) { let r; do r = g.next(); while (!r.done); return r.value; }
+  function nelderMead(f, x0, step, iters) { return runGen(nmGen(f, x0, step, iters)); }
+  // chi-squared as a function of log lifetimes, amplitudes solved for every bin (variable projection)
+  function ltObjective(pmt, bins) {
+    return u => {
+      const t = u.map(Math.exp).sort((a, b) => a - b);
+      if (t[0] < LT.min || t[t.length - 1] > LT.max) return 1e300;
+      for (let k = 1; k < t.length; k++) if (t[k] / t[k - 1] < LT.sep) return 1e300;
+      return ltChi2(bins, ltBasis(pmt, t));
+    };
+  }
+  // Global lifetime fit. From the previous lifetimes (or one component at 3 ns), a component is added while it
+  // lowers chi-squared by more than LT.gain times the number of amplitudes it adds (one per bin). A generator:
+  // ltGlobal runs it to the end; the run model steps it a few milliseconds at a time.
+  function* ltGlobalGen(pmt, bins, prev, opt) {
+    opt = opt || {}; const kMax = opt.kMax || LT.kMax, iters = opt.iters || 160;
+    if (!bins.cmp) ltCompress(bins, pmt);
+    const f = ltObjective(pmt, bins);
+    const dof = k => bins.n * LTN - bins.n * k - k;
+    function* fit(t0, it) { const r = yield* nmGen(f, t0.map(Math.log), 0.12, it); return { taus: r.x.map(Math.exp).sort((a, b) => a - b), chi2: r.f }; }
+    let cur = yield* fit(prev && prev.length ? prev : [3.0], iters);
+    const hist = [{ K: cur.taus.length, chi2: cur.chi2, chi2r: cur.chi2 / dof(cur.taus.length), taus: cur.taus, accepted: true }];
+    while (cur.taus.length < kMax) {
+      let best = null;
+      for (const s of LT.seeds) {
+        if (cur.taus.some(t => Math.abs(Math.log(t / s)) < 0.3)) continue;
+        const r = yield* fit(cur.taus.concat([s]), 50); if (r.chi2 < 1e299 && (!best || r.chi2 < best.chi2)) best = r;
+      }
+      if (!best) break;
+      best = yield* fit(best.taus, iters);
+      const gain = cur.chi2 - best.chi2, ok = gain > LT.gain * bins.n;
+      hist.push({ K: best.taus.length, chi2: best.chi2, chi2r: best.chi2 / dof(best.taus.length), taus: best.taus, gain, accepted: ok });
+      if (!ok) break;
+      cur = best;
+    }
+    return { taus: cur.taus, chi2: cur.chi2, chi2r: cur.chi2 / dof(cur.taus.length), dof: dof(cur.taus.length), nBins: bins.n, hist };
+  }
+  function ltGlobal(pmt, bins, prev, opt) { return runGen(ltGlobalGen(pmt, bins, prev, opt)); }
+  // Standard errors of the lifetimes from the curvature of chi-squared (amplitudes profiled out), scaled by
+  // the reduced chi-squared
+  function ltErrors(pmt, bins, taus, chi2r) {
+    const K = taus.length, c = t => ltChi2(bins, ltBasis(pmt, t)), h = taus.map(t => t * 0.004), f0 = c(taus), H = new Float64Array(K * K);
+    const at = (d) => c(taus.map((t, k) => t + (d[k] || 0)));
+    for (let a = 0; a < K; a++) for (let b = a; b < K; b++) {
+      let v;
+      if (a === b) { const d = []; d[a] = h[a]; const fp = at(d); d[a] = -h[a]; v = (fp - 2 * f0 + at(d)) / (h[a] * h[a]); }
+      else { const d = []; d[a] = h[a]; d[b] = h[b]; const fpp = at(d); d[b] = -h[b]; const fpm = at(d); d[a] = -h[a]; const fmm = at(d); d[b] = h[b]; const fmp = at(d); v = (fpp - fpm - fmp + fmm) / (4 * h[a] * h[b]); }
+      H[a * K + b] = H[b * K + a] = v / 2;
+    }
+    const inv = invSmall(H, K); return taus.map((t, k) => inv && inv[k * K + k] > 0 ? Math.sqrt(inv[k * K + k] * Math.max(1, chi2r)) : NaN);
+  }
+  // Name each component after the template's expected species: nearest expected lifetime within a factor of
+  // 1.35, each species used once. A name is a label for the reader, not an identification.
+  function ltAssign(taus, lib) {
+    const pairs = []; taus.forEach((t, k) => lib.forEach((s, m) => { const d = Math.abs(Math.log(t / s.exp)); if (d < Math.log(1.35)) pairs.push([d, k, m]); }));
+    pairs.sort((a, b) => a[0] - b[0]); const out = taus.map(() => -1), used = new Set();
+    for (const [, k, m] of pairs) if (out[k] < 0 && !used.has(m)) { out[k] = m; used.add(m); }
+    return out;
+  }
 
   /* ---------- chromatography (simulated AKTA result export) ---------- */
   function makeAkta(ph, prof, seed, dtS) {
@@ -491,7 +740,8 @@ const TR = (function () {
     mulberry32, hash, gauss, unif, trapz, trapzConst, mean, median, pstd, medianOf, countsToVolts, tfcV20, tfcProposed, tfcMeanWindow, autorange,
     irfCurve, irfStats, convExp, shapeTable, shapeFor, cloneTemplate, buildPhases, pumpVolAt, flowAt, timeAtVol, phaseIdxAtVol, phaseIdxAtTime,
     buildProfile, innerFilter, laserLevel, laserLogEntry, laserExcitation, laserStability, createAcq, acqStep, genWaveform, regenBlock, medianWave, decayMetric,
-    makeAkta, aktaAtVol, lowerBound, buildFractions, collectedRange, linreg, fnv, crc32, smoothNoise, sig
+    makeAkta, aktaAtVol, lowerBound, buildFractions, collectedRange, linreg, fnv, crc32, smoothNoise, sig,
+    SPECIES, unitShape, mixShape, LTN, LT, ltJ0, invSmall, ltBasis, ltSolve, ltFitDecay, ltBins, ltDict, ltCompress, ltChi2, nelderMead, runGen, ltGlobalGen, ltGlobal, ltErrors, ltAssign
   };
 })();
 

@@ -179,6 +179,7 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 .ch-sw { display: inline-block; width: 18px; height: 0; border-top: 2px solid; }
 .ch-sw.dash { border-top-style: dashed; } .ch-sw.dot { border-top-style: dotted; } .ch-sw.dashdot { border-top-style: dashed; }
 .ch-sw.pt { width: 7px; height: 7px; border: 0; }
+.ch-sw.pt.dot { border-radius: 50%; }
 .ch-sw.box { width: 12px; height: 10px; border: 0; }
 .ch-info { font-size: 13px; color: var(--text2); min-height: 16px; padding: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ch-plot { position: relative; flex: 1; min-height: 60px; }
@@ -196,11 +197,11 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 .chips span:last-child { border-right: 0; }
 .run-chart { flex: 1 1 58%; min-height: 0; display: flex; flex-direction: column; }
 .run-chart > .pb { flex: 1; min-height: 0; padding: 4px 8px 4px; display: flex; flex-direction: column; }
-.run-bottom { flex: 0 0 clamp(180px, 27%, 248px); display: grid; grid-template-columns: minmax(200px, 26fr) minmax(170px, 20fr) minmax(200px, 28fr) minmax(200px, 26fr); gap: 8px; min-height: 0; }
+.run-bottom { flex: 0 0 clamp(180px, 27%, 248px); display: grid; grid-template-columns: minmax(230px, 24fr) minmax(280px, 30fr) minmax(200px, 23fr) minmax(200px, 23fr); gap: 8px; min-height: 0; }
 .run-bottom > .panel { display: flex; flex-direction: column; min-height: 0; }
 .run-bottom > .panel > .pb { flex: 1; min-height: 0; overflow: auto; padding: 4px 8px; }
 .run-bottom > .panel > .ph { height: 28px; }
-.run-bottom.narrow { grid-template-columns: minmax(220px, 33fr) minmax(150px, 21fr) minmax(220px, 46fr); }
+.run-bottom.narrow { grid-template-columns: minmax(220px, 30fr) minmax(260px, 38fr) minmax(220px, 32fr); }
 .run-bottom.narrow .logcards-tabbed { display: flex; }
 .rv { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .rv td { padding: 0; height: 22px; white-space: nowrap; }
@@ -437,9 +438,8 @@ code, pre, kbd, samp { font-family: inherit; }
 #scr-run .run-top { flex-wrap: nowrap; }
 #work.expanded #scr-run .run-top { flex: none !important; }
 #rCtlNote { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
-/* Scientist view: Run values, Run log and Evidence (Pulse is in the Engineer view) */
-body:not(.eng) .run-bottom { grid-template-columns: minmax(290px, 33fr) minmax(260px, 33fr) minmax(260px, 34fr); }
-body:not(.eng) .run-bottom.narrow { grid-template-columns: minmax(220px, 40fr) minmax(240px, 60fr); }
+/* Run values, Decay, Run log and Evidence for both roles; the Engineer view adds the raw Pulse to the Decay panel */
+#decPanel .ph .note { margin-left: 6px; }
 .run-bottom > .panel > #runValues { padding-top: 3px; }
 #runValues .sysstate { margin-bottom: 1px; }
 #runValues .rv td { height: 21px; line-height: 20px; }
@@ -450,7 +450,14 @@ body:not(.eng) .run-bottom.narrow { grid-template-columns: minmax(220px, 40fr) m
 #runValues .rv td.k { width: 1%; }
 #runValues .rbwrap > .flag, #runValues .rbwrap > b { flex: none; white-space: nowrap; }
 #runValues .rangebar { min-width: 24px; }
-@media (max-width: 820px) { #rCtlNote { flex-basis: 100%; white-space: normal; } #scr-run .scr-h .sep { display: none; } body:not(.eng) .run-bottom, body:not(.eng) .run-bottom.narrow { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 820px) { #rCtlNote { flex-basis: 100%; white-space: normal; } #scr-run .scr-h .sep { display: none; } }
+/* species composition: stacked bar with a 1px surface gap between segments, then the leading species */
+.lt-cell { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.lt-cell.wrap { flex-wrap: wrap; justify-content: flex-end; white-space: normal; row-gap: 0; }
+#runValues .rv td.v .lt-cell.wrap > span:last-child { font-size: 13px; }
+.lt-bar { display: inline-flex; gap: 1px; height: 10px; border-radius: 2px; overflow: hidden; background: #FFFFFF; flex: none; }
+.lt-bar > span { min-width: 1px; height: 100%; }
+.lt-grid { align-items: start; }
 /* Setup: the method phases table fits a half-width panel at 1280 px */
 .tbl.phases th { white-space: normal; vertical-align: bottom; line-height: 1.25; padding-top: 3px; padding-bottom: 3px; }
 .tbl.phases th, .tbl.phases td { padding-left: 6px; padding-right: 6px; }
@@ -1340,6 +1347,30 @@ const TR = (function () {
     for (let i = 0; i < NSAMP; i++) out[i] = st.tab[k * NSAMP + i] * (1 - f) + st.tab[(k + 1) * NSAMP + i] * f;
     return out;
   }
+  // Unit-area negative pulse for any lifetime: the IRF convolved with exp(-t/tau), computed directly
+  function unitShape(pmt, tau, out) {
+    const h = shapeTable(pmt).h; convExp(h, tau, out); const k = 1 / Math.abs(trapz(out, 0, NSAMP - 1, DX));
+    for (let i = 0; i < NSAMP; i++) out[i] *= k;
+    return out;
+  }
+
+  /* ---------- simulated species (read only by the simulator) ---------- */
+  // Each species decays as one exponential convolved with the IRF. Real proteins are multi-exponential;
+  // one lifetime per species is a simulation simplification. tau is the simulated lifetime (assumed). The
+  // lifetime analysis never reads tau: it estimates its own lifetimes from the data. exp is the method
+  // template's expected lifetime (assumed), used only to name the components the analysis finds.
+  const SPECIES = {
+    protA: [
+      { key: 'sc', name: 'Scatter and buffer', short: 'Scatter', tau: 0.25, exp: 0.3 },
+      { key: 'hcp', name: 'Host-cell proteins', short: 'HCP', tau: 2.2, exp: 2.0 },
+      { key: 'mab', name: 'mAb (IgG1)', short: 'mAb', tau: 3.5, exp: 3.6, product: true },
+      { key: 'hmw', name: 'Aggregates (HMW)', short: 'HMW', tau: 5.4, exp: 5.3 }],
+    aav: [
+      { key: 'sc', name: 'Scatter and buffer', short: 'Scatter', tau: 0.25, exp: 0.3 },
+      { key: 'hcp', name: 'Lysate proteins', short: 'Lysate', tau: 2.2, exp: 2.0 },
+      { key: 'empty', name: 'Empty capsids', short: 'Empty', tau: 3.1, exp: 3.0 },
+      { key: 'full', name: 'Full capsids', short: 'Full', tau: 4.4, exp: 4.6, product: true }]
+  };
 
   /* ---------- method templates and the phase model (8.2, 13, Appendix A) ---------- */
   const TEMPLATES = {
@@ -1415,7 +1446,7 @@ const TR = (function () {
   function buildProfile(tplId, ph, mods) {
     mods = mods || {};
     const L = ph.list, P = k => L.find(p => p.key === k), cv = ph.cv;
-    const res = { S: 0, Sbg: 0, Sft: 0, Smab: 0, Sstrip: 0, conc: 0, tau: 3.5, uv: 0, uvTrue: 0, cond: 0, ph: 0 };
+    const res = { S: 0, Sbg: 0, Sft: 0, Smab: 0, Sstrip: 0, conc: 0, tau: 3.5, uv: 0, uvTrue: 0, cond: 0, ph: 0 }, TS = SPECIES[tplId].map(s => s.tau);
     if (tplId === 'protA') {
       const Vv = 1.40, kF = mods.kF || 0.471, cMax = 25.0;
       const bg = { eq: 0.0080, load: 0.0080, w1: 0.0088, w2: 0.00824, el: 0.00784, strip: 0.00784, cipeq: 0.00808, naoh: 0.0090, reeq: 0.00920 };
@@ -1430,11 +1461,17 @@ const TR = (function () {
       const xA = pEl.v0 + ea * el.h, xB = pEl.v0 + eb * el.h;
       const elScale = mods.elutionScale || 1;
       function blend(tab, x, w) { let v = tab[L[0].key]; for (let i = 1; i < L.length; i++) v += (tab[L[i].key] - tab[L[i - 1].key]) * sig((x - (L[i].v0 + Vv)) / w); return v; }
+      // species split (sums to the same totals): the 4 % rise over the last CV of the load is mAb breakthrough;
+      // the buffer excess in CIP equilibration and re-equilibration is mAb carry-over; HMW rises from 2 % to 27 %
+      // of the product across the elution peak; the strip peak is mostly aggregate
+      const carry = { eq: 0, load: 0, w1: 0, w2: 0, el: 0, strip: 0, cipeq: 0.00008, naoh: 0, reeq: 0.0012 };
+      res.comp = [0, 0, 0, 0];
       res.at = function (x) {
-        const Sbg = blend(bg, x, 0.25);
-        let lev = ftA * sig((Math.min(x, xEnd) - xFront) / 0.35) * (1 + 0.04 * Math.min(1, Math.max(0, (Math.min(x, xEnd) - (pW1.v0 - cv)) / cv)));
+        const Sbg = blend(bg, x, 0.25), Sco = Math.max(0, blend(carry, x, 0.25));
+        const xl = Math.min(x, xEnd), base = ftA * sig((xl - xFront) / 0.35), bt = base * 0.04 * Math.min(1, Math.max(0, (xl - (pW1.v0 - cv)) / cv));
+        let lev = base + bt;
         if (x < pLoad.v0 + Vv - 2) lev = 0;
-        const Sft = lev * (x > xEnd ? Math.exp(-(x - xEnd) / 2.6) : 1);
+        const tail = x > xEnd ? Math.exp(-(x - xEnd) / 2.6) : 1, Sft = lev * tail, Sbt = lev > 0 ? bt * tail : 0;
         const uvFt = (x < pLoad.v0 + Vv - 2 ? 0 : 3950 * sig((Math.min(x, xEnd) - xFront) / 0.35)) * (x > xEnd ? Math.exp(-(x - xEnd) / 1.9) : 1);
         const c = cMax * elScale * lookup(el, x - pEl.v0);
         const Smab = kF * c * innerFilter(c);
@@ -1442,9 +1479,9 @@ const TR = (function () {
         const Sstrip = 0.15 * gs;
         res.Sbg = Sbg; res.Sft = Sft; res.Smab = Smab; res.Sstrip = Sstrip; res.conc = c;
         res.S = Sbg + Sft + Smab + Sstrip;
-        const w = Math.min(1, Math.max(0, (x - xA) / (xB - xA)));
-        const tauMab = x < pStrip.v0 ? 3.5 - 0.3 * w : 3.5;
-        res.tau = (Sbg * 3.5 + Sft * 3.5 + Smab * tauMab + Sstrip * 3.5) / res.S;
+        const w = Math.min(1, Math.max(0, (x - xA) / (xB - xA))), fH = 0.02 + 0.25 * w * w;
+        const cp = res.comp; cp[0] = Sbg - Sco; cp[1] = Sft - Sbt; cp[2] = Sco + Sbt + Smab * (1 - fH) + 0.4 * Sstrip; cp[3] = Smab * fH + 0.6 * Sstrip;
+        res.tau = (cp[0] * TS[0] + cp[1] * TS[1] + cp[2] * TS[2] + cp[3] * TS[3]) / res.S;
         res.uvTrue = blend(uvb, x, 0.3) + uvFt + 280 * c + 160 * gs;
         res.uv = Math.min(3800, res.uvTrue);
         res.cond = blend(cond, x, 0.35); res.ph = blend(pH, x, 0.6);
@@ -1461,6 +1498,7 @@ const TR = (function () {
       const xFront = pLoad.v0 + Vv + 0.15, xEnd = pW1.v0 + Vv;
       const el = peakShape(0.9, 0.12, 0.45, 0.002, 6000);
       function blend(tab, x, w) { let v = tab[L[0].key]; for (let i = 1; i < L.length; i++) v += (tab[L[i].key] - tab[L[i - 1].key]) * sig((x - (L[i].v0 + Vv)) / w); return v; }
+      res.comp = [0, 0, 0, 0];
       res.at = function (x) {
         const Sbg = blend(bg, x, 0.08);
         const varF = 1 + 0.15 * smoothNoise(SEED + (mods.varSeed || 7), x, [0.31, 0.53, 0.87, 1.4]);
@@ -1473,7 +1511,11 @@ const TR = (function () {
         const gs = Math.exp(-0.5 * ((x - (pStrip.v0 + Vv + 0.4)) / 0.3) ** 2);
         const Sstrip = 0.08 * gs;
         res.Sbg = Sbg; res.Sft = Sft; res.Smab = Smab; res.Sstrip = Sstrip; res.conc = 0;
-        res.S = Sbg + Sft + Smab + Sstrip; res.tau = 3.5;
+        res.S = Sbg + Sft + Smab + Sstrip;
+        // species split: full capsids elute slightly later than empty ones (30 % of capsids at the front, 50 % in the tail)
+        const fF = 0.30 + 0.20 * sig((x - (pEl.v0 + Vv + 0.95)) / 0.12), cp = res.comp;
+        cp[0] = Sbg; cp[1] = Sft + Sstrip; cp[2] = Smab * (1 - fF); cp[3] = Smab * fF;
+        res.tau = (cp[0] * TS[0] + cp[1] * TS[1] + cp[2] * TS[2] + cp[3] * TS[3]) / res.S;
         res.uvTrue = blend(uvb, x, 0.1) + uvFt + 480 * pk + 60 * gs;
         res.uv = Math.min(3800, res.uvTrue);
         res.cond = blend(cond, x, 0.1); res.ph = blend(pH, x, 0.2);
@@ -1535,7 +1577,19 @@ const TR = (function () {
     A.ladder = LADDERS[o.pmt];
     A.buf = new Float64Array(10 * NSAMP); A.shape = new Float64Array(NSAMP); A.med = new Float64Array(NSAMP); A.lastWave = new Float64Array(NSAMP); A.lastMed = new Float64Array(NSAMP); A.hasLast = false;
     A.irfPeak = shapeTable(o.pmt).stats.peakIdx;
+    // o.taus: one lifetime per simulated species; signalAt then also returns comp, the signal of each species
+    A.K = o.taus ? o.taus.length : 0;
+    if (A.K) { A.comp = new Float32Array(cap * A.K); A.tj = new Float32Array(cap); A.ush = new Float64Array(NSAMP); }
+    // o.keepDecays: keep each block's decay (mean of its 10 waveforms) for the lifetime analysis
+    if (o.keepDecays) { A.dw = new Float32Array(cap * LTN); A.dsd = new Float32Array(cap); A.clip = new Uint8Array(cap); A.mw = new Float64Array(NSAMP); A.ltJ0 = ltJ0(o.pmt); }
     return A;
+  }
+  // Pulse shape of block i of a multi-species acquisition: species fractions times their unit pulses.
+  // Every lifetime is scaled by the block's timing jitter tj.
+  function mixShape(A, i, out) {
+    const K = A.K, ts = A.o.taus, tmp = A.ush; out.fill(0);
+    for (let k = 0; k < K; k++) { const f = A.comp[i * K + k]; if (!(f > 0)) continue; unitShape(A.o.pmt, ts[k] * A.tj[i], tmp); for (let j = 0; j < NSAMP; j++) out[j] += f * tmp[j]; }
+    return out;
   }
   function genWaveform(A, i, w, S, E, tau, step, out, shapeBuf) {
     // rq: real input range; equals the stated range unless o.rangeMap is 'shift' (discrepancy 2 what-if)
@@ -1572,26 +1626,43 @@ const TR = (function () {
       const i = A.n, rb = mulberry32(hash(o.seed, o.stream, i, 0));
       const tMid = A.tCursor + 0.5, sg = o.signalAt(tMid, i);
       const disc = (o.pDisc || 0) > 0 && unif(rb) < o.pDisc;
-      const tauB = sg.tau + (o.tauJit || 0) * gauss(rb);
+      let tauB;
+      if (A.K) { // species fractions and timing jitter are stored first, so regenBlock rebuilds the same pulse
+        const K = A.K, c = sg.comp, jit = (o.tauJit || 0) * gauss(rb); let s = 0, tm = 0;
+        for (let k = 0; k < K; k++) s += Math.max(0, c[k]);
+        for (let k = 0; k < K; k++) A.comp[i * K + k] = s > 0 ? Math.max(0, c[k]) / s : (k === 0 ? 1 : 0);
+        A.tj[i] = 1 + jit / 3.5;
+        for (let k = 0; k < K; k++) tm += A.comp[i * K + k] * o.taus[k] * A.tj[i];
+        tauB = tm;
+      } else tauB = sg.tau + (o.tauJit || 0) * gauss(rb);
       A.t[i] = tMid; A.vp[i] = sg.vp || 0; A.u[i] = sg.u || 0; A.phase[i] = sg.phase || 0; A.S[i] = sg.S; A.E[i] = sg.E; A.tau[i] = tauB;
       A.step[i] = A.cur; A.bc[i] = A.blocksCompleted;
       if (disc) { // timed-out block: no waveforms; v2.0 re-decides on the same last waveform (no change)
         A.disc[i] = 1; for (let f = 0; f < 4; f++) A.F[f][i] = NaN; A.ruse[i] = NaN; A.ruseMax[i] = NaN; A.bm[i] = NaN; A.bmV[i] = NaN; A.decay[i] = NaN; A.predUse[i] = NaN; A.decision[i] = 0;
+        if (A.dw) A.dsd[i] = NaN;
         A.n++; made++; A.tCursor += ACQ.timeoutS; continue;
       }
       const st = A.ladder[A.cur - 1], T = T_of(st.nd), range = st.range, rq = realRange(range, o.rangeMap);
-      const sh = shapeFor(o.pmt, tauB, A.shape);
-      let f0 = 0, f1 = 0, f2 = 0, f3 = 0, ru = 0, ruMax = 0, over = 0;
+      const sh = A.K ? mixShape(A, i, A.shape) : shapeFor(o.pmt, tauB, A.shape);
+      let f0 = 0, f1 = 0, f2 = 0, f3 = 0, ru = 0, ruMax = 0, over = 0, clip = false;
       for (let w = 0; w < 10; w++) {
         const v = A.buf.subarray(w * NSAMP, (w + 1) * NSAMP);
         genWaveform(A, i, w, sg.S, sg.E, tauB, A.cur, v, sh);
         const a = tfcV20(v, T), p = tfcProposed(v, T, WIN0, WIN1);
         f0 += a.display_fluorescence_V_ns; f1 += p.display_fluorescence_V_ns; f2 += tfcMeanWindow(v, T, WIN0, WIN1); f3 += p.window_30_70ns_display_fluorescence_V_ns;
         let mn = Infinity; for (let j = 0; j < NSAMP; j++) if (v[j] < mn) mn = v[j];
+        if (mn <= -rq * (1 - 1e-9)) clip = true;
         const use = (p.baseline_median_V - mn) / rq; ru += use; if (use > ruMax) ruMax = use; if (use > ACQ.limit) over++;
       }
       A.F[0][i] = f0 / 10; A.F[1][i] = f1 / 10; A.F[2][i] = f2 / 10; A.F[3][i] = f3 / 10;
       A.ruse[i] = ru / 10; A.ruseMax[i] = ruMax; A.nOver[i] = over;
+      if (A.dw) { // block decay: mean of the 10 waveforms, baseline removed, ND-corrected, positive; per-sample noise SD
+        const m = A.mw, o0 = i * LTN, j0 = A.ltJ0;
+        for (let j = 0; j < NSAMP; j++) { let s = 0; for (let w = 0; w < 10; w++) s += A.buf[w * NSAMP + j]; m[j] = s / 10; }
+        const b = mean(m, 0, NBASE), q = rq / 127 / Math.sqrt(120); // quantisation floor for a mean of 10 waveforms
+        for (let j = 0; j < LTN; j++) A.dw[o0 + j] = -(m[j0 + j] - b) / T;
+        A.dsd[i] = Math.max(pstd(m, 0, NBASE), q) / T; A.clip[i] = clip ? 1 : 0;
+      }
       for (let j = 0; j < NSAMP; j++) A.med[j] = median10(A.buf, j);
       A.decay[i] = A.ruse[i] >= 0.05 ? decayMetric(A.med, A.irfPeak) : NaN;
       if (o.beamPerBlock) { const bmRel = sg.E * (1 + 0.003 * gauss(rb)); A.bm[i] = bmRel; A.bmV[i] = 0.28 * bmRel; } else { A.bm[i] = NaN; A.bmV[i] = NaN; }
@@ -1617,11 +1688,196 @@ const TR = (function () {
   }
   function regenBlock(A, i) { // regenerate the 10 waveforms of block i, identical to acquisition
     const out = []; if (A.disc[i]) return out;
-    const sh = shapeFor(A.o.pmt, A.tau[i], new Float64Array(NSAMP));
+    const sh = A.K ? mixShape(A, i, new Float64Array(NSAMP)) : shapeFor(A.o.pmt, A.tau[i], new Float64Array(NSAMP));
     for (let w = 0; w < 10; w++) out.push(genWaveform(A, i, w, A.S[i], A.E[i], A.tau[i], A.step[i], new Float64Array(NSAMP), sh));
     return out;
   }
   function medianWave(waves) { const buf = new Float64Array(10 * NSAMP); waves.forEach((w, k) => buf.set(w, k * NSAMP)); const m = new Float64Array(NSAMP); for (let j = 0; j < NSAMP; j++) m[j] = median10(buf, j); return m; }
+
+  /* ---------- TRIFLE lifetime analysis (Proposed; after Hales et al., J Chromatogr A 1641, 461968, 2021) ---------- */
+  // Global analysis: every block decay is a non-negative sum of K exponentials convolved with the stored IRF.
+  // The lifetimes are shared by the whole run and the amplitudes are free for every block, so the amplitudes
+  // against time are decay-associated chromatograms. No elution profile is assumed and no reference decays
+  // are used; the number of components is chosen by the data.
+  const LTN = 200; // decay window: 200 samples (40 ns) from 5 ns before the IRF peak
+  const LT = { min: 0.05, max: 20, sep: 1.2, gain: 3, kMax: 5, seeds: [0.3, 1.0, 2.0, 4.5, 7.0] };
+  function ltJ0(pmt) { return Math.max(0, shapeTable(pmt).stats.peakIdx - 25); }
+  function invSmall(M, n) { // Gauss-Jordan inverse with partial pivoting; null when (nearly) singular
+    const a = Float64Array.from(M), inv = new Float64Array(n * n); let scale = 0;
+    for (let i = 0; i < n; i++) { inv[i * n + i] = 1; scale = Math.max(scale, Math.abs(a[i * n + i])); }
+    for (let c = 0; c < n; c++) {
+      let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(a[r * n + c]) > Math.abs(a[p * n + c])) p = r;
+      const pv = a[p * n + c]; if (!(Math.abs(pv) > 1e-10 * scale)) return null;
+      if (p !== c) for (let k = 0; k < n; k++) { let t = a[p * n + k]; a[p * n + k] = a[c * n + k]; a[c * n + k] = t; t = inv[p * n + k]; inv[p * n + k] = inv[c * n + k]; inv[c * n + k] = t; }
+      for (let k = 0; k < n; k++) { a[c * n + k] /= pv; inv[c * n + k] /= pv; }
+      for (let r = 0; r < n; r++) { if (r === c) continue; const f = a[r * n + c]; if (f) for (let k = 0; k < n; k++) { a[r * n + k] -= f * a[c * n + k]; inv[r * n + k] -= f * inv[c * n + k]; } }
+    }
+    return inv;
+  }
+  // Basis: unit-area decays (1/ns) for the given lifetimes on the decay window, their Gram matrix and the
+  // inverse of the Gram matrix on every subset of components (for the exact non-negative solve)
+  function ltBasis(pmt, taus) {
+    const K = taus.length, j0 = ltJ0(pmt), g = new Float64Array(K * LTN), tmp = new Float64Array(NSAMP), G = new Float64Array(K * K);
+    for (let k = 0; k < K; k++) { unitShape(pmt, taus[k], tmp); for (let j = 0; j < LTN; j++) g[k * LTN + j] = -tmp[j0 + j]; }
+    for (let a = 0; a < K; a++) for (let b = a; b < K; b++) { let s = 0; for (let j = 0; j < LTN; j++) s += g[a * LTN + j] * g[b * LTN + j]; G[a * K + b] = G[b * K + a] = s; }
+    const subs = [];
+    for (let m = 1; m < (1 << K); m++) {
+      const idx = []; for (let k = 0; k < K; k++) if (m >> k & 1) idx.push(k);
+      const n = idx.length, sub = new Float64Array(n * n); for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) sub[r * n + c] = G[idx[r] * K + idx[c]];
+      const inv = invSmall(sub, n); if (inv) subs.push({ idx, inv, n });
+    }
+    // diagonal of the inverse Gram matrix: amplitude variance per unit sample variance (unconstrained)
+    const Gi = invSmall(G, K), dInv = new Float64Array(K); for (let k = 0; k < K; k++) dInv[k] = Gi ? Gi[k * K + k] : NaN;
+    return { pmt, K, taus: taus.slice(), g, G, subs, j0, dInv, p: new Float64Array(K), x: new Float64Array(K) };
+  }
+  // Non-negative least squares, exact for small K: the solution equals the unconstrained solution on its own
+  // support, so the best support with all amplitudes positive is the answer. Returns a'Ga - 2a'p.
+  function ltSolve(B, p, out) {
+    let best = 0; out.fill(0); const x = B.x;
+    for (const s of B.subs) {
+      const n = s.n, idx = s.idx, inv = s.inv; let ok = true, f = 0;
+      for (let r = 0; r < n; r++) { let v = 0; for (let c = 0; c < n; c++) v += inv[r * n + c] * p[idx[c]]; if (!(v > 0)) { ok = false; break; } x[r] = v; f -= v * p[idx[r]]; }
+      if (ok && f < best) { best = f; out.fill(0); for (let r = 0; r < n; r++) out[idx[r]] = x[r]; }
+    }
+    return best;
+  }
+  // Amplitudes (V·ns) of the decay y[o0 .. o0 + LTN); returns the residual sum of squares (V²)
+  function ltFitDecay(B, y, o0, out) {
+    const K = B.K, g = B.g, p = B.p; let yy = 0; p.fill(0);
+    for (let j = 0; j < LTN; j++) { const v = y[o0 + j]; yy += v * v; for (let k = 0; k < K; k++) p[k] += g[k * LTN + j] * v; }
+    return Math.max(0, yy + ltSolve(B, p, out));
+  }
+  // Bins for the global fit: noise-weighted means of consecutive block decays. The model is linear in the
+  // amplitudes, so a bin is itself a non-negative mixture of the same decays. Discarded and clipped blocks,
+  // and blocks for which skip(i) is true, are left out. w is the inverse noise variance of each bin.
+  function ltBins(A, i0, i1, per, skip) {
+    const nb = Math.max(0, Math.ceil((i1 - i0) / per)), y = new Float64Array(nb * LTN), w = new Float64Array(nb), at = new Int32Array(nb), nBl = new Int32Array(nb); let n = 0;
+    for (let b = 0; b < nb; b++) {
+      const a = i0 + b * per, e = Math.min(i1, a + per), o = n * LTN; let sw = 0, c = 0;
+      for (let i = a; i < e; i++) {
+        if (A.disc[i] || A.clip[i] || (skip && skip(i))) continue; const s = A.dsd[i]; if (!(s > 0)) continue;
+        const wi = 1 / (s * s), oi = i * LTN; sw += wi; c++; for (let j = 0; j < LTN; j++) y[o + j] += wi * A.dw[oi + j];
+      }
+      if (sw > 0) { for (let j = 0; j < LTN; j++) y[o + j] /= sw; w[n] = sw; at[n] = a; nBl[n] = c; n++; } else for (let j = 0; j < LTN; j++) y[o + j] = 0;
+    }
+    return { n, y, w, at, nBl };
+  }
+  // Compression for the global fit. Every candidate decay (any lifetime from LT.min to LT.max) lies, to 1e-6, in
+  // the span of a few orthonormal vectors U, found by Gram-Schmidt with pivoting over a dense lifetime grid. A bin
+  // is then kept as its coefficients c = U'y and its y'y; g'y = (U'g)'c is exact for g in the span, so chi-squared
+  // is unchanged and each evaluation costs K x M instead of K x 200 per bin.
+  const ltDictCache = {};
+  function ltDict(pmt) {
+    if (ltDictCache[pmt]) return ltDictCache[pmt];
+    const j0 = ltJ0(pmt), tmp = new Float64Array(NSAMP), cols = [], U = [];
+    for (let k = 0; k <= 160; k++) { unitShape(pmt, LT.min * Math.pow(LT.max / LT.min, k / 160), tmp); const c = new Float64Array(LTN); for (let j = 0; j < LTN; j++) c[j] = -tmp[j0 + j]; cols.push(c); }
+    const nrm = c => { let s = 0; for (let j = 0; j < LTN; j++) s += c[j] * c[j]; return Math.sqrt(s); }, scale = Math.max(...cols.map(nrm));
+    const orth = (q, c) => { let d = 0; for (let j = 0; j < LTN; j++) d += q[j] * c[j]; for (let j = 0; j < LTN; j++) c[j] -= d * q[j]; };
+    while (U.length < 40) {
+      let bi = -1, bn = 0; cols.forEach((c, i) => { const v = nrm(c); if (v > bn) { bn = v; bi = i; } });
+      if (bi < 0 || bn < 1e-7 * scale) break;
+      const q = Float64Array.from(cols[bi]); for (const u of U) orth(u, q); const qn = nrm(q); for (let j = 0; j < LTN; j++) q[j] /= qn;
+      U.push(q); for (const c of cols) orth(q, c);
+    }
+    const flat = new Float64Array(U.length * LTN); U.forEach((u, m) => flat.set(u, m * LTN));
+    return (ltDictCache[pmt] = { U: flat, M: U.length });
+  }
+  function ltCompress(bins, pmt) {
+    const D = ltDict(pmt), M = D.M, c = new Float64Array(bins.n * M), yy = new Float64Array(bins.n);
+    for (let b = 0; b < bins.n; b++) { const o = b * LTN; let s = 0; for (let j = 0; j < LTN; j++) s += bins.y[o + j] * bins.y[o + j]; yy[b] = s; for (let m = 0; m < M; m++) { let v = 0; const om = m * LTN; for (let j = 0; j < LTN; j++) v += D.U[om + j] * bins.y[o + j]; c[b * M + m] = v; } }
+    bins.cmp = { pmt, M, c, yy, U: D.U }; return bins;
+  }
+  function ltChi2(bins, B) {
+    const K = B.K, a = new Float64Array(K); let c2 = 0;
+    if (!bins.cmp || bins.cmp.pmt !== B.pmt) { for (let b = 0; b < bins.n; b++) c2 += bins.w[b] * ltFitDecay(B, bins.y, b * LTN, a); return c2; }
+    const { M, c, yy, U } = bins.cmp, h = new Float64Array(K * M), p = B.p;
+    for (let k = 0; k < K; k++) for (let m = 0; m < M; m++) { let v = 0; for (let j = 0; j < LTN; j++) v += U[m * LTN + j] * B.g[k * LTN + j]; h[k * M + m] = v; }
+    for (let b = 0; b < bins.n; b++) {
+      const o = b * M; for (let k = 0; k < K; k++) { let v = 0; for (let m = 0; m < M; m++) v += h[k * M + m] * c[o + m]; p[k] = v; }
+      c2 += bins.w[b] * Math.max(0, yy[b] + ltSolve(B, p, a));
+    }
+    return c2;
+  }
+  // Nelder-Mead as a generator that yields after every evaluation, so a long fit can run in slices
+  function* nmGen(f, x0, step, iters) {
+    const n = x0.length; let P = [x0.slice()]; for (let k = 0; k < n; k++) { const x = x0.slice(); x[k] += step; P.push(x); }
+    let F = []; for (const p of P) { F.push(f(p)); yield; }
+    for (let it = 0; it < iters; it++) {
+      const ord = F.map((v, i) => i).sort((a, b) => F[a] - F[b]); P = ord.map(i => P[i]); F = ord.map(i => F[i]);
+      if (F[n] - F[0] <= 1e-9 * Math.abs(F[0]) + 1e-12) break;
+      const c = new Array(n).fill(0); for (let i = 0; i < n; i++) for (let k = 0; k < n; k++) c[k] += P[i][k] / n;
+      const pt = t => c.map((v, k) => v + t * (P[n][k] - v));
+      const xr = pt(-1), fr = f(xr); yield;
+      if (fr < F[0]) { const xe = pt(-2), fe = f(xe); yield; if (fe < fr) { P[n] = xe; F[n] = fe; } else { P[n] = xr; F[n] = fr; } }
+      else if (fr < F[n - 1]) { P[n] = xr; F[n] = fr; }
+      else {
+        const xc = fr < F[n] ? pt(-0.5) : pt(0.5), fc = f(xc); yield;
+        if (fc < Math.min(fr, F[n])) { P[n] = xc; F[n] = fc; }
+        else for (let i = 1; i <= n; i++) { P[i] = P[i].map((v, k) => P[0][k] + 0.5 * (v - P[0][k])); F[i] = f(P[i]); yield; }
+      }
+    }
+    let b = 0; for (let i = 1; i <= n; i++) if (F[i] < F[b]) b = i;
+    return { x: P[b], f: F[b] };
+  }
+  function runGen(g) { let r; do r = g.next(); while (!r.done); return r.value; }
+  function nelderMead(f, x0, step, iters) { return runGen(nmGen(f, x0, step, iters)); }
+  // chi-squared as a function of log lifetimes, amplitudes solved for every bin (variable projection)
+  function ltObjective(pmt, bins) {
+    return u => {
+      const t = u.map(Math.exp).sort((a, b) => a - b);
+      if (t[0] < LT.min || t[t.length - 1] > LT.max) return 1e300;
+      for (let k = 1; k < t.length; k++) if (t[k] / t[k - 1] < LT.sep) return 1e300;
+      return ltChi2(bins, ltBasis(pmt, t));
+    };
+  }
+  // Global lifetime fit. From the previous lifetimes (or one component at 3 ns), a component is added while it
+  // lowers chi-squared by more than LT.gain times the number of amplitudes it adds (one per bin). A generator:
+  // ltGlobal runs it to the end; the run model steps it a few milliseconds at a time.
+  function* ltGlobalGen(pmt, bins, prev, opt) {
+    opt = opt || {}; const kMax = opt.kMax || LT.kMax, iters = opt.iters || 160;
+    if (!bins.cmp) ltCompress(bins, pmt);
+    const f = ltObjective(pmt, bins);
+    const dof = k => bins.n * LTN - bins.n * k - k;
+    function* fit(t0, it) { const r = yield* nmGen(f, t0.map(Math.log), 0.12, it); return { taus: r.x.map(Math.exp).sort((a, b) => a - b), chi2: r.f }; }
+    let cur = yield* fit(prev && prev.length ? prev : [3.0], iters);
+    const hist = [{ K: cur.taus.length, chi2: cur.chi2, chi2r: cur.chi2 / dof(cur.taus.length), taus: cur.taus, accepted: true }];
+    while (cur.taus.length < kMax) {
+      let best = null;
+      for (const s of LT.seeds) {
+        if (cur.taus.some(t => Math.abs(Math.log(t / s)) < 0.3)) continue;
+        const r = yield* fit(cur.taus.concat([s]), 50); if (r.chi2 < 1e299 && (!best || r.chi2 < best.chi2)) best = r;
+      }
+      if (!best) break;
+      best = yield* fit(best.taus, iters);
+      const gain = cur.chi2 - best.chi2, ok = gain > LT.gain * bins.n;
+      hist.push({ K: best.taus.length, chi2: best.chi2, chi2r: best.chi2 / dof(best.taus.length), taus: best.taus, gain, accepted: ok });
+      if (!ok) break;
+      cur = best;
+    }
+    return { taus: cur.taus, chi2: cur.chi2, chi2r: cur.chi2 / dof(cur.taus.length), dof: dof(cur.taus.length), nBins: bins.n, hist };
+  }
+  function ltGlobal(pmt, bins, prev, opt) { return runGen(ltGlobalGen(pmt, bins, prev, opt)); }
+  // Standard errors of the lifetimes from the curvature of chi-squared (amplitudes profiled out), scaled by
+  // the reduced chi-squared
+  function ltErrors(pmt, bins, taus, chi2r) {
+    const K = taus.length, c = t => ltChi2(bins, ltBasis(pmt, t)), h = taus.map(t => t * 0.004), f0 = c(taus), H = new Float64Array(K * K);
+    const at = (d) => c(taus.map((t, k) => t + (d[k] || 0)));
+    for (let a = 0; a < K; a++) for (let b = a; b < K; b++) {
+      let v;
+      if (a === b) { const d = []; d[a] = h[a]; const fp = at(d); d[a] = -h[a]; v = (fp - 2 * f0 + at(d)) / (h[a] * h[a]); }
+      else { const d = []; d[a] = h[a]; d[b] = h[b]; const fpp = at(d); d[b] = -h[b]; const fpm = at(d); d[a] = -h[a]; const fmm = at(d); d[b] = h[b]; const fmp = at(d); v = (fpp - fpm - fmp + fmm) / (4 * h[a] * h[b]); }
+      H[a * K + b] = H[b * K + a] = v / 2;
+    }
+    const inv = invSmall(H, K); return taus.map((t, k) => inv && inv[k * K + k] > 0 ? Math.sqrt(inv[k * K + k] * Math.max(1, chi2r)) : NaN);
+  }
+  // Name each component after the template's expected species: nearest expected lifetime within a factor of
+  // 1.35, each species used once. A name is a label for the reader, not an identification.
+  function ltAssign(taus, lib) {
+    const pairs = []; taus.forEach((t, k) => lib.forEach((s, m) => { const d = Math.abs(Math.log(t / s.exp)); if (d < Math.log(1.35)) pairs.push([d, k, m]); }));
+    pairs.sort((a, b) => a[0] - b[0]); const out = taus.map(() => -1), used = new Set();
+    for (const [, k, m] of pairs) if (out[k] < 0 && !used.has(m)) { out[k] = m; used.add(m); }
+    return out;
+  }
 
   /* ---------- chromatography (simulated AKTA result export) ---------- */
   function makeAkta(ph, prof, seed, dtS) {
@@ -1667,7 +1923,8 @@ const TR = (function () {
     mulberry32, hash, gauss, unif, trapz, trapzConst, mean, median, pstd, medianOf, countsToVolts, tfcV20, tfcProposed, tfcMeanWindow, autorange,
     irfCurve, irfStats, convExp, shapeTable, shapeFor, cloneTemplate, buildPhases, pumpVolAt, flowAt, timeAtVol, phaseIdxAtVol, phaseIdxAtTime,
     buildProfile, innerFilter, laserLevel, laserLogEntry, laserExcitation, laserStability, createAcq, acqStep, genWaveform, regenBlock, medianWave, decayMetric,
-    makeAkta, aktaAtVol, lowerBound, buildFractions, collectedRange, linreg, fnv, crc32, smoothNoise, sig
+    makeAkta, aktaAtVol, lowerBound, buildFractions, collectedRange, linreg, fnv, crc32, smoothNoise, sig,
+    SPECIES, unitShape, mixShape, LTN, LT, ltJ0, invSmall, ltBasis, ltSolve, ltFitDecay, ltBins, ltDict, ltCompress, ltChi2, nelderMead, runGen, ltGlobalGen, ltGlobal, ltErrors, ltAssign
   };
 })();
 
@@ -1719,7 +1976,7 @@ const CH = (function () {
         if (s.legend === false) continue;
         const it = document.createElement('span'); it.className = 'ch-li' + (s.visible ? '' : ' off'); it.setAttribute('role', 'listitem'); it.tabIndex = 0;
         it.title = (s.tip || s.label) + (s.toggle === false ? '' : '. Click to show or hide.');
-        const sw = document.createElement('span'); sw.className = 'ch-sw ' + (s.dash || 'solid'); sw.style.borderTopColor = s.color; if (s.mode === 'points') { sw.className = 'ch-sw pt'; sw.style.background = s.color; }
+        const sw = document.createElement('span'); sw.className = 'ch-sw ' + (s.dash || 'solid'); sw.style.borderTopColor = s.color; if (s.mode === 'points') { sw.className = 'ch-sw pt' + (s.shape === 'dot' ? ' dot' : ''); sw.style.background = s.color; }
         const lab = document.createElement('span'); lab.className = 'ch-ll'; lab.textContent = s.label;
         const val = document.createElement('span'); val.className = 'ch-lv'; s._valEl = val;
         it.append(sw, lab, val); if (s.tag) { const tg = document.createElement('span'); tg.className = 'tag'; tg.dataset.scope = s.tagScope || 'always'; tg.textContent = s.tag; it.append(tg); }
@@ -1953,6 +2210,8 @@ const CH = (function () {
       else ctx.clearRect(this.px0 + c0, 0, c1 - c0 + 1, this.H);
       this.panels.forEach((p, pi) => {
         ctx.save(); ctx.beginPath(); ctx.rect(p.x + (full ? 0 : c0), p.y, full ? p.w : c1 - c0 + 1, p.h); ctx.clip();
+        // panels that paint their own content (decay map) draw the changed pixel columns first
+        if (p.cfg.draw) p.cfg.draw(ctx, p, this, full ? 0 : c0, full ? this.pw - 1 : c1);
         // low-precision shading (warning colour at 12 % opacity), drawn from the shading series
         for (const s of this.series) {
           if (!s.shade || !s.b || s.panel !== p.key) continue;
@@ -1961,7 +2220,8 @@ const CH = (function () {
         }
         for (const side of ['l', 'r']) {
           const sc = this.scales[pi][side]; if (!sc) continue;
-          const ordered = this.series.filter(s => s.visible && s.panel === p.key && (s.side || 'l') === side && !s.shadeOnly);
+          // drawing order follows the legend unless a series sets z (higher draws later, on top)
+          const ordered = this.series.filter(s => s.visible && s.panel === p.key && (s.side || 'l') === side && !s.shadeOnly).sort((a, b) => (a.z || 0) - (b.z || 0));
           for (const s of ordered) {
             if (s.mode === 'points') { this.drawPoints(ctx, p, sc, s); continue; }
             const b = s.b; if (!b) continue;
@@ -1991,10 +2251,13 @@ const CH = (function () {
     }
     drawPoints(ctx, p, sc, s) {
       const d = s.src(); if (!d) return; ctx.fillStyle = s.color; ctx.strokeStyle = s.color; ctx.lineWidth = 1;
+      const r = (s.size || 6) / 2;
       for (let i = 0; i < d.n; i++) {
         const x = this.xToPx(d.x[i]), y = this.yToPx(p, sc, d.y[i]); if (!isFinite(y)) continue;
         if (d.ylo) { const a = this.yToPx(p, sc, d.ylo[i]), b = this.yToPx(p, sc, d.yhi[i]); ctx.beginPath(); ctx.moveTo(x + 0.5, a); ctx.lineTo(x + 0.5, b); ctx.stroke(); }
-        const open = d.open && d.open[i]; if (open) { ctx.strokeRect(x - 3, y - 3, 6, 6); } else ctx.fillRect(x - 3, y - 3, 6, 6);
+        const open = d.open && d.open[i];
+        if (s.shape === 'dot') { ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI); if (open) ctx.stroke(); else ctx.fill(); }
+        else if (open) ctx.strokeRect(x - r, y - r, 2 * r, 2 * r); else ctx.fillRect(x - r, y - r, 2 * r, 2 * r);
       }
     }
     drawOver() {
@@ -2285,7 +2548,8 @@ const M = (function () {
     const R = S.readiness = newReadiness(); R.started = true; R.t0 = S.simT;
     R.pmtConfirmed = S._pmtConfirmed || false;
     const pmt = S.setup.pmt;
-    R.acq = TR.createAcq({ seed: TR.SEED, stream: 2, pmt, ...pmtSim(pmt), cap: 400, tEnd: 330, signalAt: (tS) => ({ S: 0.0080 * (1 + 0.004 * TR.smoothNoise(TR.SEED + 3, (R.t0 + tS) / 60, [3.1, 7.7, 13.3])), tau: 3.5, E: S.fault === 'laser' ? 0 : 1, u: 0, vp: 0, phase: 0 }) });
+    // running buffer: scatter and buffer only, the same species as the run's buffer phases
+    R.acq = TR.createAcq({ seed: TR.SEED, stream: 2, pmt, ...pmtSim(pmt), cap: 400, tEnd: 330, taus: [TR.SPECIES.protA[0].tau], signalAt: (tS) => ({ S: 0.0080 * (1 + 0.004 * TR.smoothNoise(TR.SEED + 3, (R.t0 + tS) / 60, [3.1, 7.7, 13.3])), comp: [1], E: S.fault === 'laser' ? 0 : 1, u: 0, vp: 0, phase: 0 }) });
     audit('readiness', 'Readiness checks started.');
     emit('readiness');
   }
@@ -2353,7 +2617,7 @@ const M = (function () {
 
   /* ---------- run model ---------- */
   function newRun() {
-    const s = S.setup, tpl = template(), ph = TR.buildPhases(tpl), prof = TR.buildProfile(tpl.id === 'free' ? 'protA' : tpl.id, ph, {});
+    const s = S.setup, tpl = template(), ph = TR.buildPhases(tpl), spKey = tpl.id === 'free' ? 'protA' : tpl.id, prof = TR.buildProfile(spKey, ph, {});
     const preMin = 1.0, timer = s.timerMin || Math.ceil(ph.totalMin + preMin + 1.0);
     const align = alignmentState(), p = plumbing();
     const R = {
@@ -2371,12 +2635,13 @@ const M = (function () {
     R.bmStart = 0.28 * E0 * TR.laserExcitation(R.laserTl0);
     R.acq = TR.createAcq({
       seed: TR.SEED, stream: 1, pmt: s.pmt, ...pmtSim(s.pmt), pDisc: 0.00025, beamPerBlock: s.beamPerBlock, tEnd: timer * 60, tauJit: 0.047, cap: Math.ceil(timer * 60) + 50,
+      taus: TR.SPECIES[spKey].map(q => q.tau), keepDecays: true,
       arMedian: s.autorange === 'prop', arSymmetric: s.autorange === 'prop', arUnscaled: s.autorange === 'prop', arFlatGuard: s.autorange === 'prop',
       rangeMap: s.rangeMap,
       signalAt: (tS) => {
         const tA = tS / 60 - preMin, vp = TR.pumpVolAt(ph, Math.max(0, tA)), u = vp - R.V1, pr = prof.at(u);
         const E = (S.fault === 'laser' ? 0 : 1) * (1 - 0.02 * Math.max(0, tA) / ph.totalMin) * TR.laserExcitation(R.laserTl0 + tS / 60);
-        return { S: pr.S * (1 + 0.004 * TR.smoothNoise(TR.SEED + 3, tS / 60, [3.1, 7.7, 13.3])), tau: pr.tau, E, u, vp, phase: TR.phaseIdxAtVol(ph, u) };
+        return { S: pr.S * (1 + 0.004 * TR.smoothNoise(TR.SEED + 3, tS / 60, [3.1, 7.7, 13.3])), tau: pr.tau, comp: pr.comp, E, u, vp, phase: TR.phaseIdxAtVol(ph, u) };
       }
     });
     const cap = R.acq.cap;
@@ -2386,6 +2651,8 @@ const M = (function () {
     R.robust = new Uint8Array(cap); R.low = new Uint8Array(cap); R.brk = new Uint8Array(cap); R.derivedN = 0;
     R.ak = { vol: new Float64Array(R.akta.n), cv: new Float64Array(R.akta.n), min: new Float64Array(R.akta.n) };
     for (let i = 0; i < R.akta.n; i++) { R.ak.vol[i] = R.akta.v[i]; R.ak.cv[i] = R.akta.v[i] / tpl.cv; R.ak.min[i] = R.akta.t[i]; }
+    R.spKey = spKey;
+    for (const h of runHooks) if (h.init) h.init(R);
     R.rules = new RuleEngine(R);
     S.run = R;
     log(R, 'system', 'TRIFLE acquisition started. Experiment timer ' + timer + ' min. Filter wheel to OD 4; beam monitor block captured (' + R.bmStart.toFixed(3) + ' V).');
@@ -2406,7 +2673,8 @@ const M = (function () {
       R.robust[i] = A.ruse[i] >= S.th.lowPrec ? 1 : 0; R.low[i] = A.disc[i] ? 0 : (A.ruse[i] < S.th.lowPrec ? 1 : 0);
       if (R.brkNext && !A.disc[i]) { R.brk[i] = 1; R.brkNext = false; }
     }
-    R.derivedN = n;
+    const from = R.derivedN; R.derivedN = n;
+    for (const h of runHooks) if (h.derive) h.derive(R, from, n);
   }
   function deriveY(R, i, k, lc) {
     const A = R.acq; if (A.disc[i]) { for (const key in R.y) R.y[key][i] = NaN; return; }
@@ -2480,6 +2748,7 @@ const M = (function () {
     R.aktaN = R.akta.n;
     log(R, 'system', (reason === 'timer' ? 'Experiment timer ended. ' : 'Acquisition ended by ' + S.setup.operator + '. ') + 'Filter wheel to OD 4; beam monitor block captured (' + R.bmEnd.toFixed(3) + ' V). Record saved.');
     R.rules.process(true);
+    for (const h of runHooks) if (h.finish) h.finish(R);
     audit('run', R.id + ' complete: ' + fmt.int(R.acq.n) + ' blocks.');
     emit('run');
   }
@@ -2513,7 +2782,8 @@ const M = (function () {
     { id: 'H2', src: SRC1, cond: () => 'Raised with P3 or P4. Possible flow cell fouling or carry-over. Confirm with a buffer blank run.' }
   ];
   function ruleById(id) { return RULES.find(r => r.id === id) || null; }
-  const ruleHooks = [], fracHooks = [];
+  // ruleHooks extend the rule engine, fracHooks the fraction table, runHooks the run (init, derive, tick, finish)
+  const ruleHooks = [], fracHooks = [], runHooks = [];
   class RuleEngine {
     constructor(R) { this.R = R; this.reset(); }
     reset() {
@@ -2613,7 +2883,7 @@ const M = (function () {
       const c = this.cond('P2', slope > th.p2SlopePct, i, () => {
         const x0 = R.acq.u[dq[0]], fr = this.fracsIn(x0, u);
         const p = this.card({ rule: 'P2', phaseIdx: ph, title: 'Fluorescence rising after the load plateau', obs: '', x0, x1: u, fractions: fr, maxSlope: slope, plateau: this.plateau.level });
-        this.card({ rule: 'H1', phaseIdx: ph, linkedTo: p.id, title: 'Possible onset of mAb breakthrough', obs: 'Total fluorescence cannot separate mAb from HCP.', x0, x1: u, fractions: fr, confirm: 'Protein A HPLC on ' + (fr.length ? rangeIds(fr) : 'the linked flowthrough fractions') + '.' });
+        this.card({ rule: 'H1', phaseIdx: ph, linkedTo: p.id, title: 'Possible onset of mAb breakthrough', obs: 'Total fluorescence cannot separate mAb from HCP; the mAb component of the lifetime analysis can. Check it over the same interval.', x0, x1: u, fractions: fr, features: [{ name: 'Lifetime analysis', label: 'P' }], confirm: 'Protein A HPLC on ' + (fr.length ? rangeIds(fr) : 'the linked flowthrough fractions') + '.' });
         return p;
       });
       if (c) { if (slope > c.maxSlope) c.maxSlope = slope; c.x1 = u; c.fractions = this.fracsIn(c.x0, c.x1); c.obs = 'Fluorescence slope ' + c.maxSlope.toFixed(1) + ' % per CV over the last 1 CV of the load (' + fmt.ml(c.x0) + ' to ' + fmt.ml(c.x1) + ' mL), after a plateau at ' + fmt.sig3(c.plateau) + ' V·ns. Limit ' + th.p2SlopePct + ' % per CV.'; const h = this.cards.find(k => k.linkedTo === c.id); if (h) { h.fractions = c.fractions; h.x1 = c.x1; h.confirm = 'Protein A HPLC on ' + rangeIds(c.fractions) + '.'; } }
@@ -2750,13 +3020,13 @@ const M = (function () {
   /* ---------- clock tick ---------- */
   function tick(dtS) {
     S.simT += dtS; laserUpdate(); readinessStep();
-    if (S.run) stepRun(S.run);
+    if (S.run) { stepRun(S.run); for (const h of runHooks) if (h.tick) h.tick(S.run); }
   }
 
   return {
     S, fmt, wall, stamp, pmtSim, emit, on, audit, TH_INFO, presetInfo, presetCheck, procMode, procLabel, comboIdx, template, plumbing, alignmentState,
-    laserUpdate, laserText, laserDetail, RD_CHECKS, darkLimit, bufLimits, readinessStart, readinessStep, readinessSummary, bufferMetrics, newRun, log, runTimeS, aktaMin, deriveTo, rederive, stepRun, finishRun, pauseRun, continueRun, fastForward,
-    SAVE_KB, saveStep, LEVELS, RULES, ruleById, ruleHooks, fracHooks, cardRespond, fractionStats, uvPool, flBounds, addNote, tick, rangeIds
+    laserUpdate, laserText, laserDetail, RD_CHECKS, darkLimit, bufLimits, readinessStart, readinessStep, readinessSummary, bufferMetrics, fluorOf, newRun, log, runTimeS, aktaMin, deriveTo, rederive, stepRun, finishRun, pauseRun, continueRun, fastForward,
+    SAVE_KB, saveStep, LEVELS, RULES, ruleById, ruleHooks, fracHooks, runHooks, cardRespond, fractionStats, uvPool, flBounds, addNote, tick, rangeIds
   };
 })();
 
@@ -2770,7 +3040,7 @@ const S2 = (function () {
   Object.assign(S.th, { calDepPct: 5, calExpiryDays: 30, decayThrNs: 0.2, decaySdMult: 3, decayUseMin: 0.20, decayUseMax: 0.90, decayWinMl: 0.5 });
   Object.assign(M.TH_INFO, {
     calDepPct: ['Calibration linear range: largest departure from the fit', '%'], calExpiryDays: ['Calibration expires after', 'days'],
-    decayThrNs: ['P7: decay metric shift larger than', 'ns'], decaySdMult: ['P7: shift larger than this multiple of the steady-phase SD', '× SD'],
+    decayThrNs: ['P7: decay metric shift larger than', 'ns'], decaySdMult: ['P7: shift larger than this multiple of the elution-front SD', '× SD'],
     decayUseMin: ['Decay metric computed only above this input range use', 'fraction'], decayUseMax: ['Decay metric computed only below this input range use', 'fraction'], decayWinMl: ['P7: comparison window', 'mL']
   });
   // Stage 2 rules in the catalogue (discrepancy 1). The Stage 2 prompt names "Calibration not applicable" I6;
@@ -2778,7 +3048,7 @@ const S2 = (function () {
   M.RULES.push(
     { id: 'I7', src: 'Stage 2, section 1', cond: th => 'The active calibration does not apply: different PMT preset or processing mode, older than ' + th.calExpiryDays + ' days, or no demonstrated linear range.' },
     { id: 'P6', src: 'Stage 2, section 1', cond: () => 'Fluorescence above the calibrated linear range within a fraction.' },
-    { id: 'P7', src: 'Stage 2, section 2.3', cond: th => 'Decay metric over ' + th.decayWinMl + ' mL shifted from the load-plateau reference by more than ' + th.decayThrNs + ' ns and ' + th.decaySdMult + ' × SD (decay analysis on).' },
+    { id: 'P7', src: 'Stage 2, section 2.3', cond: th => 'Decay metric over ' + th.decayWinMl + ' mL shifted from the elution-front reference by more than ' + th.decayThrNs + ' ns and ' + th.decaySdMult + ' × SD, where fluorescence is at least 20 times the buffer baseline (decay analysis on).' },
     { id: 'H3', src: 'Stage 2, section 2.3', cond: () => 'Raised with P7. Possible change in tryptophan environment. Confirm with HPLC-SEC on the linked fractions.' }
   );
   S.proc.decay = false;
@@ -2891,7 +3161,7 @@ const S2 = (function () {
 
   /* ---------- rules I7, P6, P7 and H3 ---------- */
   M.ruleHooks.push({
-    reset(E) { E.s2 = { i7: null, p6: {}, i7At: E.s2 ? E.s2.i7At : 0 }; E.s2d = { vals: [], ref: null, win: [], sum: 0 }; },
+    reset(E) { E.s2 = { i7: null, p6: {}, i7At: E.s2 ? E.s2.i7At : 0 }; E.s2d = { vals: [], ref: null, win: [], sum: 0, buf: null }; },
     pre(E, n) {
       const R = E.R; if (R.standalone || !n) return;
       const st = status(R), at = Math.min(E.s2.i7At || 0, n - 1);
@@ -2913,8 +3183,17 @@ const S2 = (function () {
       // P7: decay metric shift (research display; only when decay analysis is on)
       if (!S.proc.decay) return;
       const v = R.y.decay[i]; if (!isFinite(v)) return;
-      const L = R.ph.list, pk = L[ph].key, d = E.s2d, cv = R.cv, load = L.find(p => p.key === 'load');
-      if (!d.ref) { if (pk === 'load' && load && u > load.v0 + Math.min(2 * cv, load.vol * 0.4) && u < load.v1 - Math.min(cv, load.vol * 0.2)) d.vals.push([u, v]); return; }
+      // Reference: the first 40 valid metrics of the elution peak. The load plateau is host-cell protein, a
+      // different species, so it cannot serve as the product's reference (lifetime analysis). Only blocks with
+      // fluorescence at least 20 times the buffer baseline count, so that prompt scatter does not move the metric.
+      const L = R.ph.list, pk = L[ph].key, d = E.s2d, elKey = R.tpl.fractions.elPhase || 'el';
+      if (d.buf == null) { const ref = R.readyAcq ? TR.medianOf(M.fluorOf(R.readyAcq, 20, 320)) : NaN; d.buf = isFinite(ref) && ref > 0 ? ref : 0.008; }
+      if (!(y >= 20 * d.buf)) return;
+      if (!d.ref) {
+        if (pk !== elKey) return; d.vals.push([u, v]); if (d.vals.length < 40) return;
+        const w = d.vals.map(x => x[1]), mean = w.reduce((a, b) => a + b, 0) / w.length, sd = Math.sqrt(w.reduce((a, b) => a + (b - mean) * (b - mean), 0) / (w.length - 1));
+        d.ref = { mean, sd, n: w.length, u0: d.vals[0][0], u1: d.vals[d.vals.length - 1][0] }; setTimeout(() => M.emit('series'), 0); return;
+      }
       d.win.push([u, v]); d.sum += v; while (d.win.length && u - d.win[0][0] > S.th.decayWinMl) d.sum -= d.win.shift()[1];
       if (d.win.length < 20) return;
       const m = d.sum / d.win.length, shift = m - d.ref.mean, unc = Math.sqrt(d.ref.sd * d.ref.sd / d.win.length + d.ref.sd * d.ref.sd / d.ref.n);
@@ -2922,22 +3201,16 @@ const S2 = (function () {
       const card = E.cond('P7', on, i, () => {
         const fr = E.fracsIn(x0, u), info = irfInfo(R.pmt);
         const p = E.card({ rule: 'P7', phaseIdx: ph, title: 'Decay metric changed', obs: '', x0, x1: u, fractions: fr, shift, unc, features: [{ name: 'Decay-shape analysis (research display)', label: 'P' }] });
-        E.card({ rule: 'H3', phaseIdx: ph, linkedTo: p.id, title: 'Possible change in tryptophan environment', obs: 'Possible change in tryptophan environment, for example conformational change at low pH. Fluorescence decay alone does not identify the cause.', x0, x1: u, fractions: fr, confirm: 'HPLC-SEC on ' + (fr.length ? M.rangeIds(fr) : 'the linked fractions') + '.' });
+        E.card({ rule: 'H3', phaseIdx: ph, linkedTo: p.id, title: 'Possible change in tryptophan environment', obs: 'Possible change in tryptophan environment, for example conformational change at low pH, or aggregates eluting with the product. The decay metric alone does not identify the cause; the species composition of the linked fractions (lifetime analysis) shows which component grows.', x0, x1: u, fractions: fr, confirm: 'HPLC-SEC on ' + (fr.length ? M.rangeIds(fr) : 'the linked fractions') + '.' });
         return p;
       });
       if (card && on) {
         if (Math.abs(shift) >= Math.abs(card.shift)) { card.shift = shift; card.unc = unc; card.x0 = x0; card.x1 = u; card.fractions = E.fracsIn(x0, u); }
         const info = irfInfo(R.pmt);
-        card.obs = 'Decay metric changed by ' + sgn(card.shift, 2) + ' ± ' + card.unc.toFixed(2) + ' ns between the ' + fmt.ml(card.x0) + ' to ' + fmt.ml(card.x1) + ' mL window and the load plateau reference (' + fmt.ml(d.ref.u0) + ' to ' + fmt.ml(d.ref.u1) + ' mL, ' + d.ref.mean.toFixed(2) + ' ± ' + d.ref.sd.toFixed(2) + ' ns SD). IRF about ' + info.fwhmNs.toFixed(1) + ' ns FWHM; sampling 0.2 ns.'; card.eng = [' IRF about ' + info.fwhmNs.toFixed(1) + ' ns FWHM; sampling 0.2 ns.'];
+        card.obs = 'Decay metric changed by ' + sgn(card.shift, 2) + ' ± ' + card.unc.toFixed(2) + ' ns between the ' + fmt.ml(card.x0) + ' to ' + fmt.ml(card.x1) + ' mL window and the elution-front reference (' + fmt.ml(d.ref.u0) + ' to ' + fmt.ml(d.ref.u1) + ' mL, ' + d.ref.mean.toFixed(2) + ' ± ' + d.ref.sd.toFixed(2) + ' ns SD). IRF about ' + info.fwhmNs.toFixed(1) + ' ns FWHM; sampling 0.2 ns.'; card.eng = [' IRF about ' + info.fwhmNs.toFixed(1) + ' ns FWHM; sampling 0.2 ns.'];
         const h = E.cards.find(c => c.linkedTo === card.id); if (h) { h.fractions = card.fractions; h.x0 = card.x0; h.x1 = card.x1; h.confirm = 'HPLC-SEC on ' + (card.fractions.length ? M.rangeIds(card.fractions) : 'the linked fractions') + '.'; }
       }
     },
-    endPhase(E, ph) {
-      const d = E.s2d; if (d.ref || E.R.ph.list[ph].key !== 'load' || d.vals.length < 30) return;
-      const v = d.vals.map(x => x[1]), mean = v.reduce((a, b) => a + b, 0) / v.length, sd = Math.sqrt(v.reduce((a, b) => a + (b - mean) * (b - mean), 0) / (v.length - 1));
-      d.ref = { mean, sd, n: v.length, u0: d.vals[0][0], u1: d.vals[d.vals.length - 1][0] };
-      setTimeout(() => M.emit('series'), 0);
-    }
   });
   M.fracHooks.push((st, R, i0, i1) => {
     // indicative concentration only where the whole fraction is inside the linear range; decay metric mean
@@ -2961,8 +3234,8 @@ const S2 = (function () {
   function startArchived(def) {
     if (archive[def.id]) return archive[def.id];
     const tpl = TR.cloneTemplate(def.tpl), ph = TR.buildPhases(tpl), prof = TR.buildProfile(def.tpl, ph, def.mods), pre = 1, V1 = 0.20, tEnd = Math.ceil(ph.totalMin + 2) * 60;
-    const acq = TR.createAcq({ seed: TR.SEED, stream: def.stream, pmt: def.pmt, ...M.pmtSim(def.pmt), pDisc: 0.00025, tauJit: 0.047, tEnd, cap: tEnd + 50,
-      signalAt: tS => { const tA = tS / 60 - pre, vp = TR.pumpVolAt(ph, Math.max(0, tA)), u = vp - V1, pr = prof.at(u); return { S: pr.S * (1 + 0.004 * TR.smoothNoise(TR.SEED + 3 + def.stream, tS / 60, [3.1, 7.7, 13.3])), tau: pr.tau, E: 1 - 0.02 * Math.max(0, tA) / ph.totalMin, u, vp, phase: TR.phaseIdxAtVol(ph, u) }; } });
+    const acq = TR.createAcq({ seed: TR.SEED, stream: def.stream, pmt: def.pmt, ...M.pmtSim(def.pmt), pDisc: 0.00025, tauJit: 0.047, tEnd, cap: tEnd + 50, taus: TR.SPECIES[def.tpl].map(q => q.tau),
+      signalAt: tS => { const tA = tS / 60 - pre, vp = TR.pumpVolAt(ph, Math.max(0, tA)), u = vp - V1, pr = prof.at(u); return { S: pr.S * (1 + 0.004 * TR.smoothNoise(TR.SEED + 3 + def.stream, tS / 60, [3.1, 7.7, 13.3])), tau: pr.tau, comp: pr.comp, E: 1 - 0.02 * Math.max(0, tA) / ph.totalMin, u, vp, phase: TR.phaseIdxAtVol(ph, u) }; } });
     return (archive[def.id] = { def, tpl, ph, acq, tEnd, done: false, cv: tpl.cv, fractions: TR.buildFractions(ph, tpl.fractions) });
   }
   function stepArchived(a, budgetMs) { const t0 = performance.now(); while (!a.done && performance.now() - t0 < budgetMs) { TR.acqStep(a.acq, Math.min(a.tEnd, a.acq.tCursor + 120)); if (a.acq.done || a.acq.tCursor >= a.tEnd - 1) a.done = true; } return a.done; }
@@ -2994,6 +3267,135 @@ const S2 = (function () {
   }
 
   return { LEVELS, MAT, SCHED, schedule, simulate, current, fit, makeRecord, active, status, conc, concText, procKey, initRecord, cal, irfInfo, reconFit, decayRef, ARCHIVE, startArchived, stepArchived, runView, binned, phaseIntegral, loadPlateau, fracCompare, archive, today, addDays, sgn };
+})();
+
+/* =====================================================================
+   TRIFLE lifetime analysis for the run (Proposed): global lifetimes,
+   decay-associated chromatograms named after the template's expected
+   species, and species composition over any block range. No DOM access.
+   Method after Hales et al., J Chromatogr A 1641, 461968 (2021).
+   ===================================================================== */
+const LTM = (function () {
+  const S = M.S, fmt = M.fmt, L = TR.LTN;
+  const H = 7;    // chromatograms use the mean decay over ±7 blocks: 15 s time resolution
+  const PER = 20; // blocks per bin in the global fit
+  const FIRST = 150, GROW = 1.3; // first global fit after 150 blocks, then each time the data grow by 30 %
+  // Species colours follow the species, never their rank: product blue, impurity orange, flow-through aqua,
+  // scatter neutral grey (validated categorical slots 1 to 3; see README)
+  const COLORS = { sc: '#8C96A0', hcp: '#1BAF7A', mab: '#2A78D6', hmw: '#EB6834', empty: '#EB6834', full: '#2A78D6', other: '#6250D6' };
+  const ybuf = new Float64Array(L), abuf = new Float64Array(TR.LT.kMax);
+
+  function init(R) {
+    const cap = R.acq.cap, sp = TR.SPECIES[R.spKey || 'protA'];
+    // amp: amplitudes (V·ns) per expected species; sig: the same, but 0 where an amplitude is under 2 standard
+    // errors (the log display, where noise around zero would otherwise look like signal)
+    R.lt = { lib: sp, fit: null, B: null, assign: [], amp: sp.map(() => new Float64Array(cap).fill(NaN)), sig: sp.map(() => new Float64Array(cap).fill(NaN)), other: new Float64Array(cap).fill(NaN), otherSig: new Float64Array(cap).fill(NaN), chi: new Float32Array(cap), n: 0, gen: 1, job: null, nextFit: FIRST, fits: 0, kLogged: 0 };
+  }
+  // Mean decay over blocks j0..j1 (inclusive) that are neither discarded nor clipped; v is the mean noise variance
+  function meanDecay(R, j0, j1, out) {
+    const A = R.acq; out.fill(0); let c = 0, v = 0;
+    for (let j = j0; j <= j1; j++) { if (A.disc[j] || A.clip[j]) continue; const o = j * L; for (let s = 0; s < L; s++) out[s] += A.dw[o + s]; v += A.dsd[j] * A.dsd[j]; c++; }
+    if (c) for (let s = 0; s < L; s++) out[s] /= c;
+    return { c, v: c ? v / (c * c) : NaN };
+  }
+  // Amplitudes for blocks i0..i1-1 from the decay window around each block (blocks up to nAvail-1 exist)
+  function compute(R, i0, i1, nAvail) {
+    const lt = R.lt, A = R.acq, B = lt.B; if (!B) return;
+    const K = B.K, a = abuf.subarray(0, K), sp = lt.amp, sg = lt.sig;
+    for (let i = i0; i < i1; i++) {
+      for (let s = 0; s < sp.length; s++) sp[s][i] = sg[s][i] = NaN; lt.other[i] = lt.otherSig[i] = NaN;
+      if (A.disc[i]) continue;
+      const m = meanDecay(R, Math.max(0, i - H), Math.min(nAvail - 1, i + H), ybuf); if (!m.c) continue;
+      const rss = TR.ltFitDecay(B, ybuf, 0, a);
+      for (let s = 0; s < sp.length; s++) sp[s][i] = sg[s][i] = 0; lt.other[i] = lt.otherSig[i] = 0;
+      for (let k = 0; k < K; k++) {
+        const s = lt.assign[k], ok = a[k] > 2 * Math.sqrt(m.v * B.dInv[k]);
+        if (s >= 0) { sp[s][i] += a[k]; if (ok) sg[s][i] += a[k]; } else { lt.other[i] += a[k]; if (ok) lt.otherSig[i] += a[k]; }
+      }
+      lt.chi[i] = rss / (m.v * (L - K));
+    }
+  }
+  function finalN(R) { return R.state === 'complete' ? R.derivedN : Math.max(0, R.derivedN - H); }
+  function derive(R) { const lt = R.lt; if (!lt || !lt.B) return; const nf = finalN(R); if (nf > lt.n) { compute(R, lt.n, nf, R.derivedN); lt.n = nf; } }
+  function startJob(R, final) {
+    const lt = R.lt, n = R.derivedN, bins = TR.ltBins(R.acq, 0, n, PER);
+    lt.nextFit = Math.max(n + FIRST, Math.ceil(n * GROW));
+    if (bins.n < 5) return;
+    lt.job = { gen: TR.ltGlobalGen(R.pmt, bins, lt.fit ? lt.fit.taus : null), bins, n, final };
+  }
+  function stepJob(R, budgetMs) {
+    const lt = R.lt, t0 = performance.now();
+    while (lt.job && performance.now() - t0 < budgetMs) {
+      const r = lt.job.gen.next(); if (!r.done) continue;
+      const job = lt.job; lt.job = null; apply(R, r.value, job);
+      if (R.state === 'complete' && !job.final) startJob(R, true);
+    }
+  }
+  function apply(R, res, job) {
+    const lt = R.lt, se = TR.ltErrors(R.pmt, job.bins, res.taus, res.chi2r);
+    lt.fit = { ...res, se, n: job.n, final: job.final, at: S.simT }; lt.fits++;
+    lt.B = TR.ltBasis(R.pmt, res.taus); lt.assign = TR.ltAssign(res.taus, lt.lib);
+    const nf = finalN(R); compute(R, 0, nf, R.derivedN); lt.n = nf; lt.gen++;
+    if (res.taus.length !== lt.kLogged || job.final) {
+      lt.kLogged = res.taus.length;
+      M.log(R, 'system', 'Lifetime analysis' + (job.final ? ', final fit' : '') + ': ' + res.taus.length + ' component' + (res.taus.length > 1 ? 's' : '') + ', ' + res.taus.map((t, k) => t.toFixed(2) + ' ns' + (lt.assign[k] >= 0 ? ' (' + lt.lib[lt.assign[k]].short + ')' : '')).join(', ') + '; reduced χ² ' + res.chi2r.toFixed(2) + ' over ' + fmt.int(res.nBins) + ' bins.', { short: 'Lifetime analysis: ' + res.taus.length + ' component' + (res.taus.length > 1 ? 's' : '') + (job.final ? ' (final fit)' : '') + '.' });
+    }
+    M.emit('lt');
+  }
+  M.runHooks.push({
+    init,
+    derive(R) { derive(R); },
+    tick(R) {
+      const lt = R.lt; if (!lt) return;
+      if (!lt.job && R.state === 'acquiring' && R.derivedN >= lt.nextFit) startJob(R, false);
+      if (lt.job) stepJob(R, R.state === 'complete' ? 60 : 12);
+    },
+    finish(R) { const lt = R.lt; if (!lt) return; derive(R); if (!lt.job) startJob(R, true); }
+  });
+
+  /* ---------- reading the analysis ---------- */
+  function state(R) {
+    const lt = R && R.lt; if (!lt) return 'none';
+    if (!lt.fit) return lt.job ? 'fitting' : 'waiting';
+    return lt.fit.final ? 'final' : (lt.job && lt.job.final ? 'finalising' : 'live');
+  }
+  // Components with their names, colours and lifetimes, in lifetime order
+  function components(R) {
+    const lt = R && R.lt; if (!lt || !lt.fit) return [];
+    return lt.fit.taus.map((t, k) => { const m = lt.assign[k], sp = m >= 0 ? lt.lib[m] : null; return { k, m, key: sp ? sp.key : 'other', name: sp ? sp.name : 'Unassigned component', short: sp ? sp.short : 'Other', tau: t, se: lt.fit.se[k], exp: sp ? sp.exp : NaN, color: COLORS[sp ? sp.key : 'other'], product: !!(sp && sp.product) }; });
+  }
+  // Species amplitudes at block i (V·ns), for the species the analysis has found
+  function ampsAt(R, i) {
+    const lt = R && R.lt; if (!lt || !lt.fit || !(i >= 0) || i >= lt.n) return null;
+    const out = components(R).map(c => ({ ...c, a: c.m >= 0 ? lt.amp[c.m][i] : lt.other[i] })), tot = out.reduce((s, c) => s + (c.a || 0), 0);
+    if (!out.length || !(tot === tot)) return null;
+    out.forEach(c => { c.share = tot > 0 ? c.a / tot : NaN; }); return { comps: out, total: tot, chi2r: lt.chi[i] };
+  }
+  // Decomposition of the mean decay over blocks i0..i1-1, e.g. a fraction (amplitudes in V·ns and shares)
+  function composition(R, i0, i1) {
+    const lt = R && R.lt; if (!lt || !lt.B || i1 <= i0) return null;
+    const m = meanDecay(R, i0, i1 - 1, ybuf); if (!m.c) return null;
+    const K = lt.B.K, a = abuf.subarray(0, K); TR.ltFitDecay(lt.B, ybuf, 0, a);
+    const comps = components(R).map(c => ({ ...c, a: a[c.k] })), tot = comps.reduce((s, c) => s + c.a, 0);
+    comps.forEach(c => { c.share = tot > 0 ? c.a / tot : NaN; });
+    return { comps, total: tot, n: m.c };
+  }
+  // The decay behind block i's amplitudes: data (mean over the window), fit, each component and the residuals
+  function decayAt(R, i) {
+    const lt = R && R.lt, A = R && R.acq; if (!lt || !A || !A.dw || !(i >= 0) || i >= R.derivedN || A.disc[i]) return null;
+    const y = new Float64Array(L), m = meanDecay(R, Math.max(0, i - H), Math.min(R.derivedN - 1, i + H), y); if (!m.c) return null;
+    const out = { i, y, nBlocks: m.c, sigma: Math.sqrt(m.v), j0: TR.ltJ0(R.pmt), comps: [], fit: null, res: null, chi2r: NaN };
+    if (!lt.B) return out;
+    const K = lt.B.K, a = new Float64Array(K), rss = TR.ltFitDecay(lt.B, y, 0, a), g = lt.B.g, fit = new Float64Array(L), res = new Float64Array(L);
+    out.comps = components(R).map(c => { const v = new Float64Array(L); for (let s = 0; s < L; s++) { v[s] = a[c.k] * g[c.k * L + s]; fit[s] += v[s]; } return { ...c, a: a[c.k], y: v }; });
+    for (let s = 0; s < L; s++) res[s] = (y[s] - fit[s]) / out.sigma;
+    out.fit = fit; out.res = res; out.chi2r = rss / (m.v * (L - K)); out.total = a.reduce((s, v) => s + v, 0);
+    return out;
+  }
+  // Composition of every fraction (Fraction review, Record exports)
+  M.fracHooks.push((st, R, i0, i1) => { st.lt = composition(R, i0, i1); });
+
+  return { H, PER, COLORS, state, components, ampsAt, composition, decayAt, meanDecay };
 })();
 
 /* =====================================================================
@@ -3461,7 +3863,8 @@ const UI = (function () {
 /* ---------- shared chromatogram configuration (Run and Fraction review) ---------- */
 const RC = (function () {
   const S = M.S, fmt = M.fmt, C = CH.C, { esc } = UI;
-  const view = { x: 'vol', log: false };
+  // TRIFLE view by default: time axis, decay map on, AKTA traces off (they belong to UNICORN; one click away)
+  const view = { x: 'min', log: false, akta: false, map: true };
   const extraSeries = [], extraPanels = [], extraInfo = [], runRows = [];
   const XT = { vol: 'Volume (mL)', cv: 'Column volumes (CV)', min: 'Time (min)' };
   function R() { return S.run; }
@@ -3493,15 +3896,16 @@ const RC = (function () {
   }
   function akta(key) { return () => { const r = R(); if (!r || r.setupSnap.source !== 'import') return null; return { x: r.ak[view.x], y: r.akta[key], n: r.aktaN, gen: { vol: 1, cv: 2, min: 3 }[view.x] }; }; }
   function seriesFor(opts) {
-    const p = M.procMode(), lc = S.proc.laser, cmp = S.proc.compare, r = R(), bmOn = r ? r.setupSnap.beamPerBlock : S.setup.beamPerBlock, imp = (r ? r.setupSnap.source : S.setup.source) === 'import';
-    const ff = v => fmt.sig3(v) + ' V·ns';
+    const p = M.procMode(), lc = S.proc.laser, cmp = S.proc.compare, r = R(), bmOn = r ? r.setupSnap.beamPerBlock : S.setup.beamPerBlock, imp = (r ? r.setupSnap.source : S.setup.source) === 'import', ak = imp && view.akta;
+    const ff = v => fmt.sig3(v) + ' V·ns', tot = 'Total fluorescence';
+    // total fluorescence in primary ink, like the species it is the sum of; UV 280 has its own strip (one y axis per panel)
     const list = [
-      { key: 'v20', label: 'Fluorescence, v2.0 reference', color: C.v20, width: 1.25, panel: 'main', src: trifle('v20'), fmt: ff, visible: p === 'v20' || cmp, shade: true },
-      { key: 'prop', label: 'Fluorescence, Proposed' + (lc ? ' (corrected)' : ''), color: C.prop, dash: 'dash', width: 1.25, panel: 'main', src: trifle('prop'), fmt: ff, visible: p === 'prop', legend: p === 'prop' },
-      { key: 'propU', label: 'Fluorescence, Proposed, uncorrected', color: C.prop, width: 0.9, panel: 'main', src: trifle('propU'), fmt: ff, visible: p === 'prop' && lc, legend: p === 'prop' && lc },
-      { key: 'uv', label: 'UV 280', color: C.uv, width: 1.25, panel: 'main', side: 'r', src: akta('uv'), fmt: v => fmt.mau(v) + ' mAU', visible: imp, legend: imp },
-      { key: 'cond', label: 'Conductivity', color: C.cond, width: 1, panel: 'cond', src: akta('cond'), fmt: v => fmt.cond(v) + ' mS/cm', visible: imp, legend: imp },
-      { key: 'ph', label: 'pH', color: C.ph, width: 1, panel: 'ph', src: akta('ph'), fmt: v => fmt.ph(v), visible: imp, legend: imp },
+      { key: 'v20', label: tot + (p === 'v20' && !cmp ? '' : ', v2.0 reference'), tip: 'Total fluorescence, ND-corrected: the integral of each pulse (v2.0 reference processing)', color: C.text, width: 1.25, z: 2, panel: 'main', src: trifle('v20'), fmt: ff, visible: p === 'v20' || cmp, shade: true },
+      { key: 'prop', label: tot + ', Proposed' + (lc ? ' (corrected)' : ''), color: C.text, dash: 'dash', width: 1.25, z: 2, panel: 'main', src: trifle('prop'), fmt: ff, visible: p === 'prop', legend: p === 'prop' },
+      { key: 'propU', label: tot + ', Proposed, uncorrected', color: C.cond, width: 0.9, panel: 'main', src: trifle('propU'), fmt: ff, visible: p === 'prop' && lc, legend: p === 'prop' && lc },
+      { key: 'uv', label: 'UV 280', color: C.uv, width: 1.25, panel: 'uv', src: akta('uv'), fmt: v => fmt.mau(v) + ' mAU', visible: ak, legend: ak },
+      { key: 'cond', label: 'Conductivity', color: C.cond, width: 1, panel: 'cond', src: akta('cond'), fmt: v => fmt.cond(v) + ' mS/cm', visible: ak, legend: ak },
+      { key: 'ph', label: 'pH', color: C.ph, width: 1, panel: 'ph', src: akta('ph'), fmt: v => fmt.ph(v), visible: ak, legend: ak },
       { key: 'bm', label: 'Beam monitor', color: C.beam, width: 1, panel: 'bm', src: trifle('bm'), fmt: v => v.toFixed(1) + ' %', visible: bmOn, legend: bmOn, tag: 'Proposed', tagScope: lc ? 'always' : 'engineer' },
       { key: 'diff', label: 'Difference, Proposed minus v2.0', color: C.diff, width: 1, panel: 'diff', src: trifle('diff'), fmt: v => UI.sgn(v, 1) + ' %', visible: cmp && p === 'prop', legend: cmp && p === 'prop' }
     ];
@@ -3512,11 +3916,13 @@ const RC = (function () {
   function panels(extraStrips) {
     const r = () => R();
     const bmOn = () => (r() ? r().setupSnap.beamPerBlock : S.setup.beamPerBlock);
-    const imp = () => (r() ? r().setupSnap.source : S.setup.source) === 'import';
+    const imp = () => (r() ? r().setupSnap.source : S.setup.source) === 'import', ak = () => imp() && view.akta;
     const out = [
-      { key: 'main', yl: { title: 'Fluorescence', unit: 'V·ns, ND-corrected', log: () => view.log, minLog: -3 }, yr: (r() ? r().setupSnap.source : S.setup.source) === 'import' ? { title: 'UV 280', unit: 'mAU', fixed: [0, 4000] } : null },
-      { key: 'cond', px: 46, hidden: () => !imp(), yl: { title: 'Conductivity', short: 'Cond.', unit: 'mS/cm', fixed: [0, 100], tickFmt: v => v.toFixed(0) } },
-      { key: 'ph', px: 46, hidden: () => !imp(), yl: { title: 'pH', short: 'pH', unit: '', fixed: [0, 14] } },
+      { key: 'main', yl: { title: 'Fluorescence', unit: 'V·ns, ND-corrected', log: () => view.log, minLog: -3 } },
+      { key: 'map', px: 64, hidden: () => !view.map || !(r() && r().acq.dw), yl: { title: 'Decay map', short: 'Decay map', unit: 'ns', fixed: [0, 30], zero: false, tickFmt: v => v.toFixed(0) }, draw: mapDraw },
+      { key: 'uv', px: 46, hidden: () => !ak(), yl: { title: 'UV 280', short: 'UV 280', unit: 'mAU', fixed: [0, 4000], tickFmt: v => v.toFixed(0) } },
+      { key: 'cond', px: 46, hidden: () => !ak(), yl: { title: 'Conductivity', short: 'Cond.', unit: 'mS/cm', fixed: [0, 100], tickFmt: v => v.toFixed(0) } },
+      { key: 'ph', px: 46, hidden: () => !ak(), yl: { title: 'pH', short: 'pH', unit: '', fixed: [0, 14] } },
       { key: 'bm', px: 46, hidden: () => !bmOn(), yl: { title: 'Beam monitor', short: 'Beam mon.', unit: '%', fixed: [96, 102] } },
       { key: 'diff', px: 46, hidden: () => !(S.proc.compare && M.procMode() === 'prop'), yl: { title: 'Difference', short: 'Difference', unit: '%', sym: true, symMin: 5, zero: false } }
     ];
@@ -3555,15 +3961,54 @@ const RC = (function () {
     for (let i = i0; i < i1; i++) { const y = r.y.act[i]; if (y === y) { s += y; n++; } }
     return 'R1 ' + fmt.ml(va) + ', R2 ' + fmt.ml(vb) + ' mL · Δ ' + fmt.ml(vb - va) + ' mL, ' + fmt.min1(tb - ta) + ' min · mean ' + (n ? fmt.sig3(s / n) + ' V·ns' : '–');
   }
+  /* ---------- decay map: every block's decay, normalised per pixel column, log intensity ---------- */
+  // Sequential blue ramp (one hue, light to dark); the lightest step recedes to the white chart surface.
+  // A sample below 3 SD of its column's noise is white, and a column fades towards white when its peak is near
+  // the noise, so low-signal phases do not look like data. Zoomed in, a column between blocks shows the nearest.
+  const LUT = (() => { const st = ['#FFFFFF', '#CDE2FB', '#9EC5F4', '#6DA7EC', '#3987E5', '#256ABF', '#184F95', '#0D366B'].map(h => [1, 3, 5].map(k => parseInt(h.substr(k, 2), 16))), out = new Uint8ClampedArray(256 * 3);
+    for (let i = 0; i < 256; i++) { const t = i / 255 * (st.length - 1), k = Math.min(st.length - 2, Math.floor(t)), f = t - k; for (let c = 0; c < 3; c++) out[i * 3 + c] = Math.round(st[k][c] * (1 - f) + st[k + 1][c] * f); }
+    return out; })();
+  const MAP_NS = 30, MAP_DECADES = 2.5, mapY = new Float64Array(TR.LTN);
+  function mapDraw(ctx, p, ch, c0, c1) {
+    const r = R(); if (!r || !r.acq.dw) return;
+    const A = r.acq, n = r.derivedN, xs = r.x[sa() ? 'acq' : view.x], L = TR.LTN, w = Math.max(1, Math.floor(p.w)), h = Math.max(1, Math.floor(p.h));
+    let m = ch._map; if (!m || m.w !== w || m.h !== h) { const off = document.createElement('canvas'); off.width = w; off.height = h; m = ch._map = { w, h, off, octx: off.getContext('2d'), img: new ImageData(w, h) }; }
+    const img = m.img.data; c1 = Math.min(c1, w - 1); if (c1 < c0) return;
+    for (let c = c0; c <= c1; c++) {
+      const xa = ch.pxToX(p.x + c), xb = ch.pxToX(p.x + c + 1); let ia = TR.lowerBound(xs, n, xa), ib = TR.lowerBound(xs, n, xb);
+      if (ib === ia && ia > 0 && ia < n) { const xm = (xa + xb) / 2; if (xm - xs[ia - 1] < xs[ia] - xm) ia--; ib = ia + 1; }
+      // only discarded or clipped blocks here: use the nearest usable block within 10 blocks
+      if (ib > ia && ib - ia <= 10) { let ok = false; for (let i = ia; i < ib; i++) if (!A.disc[i] && !A.clip[i]) { ok = true; break; } if (!ok) for (let d = 1; d <= 10; d++) { if (ib - 1 + d < n && !A.disc[ib - 1 + d] && !A.clip[ib - 1 + d]) { ia = ib - 1 + d; ib = ia + 1; break; } if (ia - d >= 0 && !A.disc[ia - d] && !A.clip[ia - d]) { ia -= d; ib = ia + 1; break; } } }
+      mapY.fill(0); let cnt = 0, v2 = 0;
+      for (let i = ia; i < ib; i++) { if (A.disc[i] || A.clip[i]) continue; const o = i * L; for (let s = 0; s < L; s++) mapY[s] += A.dw[o + s]; v2 += A.dsd[i] * A.dsd[i]; cnt++; }
+      let mx = 0; for (let s = 0; s < L; s++) if (mapY[s] > mx) mx = mapY[s];
+      const sd = Math.sqrt(v2), conf = cnt && mx > 0 ? Math.min(1, Math.max(0, (mx / sd - 4) / 20)) : 0;
+      for (let row = 0; row < h; row++) {
+        const k = (row * w + c) * 4; let t = 0;
+        if (conf > 0) { const s = Math.min(L - 1, Math.round((1 - (row + 0.5) / h) * MAP_NS / TR.DX)), v = mapY[s] / mx; t = mapY[s] > 3 * sd ? Math.min(1, Math.max(0, 1 + Math.log10(v) / MAP_DECADES)) * conf : 0; }
+        const q = Math.round(t * 255) * 3; img[k] = LUT[q]; img[k + 1] = LUT[q + 1]; img[k + 2] = LUT[q + 2]; img[k + 3] = 255;
+      }
+    }
+    m.octx.putImageData(m.img, 0, 0, c0, 0, c1 - c0 + 1, h);
+    ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(m.off, c0, 0, c1 - c0 + 1, h, p.x + c0, p.y, c1 - c0 + 1, h); ctx.restore();
+  }
   function legendExtras() { return [{ html: '<span class="ch-sw box" style="background:rgba(183,121,31,0.12);border:1px solid rgba(183,121,31,0.5)"></span><span class="ch-ll">Low precision</span>', tip: 'Pulse fills under ' + Math.round(S.th.lowPrec * 100) + ' % of the input range (provisional). Not used for the y-axis autoscale; values beyond the axis are marked at its edge.' }]; }
   function xTitle() { return sa() ? 'Time from TRIFLE start (min)' : XT[view.x]; }
-  return { extraSeries, extraPanels, extraInfo, runRows, view, XT, xTitle, sa, toX, fromX, xDomain, bands, fracItems, trifle, akta, seriesFor, panels, markers, hatches, intervals, info, rulerInfo, legendExtras };
+  // view toggles shared by Run and Fraction review
+  function viewToggles(id) { return '<label class="chk small" title="Every block\'s decay against time, normalised per column (log intensity)"><input type="checkbox" id="' + id + 'Map" data-vk="map"> Decay map</label><label class="chk small" title="UV 280, conductivity and pH from the UNICORN result export, each in its own strip"><input type="checkbox" id="' + id + 'Ak" data-vk="akta"> AKTA traces</label>'; }
+  function wireToggles(host) { UI.$$('input[data-vk]', host).forEach(cb => { cb.checked = !!view[cb.dataset.vk]; cb.onchange = () => { view[cb.dataset.vk] = cb.checked; M.emit('series'); UI.emitDirty(); }; }); }
+  function syncToggles() { UI.$$('input[data-vk]').forEach(cb => { cb.checked = !!view[cb.dataset.vk]; }); }
+  return { extraSeries, extraPanels, extraInfo, runRows, view, XT, xTitle, sa, toX, fromX, xDomain, bands, fracItems, trifle, akta, seriesFor, panels, markers, hatches, intervals, info, rulerInfo, legendExtras, mapDraw, viewToggles, wireToggles, syncToggles };
 })();
 
 /* ---------- Run (Acquire and Validate) ---------- */
 (function () {
   const { $, $$, esc, el, tag } = UI, S = M.S, fmt = M.fmt, C = CH.C;
   let chart = null, pulseChart = null, built = false, engLaid = null, logFilter = 'all', logN = 0, cardsKey = '', pulseLog = false, highlight = null, expanded = false, narrowTab = 'log';
+  // Decay panel: the block under the cursor, else the pinned block, else the latest (live) or the fluorescence maximum (complete)
+  let decChart = null, decPane = 'decay', pin = null, hov = null, decKey = '', decAt = 0, decSer = '', apex = { gen: -1, i: -1 };
+  const LTN = TR.LTN, dec = { x: new Float64Array(LTN), y: new Float64Array(LTN), f: new Float64Array(LTN), r: new Float64Array(LTN), c: [], n: 0, gen: 0, d: null };
+  for (let s = 0; s < LTN; s++) dec.x[s] = s * TR.DX;
   const pulse = { x: new Float64Array(600), y: new Float64Array(600), ly: new Float64Array(600), iy: new Float64Array(600), liy: new Float64Array(600), n: 0, gen: 0, blk: -1 };
   for (let j = 0; j < 600; j++) pulse.x[j] = j * 0.2;
   function build() {
@@ -3571,11 +4016,11 @@ const RC = (function () {
     r.innerHTML = '<div class="scr-h"><h1>Run</h1><div class="chips acq-chips"></div><span class="sp"></span>' +
       '<button class="btn primary" id="rStart">Start</button><button class="btn" id="rPause">Pause</button><button class="btn" id="rCont">Continue</button><button class="btn" id="rEnd">End</button><span class="sep"></span><button class="btn" id="rMark">Mark event</button><button class="btn" id="rNote">Add note</button></div>' +
       '<div class="run-top">' +
-      '<div class="toolbar" id="rTools"><div class="seg sm" id="rX" role="group" aria-label="X-axis units"><button data-v="vol">mL</button><button data-v="cv">CV</button><button data-v="min">min</button></div><div class="seg sm" id="rLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div><label class="chk small"><input type="checkbox" id="rRul"> Rulers</label><button class="btn sm" id="rReset" title="Right-click the chart to undo one zoom step">Reset zoom</button><button class="btn sm" id="rExp" title="Esc exits the expanded view">Expand chart</button></div><span class="note" id="rCtlNote"></span></div>' +
+      '<div class="toolbar" id="rTools"><div class="seg sm" id="rX" role="group" aria-label="X-axis units"><button data-v="min">min</button><button data-v="vol">mL</button><button data-v="cv">CV</button></div><div class="seg sm" id="rLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div>' + RC.viewToggles('r') + '<label class="chk small"><input type="checkbox" id="rRul"> Rulers</label><button class="btn sm" id="rReset" title="Right-click the chart to undo one zoom step">Reset zoom</button><button class="btn sm" id="rExp" title="Esc exits the expanded view">Expand chart</button></div><span class="note" id="rCtlNote"></span></div>' +
       '<div class="panel run-chart expand-target"><div class="pb"><div id="runChart" style="flex:1;min-height:0"></div></div></div>' +
       '<div class="run-bottom" id="runBottom">' +
       '<div class="panel"><div class="ph"><h3>Run values</h3></div><div class="pb" id="runValues"></div></div>' +
-      '<div class="panel eng-only" id="pulsePanel"><div class="ph"><h3>Pulse</h3><span class="sp"></span><div class="seg sm" id="rPLog"><button data-v="0" class="on">Linear</button><button data-v="1">Log</button></div></div><div class="pb" style="padding:2px 4px"><div id="runPulse" style="height:100%"></div></div></div>' +
+      '<div class="panel" id="decPanel"><div class="ph"><h3>Decay</h3><span class="note" id="decWhen"></span><span class="sp"></span><button class="btn sm" id="decLatest" style="display:none" title="Follow the latest block again">Latest</button><div class="seg sm eng-only" id="rDecV" title="Species decay or the raw pulse"><button data-v="decay" class="on">Decay</button><button data-v="pulse">Pulse</button></div><div class="seg sm" id="rPLog"><button data-v="0" class="on">Linear</button><button data-v="1">Log</button></div></div><div class="pb" style="padding:2px 4px;overflow:hidden"><div id="runDecay" style="height:100%"></div><div id="runPulse" style="height:100%;display:none"></div></div></div>' +
       '<div class="panel" id="logPanel"><div class="ph"><h3>Run log</h3><span class="sp"></span><select id="rLogF" class="small" style="height:22px" aria-label="Filter run log"><option value="all">All entries</option><option value="sensitivity">Sensitivity</option><option value="laser">Laser</option><option value="alignment">Alignment</option><option value="note">Notes and events</option><option value="card">Cards</option><option value="system">System</option></select></div><div class="pb log" id="runLog"></div></div>' +
       '<div class="panel" id="cardPanel"><div class="ph"><h3>Evidence</h3><span class="cnt" id="cardCnt">0</span></div><div class="pb" id="runCards"><div class="cards"></div></div></div>' +
       '</div>';
@@ -3585,7 +4030,10 @@ const RC = (function () {
     $('#rEnd').onclick = endRun; $('#rMark').onclick = () => noteDlg('event'); $('#rNote').onclick = () => noteDlg('note');
     $$('#rX button').forEach(b => b.onclick = () => { RC.view.x = b.dataset.v; syncSeg(); chart.resetZoom(); chart.invalidate(); UI.emitDirty('xmode'); });
     $$('#rLog button').forEach(b => b.onclick = () => { RC.view.log = b.dataset.v === '1'; syncSeg(); chart.invalidate(); });
-    $$('#rPLog button').forEach(b => b.onclick = () => { pulseLog = b.dataset.v === '1'; $$('#rPLog button').forEach(x => x.classList.toggle('on', x === b)); pulseChart.invalidate(); });
+    $$('#rPLog button').forEach(b => b.onclick = () => { pulseLog = b.dataset.v === '1'; $$('#rPLog button').forEach(x => x.classList.toggle('on', x === b)); pulseChart.invalidate(); decKey = ''; });
+    $$('#rDecV button').forEach(b => b.onclick = () => { decPane = b.dataset.v; showPane(); });
+    $('#decLatest').onclick = () => { pin = null; chart.invalidateBase(); decKey = ''; };
+    RC.wireToggles($('#rTools'));
     $('#rRul').onchange = e => { chart.rulersOn = e.target.checked; if (chart.rulersOn) { const R = S.run, xs = R && R.derivedN ? R.x[RC.sa() ? 'acq' : RC.view.x] : null, [a, b0] = chart.xRange(), b = xs ? Math.min(b0, xs[R.derivedN - 1]) : b0, h = Math.max((b - a) * 0.1, 20 * (b0 - a) / chart.pw), r0 = Math.max(a, (a + b) / 2 - h); chart.rulers = [r0, r0 + 2 * h]; } chart.invalidateOver(); chart.updateReadout(); };
     $('#rReset').onclick = () => chart.resetZoom();
     $('#rExp').onclick = toggleExpand;
@@ -3594,7 +4042,18 @@ const RC = (function () {
       ariaLabel: 'Chromatogram with TRIFLE fluorescence and AKTA traces', rulers: [0, 1], rulerColor: C.v20,
       xDomain: RC.xDomain, xTitle: RC.xTitle, panels: RC.panels(), series: RC.seriesFor(), bands: RC.bands, fractions: RC.fracItems,
       markers: () => RC.markers(true), hatches: RC.hatches, intervals: RC.intervals, info: RC.info, rulerInfo: RC.rulerInfo, legendExtras: RC.legendExtras(),
-      highlights: () => highlight ? [{ x0: RC.toX(highlight[0]), x1: RC.toX(highlight[1]) }] : []
+      highlights: () => highlight ? [{ x0: RC.toX(highlight[0]), x1: RC.toX(highlight[1]) }] : [],
+      // fraction cuts come from UNICORN: shown with the AKTA traces; Fraction review always shows them
+      fractions: () => RC.view.akta ? RC.fracItems() : null,
+      vlines: () => { const R = S.run; return R && pin != null && pin < R.derivedN ? [{ x: R.x[RC.sa() ? 'acq' : RC.view.x][pin], color: C.accent, dash: 'solid', label: 'Decay', align: 'left' }] : []; },
+      onHover: x => { const i = x == null ? null : blockAt(x); if (i !== hov) { hov = i; decKey = ''; } },
+      onClick: x => { const i = blockAt(x); if (i != null) { pin = i; chart.invalidateBase(); decKey = ''; } }
+    });
+    decChart = new CH.Chart($('#runDecay'), {
+      ariaLabel: 'Fluorescence decay with its species components', topBand: 8, marginRight: 8, marginLeft: 58, bottom: 32, liveReadout: false,
+      xDomain: () => [0, 32], xTitle: () => 'Time (ns)',
+      panels: [{ key: 'main', yl: { title: 'Decay', unit: 'V', log: () => pulseLog, zero: true, minLog: -5 } }, { key: 'res', px: 34, yl: { title: 'Weighted residual', short: 'Residual', unit: 'σ', sym: true, symMin: 3, zero: false } }],
+      series: decSeries(), info: () => decInfo()
     });
     pulseChart = new CH.Chart($('#runPulse'), {
       ariaLabel: 'Latest pulse', topBand: 12, marginRight: 8, marginLeft: 46, bottom: 32, liveReadout: false,
@@ -3609,9 +4068,9 @@ const RC = (function () {
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && expanded) toggleExpand(); });
     window.addEventListener('resize', layoutBottom);
     built = true; syncSeg(); layoutBottom();
-    M.on(ev => { if (ev === 'proc' || ev === 'run' || ev === 'series' || ev === 'setup') { chart.cfg.panels = RC.panels(); chart.setSeries(RC.seriesFor()); chart.cfg.legendExtras = RC.legendExtras(); chart.buildLegend(); chart.relayout(); pulse.blk = -1; } if (ev === 'cards') cardsKey = ''; if (ev === 'notes') chart.invalidateBase(); if (ev === 'setup') syncSeg(); });
+    M.on(ev => { if (ev === 'proc' || ev === 'run' || ev === 'series' || ev === 'setup' || ev === 'lt') { chart.cfg.panels = RC.panels(); chart.setSeries(RC.seriesFor()); chart.cfg.legendExtras = RC.legendExtras(); chart.buildLegend(); chart.relayout(); pulse.blk = -1; decKey = ''; syncSeg(); } if (ev === 'run' && S.run && S.run.state === 'acquiring' && S.run.derivedN === 0) { pin = null; hov = null; } if (ev === 'cards') cardsKey = ''; if (ev === 'notes') chart.invalidateBase(); if (ev === 'setup') syncSeg(); });
   }
-  function layoutBottom() { const rb = $('#runBottom'); if (!rb) return; const w = rb.getBoundingClientRect().width; if (!w) return; const narrow = w < (S.engineer ? 1200 : 980); rb.classList.toggle('narrow', narrow); $('#cardPanel').style.display = narrow && narrowTab === 'log' ? 'none' : ''; $('#logPanel').style.display = narrow && narrowTab === 'cards' ? 'none' : ''; ensureTabs(narrow); }
+  function layoutBottom() { const rb = $('#runBottom'); if (!rb) return; const w = rb.getBoundingClientRect().width; if (!w) return; const narrow = w < 1200; rb.classList.toggle('narrow', narrow); $('#cardPanel').style.display = narrow && narrowTab === 'log' ? 'none' : ''; $('#logPanel').style.display = narrow && narrowTab === 'cards' ? 'none' : ''; ensureTabs(narrow); }
   function ensureTabs(narrow) {
     for (const id of ['logPanel', 'cardPanel']) {
       const ph = $('#' + id + ' .ph'); let t = $('.ptabs', ph);
@@ -3620,7 +4079,65 @@ const RC = (function () {
       if (t) { $$('button', t).forEach(b => b.classList.toggle('on', b.dataset.v === narrowTab)); $('h3', ph).style.display = 'none'; } else $('h3', ph).style.display = '';
     }
   }
-  function syncSeg() { $$('#rX button').forEach(b => { b.classList.toggle('on', b.dataset.v === RC.view.x && !RC.sa()); b.disabled = RC.sa(); }); $$('#rLog button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === RC.view.log)); }
+  function syncSeg() { $$('#rX button').forEach(b => { b.classList.toggle('on', b.dataset.v === RC.view.x && !RC.sa()); b.disabled = RC.sa(); }); $$('#rLog button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === RC.view.log)); RC.syncToggles(); }
+  /* ---------- Decay panel ---------- */
+  function showPane() {
+    if (!S.engineer) decPane = 'decay';
+    $$('#rDecV button').forEach(b => b.classList.toggle('on', b.dataset.v === decPane));
+    $('#runDecay').style.display = decPane === 'decay' ? '' : 'none'; $('#runPulse').style.display = decPane === 'pulse' ? '' : 'none';
+    setTimeout(() => { (decPane === 'decay' ? decChart : pulseChart).resize(); }, 0); decKey = '';
+  }
+  // nearest block that has data to an x position of the main chart
+  function blockAt(x) {
+    const R = S.run; if (!R || !R.derivedN) return null; const xs = R.x[RC.sa() ? 'acq' : RC.view.x], n = R.derivedN;
+    let i = Math.min(n - 1, TR.lowerBound(xs, n, x)); if (i > 0 && Math.abs(xs[i - 1] - x) <= Math.abs(xs[i] - x)) i--;
+    for (let d = 0; d < 6; d++) { if (i + d < n && !R.acq.disc[i + d]) return i + d; if (i - d >= 0 && !R.acq.disc[i - d]) return i - d; }
+    return null;
+  }
+  function apexBlock(R) {
+    if (apex.gen === R.dataGen * 1e7 + R.derivedN) return apex.i; let mx = -Infinity, im = -1;
+    for (let i = 0; i < R.derivedN; i++) { const y = R.y.act[i]; if (R.robust[i] && y > mx) { mx = y; im = i; } }
+    apex = { gen: R.dataGen * 1e7 + R.derivedN, i: im }; return im;
+  }
+  function shownBlock(R) {
+    if (hov != null && hov < R.derivedN) return { i: hov, why: 'Cursor' };
+    if (pin != null && pin < R.derivedN) return { i: pin, why: 'Pinned' };
+    if (R.state === 'complete') { const i = apexBlock(R); if (i >= 0) return { i, why: 'Fluorescence maximum' }; }
+    const lt = R.lt, i = lt && lt.fit ? lt.n - 1 : R.derivedN - 1 - LTM.H; return { i: Math.max(0, i), why: 'Latest' };
+  }
+  function decSeries() {
+    const comps = dec.d ? dec.d.comps : [], sh = c => (c.a > 0 && dec.d.total > 0 ? ' ' + (c.a / dec.d.total * 100).toFixed(c.a / dec.d.total < 0.1 ? 1 : 0) + ' %' : ' 0 %');
+    const pos = a => pulseLog ? Float64Array.from(a, v => v > 0 ? v : NaN) : a;
+    return [
+      { key: 'd', label: 'Data', tip: 'Mean decay of the blocks in the 15 s window, ND-corrected', mode: 'points', shape: 'dot', size: 3, color: '#8C96A0', panel: 'main', src: () => dec.n ? { x: dec.x, y: pos(dec.y), n: dec.n } : null },
+      ...(dec.d && dec.d.fit ? [{ key: 'f', label: 'Fit', tip: 'Sum of the components', color: C.text, width: 1.5, panel: 'main', src: () => ({ x: dec.x, y: pos(dec.f), n: dec.n, gen: dec.gen * 2 + (pulseLog ? 1 : 0) }), fmt: v => fmt.sig3(v) + ' V' }] : []),
+      ...comps.map((c, k) => ({ key: 'c' + c.key, label: c.short + sh(c), tip: c.name + ', τ ' + c.tau.toFixed(2) + ' ns: ' + fmt.sig3(c.a) + ' V·ns', color: c.color, width: 1.25, panel: 'main', src: () => dec.c[k] ? { x: dec.x, y: pos(dec.c[k]), n: dec.n, gen: dec.gen * 2 + (pulseLog ? 1 : 0) } : null, fmt: v => fmt.sig3(v) + ' V' })),
+      ...(dec.d && dec.d.fit ? [{ key: 'r', label: 'Residual', legend: false, mode: 'points', shape: 'dot', size: 2, color: '#8C96A0', panel: 'res', src: () => ({ x: dec.x, y: dec.r, n: dec.n }) }] : [])
+    ];
+  }
+  function decInfo() {
+    const R = S.run, d = dec.d; if (!R || !d) return R ? 'No decay yet.' : '';
+    const A = R.acq, i = d.i, f = R.fractions.find(q => A.u[i] >= q.a && A.u[i] < q.b), lt = R.lt;
+    const where = R.standalone ? fmt.min1(A.t[i] / 60) + ' min' : fmt.min1(R.x.min[i]) + ' min · ' + fmt.ml(A.u[i]) + ' mL' + (f ? ' · ' + f.id : '');
+    const st = LTM.state(R), fitTxt = d.fit ? ' · χ²ᵣ ' + d.chi2r.toFixed(2) : st === 'waiting' ? ' · lifetime analysis after ' + fmt.int(150) + ' blocks' : st === 'fitting' ? ' · first lifetime fit running' : '';
+    return where + fitTxt + ' · block ' + fmt.int(i + 1) + ', ' + d.nBlocks + ' blocks averaged';
+  }
+  function updDecay() {
+    const R = S.run; if (!R || !R.acq.dw) { if (dec.n) { dec.n = 0; dec.d = null; decChart.setSeries(decSeries()); } $('#decWhen').textContent = ''; return; }
+    const sb = shownBlock(R), key = sb.i + '|' + (R.lt ? R.lt.gen : 0) + '|' + pulseLog + '|' + sb.why;
+    $('#decLatest').style.display = pin != null ? '' : 'none';
+    if (key === decKey) return;
+    // the latest block moves every tick while live: refresh at most 4 times a second
+    if (sb.why === 'Latest' && decKey && performance.now() - decAt < 250) return;
+    decKey = key; decAt = performance.now();
+    const d = LTM.decayAt(R, sb.i); dec.d = d; dec.gen++;
+    if (!d) { dec.n = 0; } else {
+      dec.n = LTN; dec.y = d.y; if (d.fit) { dec.f = d.fit; dec.r = d.res; } dec.c = d.comps.map(c => c.y);
+    }
+    $('#decWhen').textContent = sb.why === 'Cursor' ? '' : sb.why;
+    const sig = JSON.stringify(decSeries().map(s => [s.key, s.label]));
+    if (sig !== decSer) { decSer = sig; decChart.setSeries(decSeries()); } else decChart.invalidate();
+  }
   function toggleExpand() { expanded = !expanded; $('#work').classList.toggle('expanded', expanded); $('#rExp').textContent = expanded ? 'Exit expanded (Esc)' : 'Expand chart'; $('#scr-run .run-top').classList.add('expand-target'); $('#scr-run .run-top').style.display = ''; setTimeout(() => chart.resize(), 0); }
   async function start() {
     const sm = M.readinessSummary(), pc = M.presetCheck();
@@ -3760,13 +4277,13 @@ const RC = (function () {
   }
   function update(d) {
     if (!built) build();
-    if (engLaid !== S.engineer) { engLaid = S.engineer; layoutBottom(); }
-    controls(); runValues(); runLog(); runCards(); updPulse(); UI.renderChips();
+    if (engLaid !== S.engineer) { engLaid = S.engineer; layoutBottom(); showPane(); }
+    controls(); runValues(); runLog(); runCards(); if (decPane === 'pulse') updPulse(); else updDecay(); UI.renderChips();
     if (d.all || d.xmode) { chart.invalidateBase(); }
     if (S.run) { if (S.run.acq.changes.length !== chart._nch || S.run.rules.cards.length !== chart._ncards) { chart._nch = S.run.acq.changes.length; chart._ncards = S.run.rules.cards.length; chart.invalidateBase(); } }
     chart.requestDraw();
   }
-  UI.register('run', { show() { if (!built) build(); setTimeout(() => { chart.resize(); pulseChart.resize(); layoutBottom(); }, 0); logN = -1; cardsKey = ''; }, update, hide() { if (expanded) toggleExpand(); }, cardsHtml, wireCards, chart: () => chart });
+  UI.register('run', { show() { if (!built) build(); setTimeout(() => { chart.resize(); pulseChart.resize(); decChart.resize(); layoutBottom(); }, 0); logN = -1; cardsKey = ''; decKey = ''; syncSeg(); }, update, hide() { if (expanded) toggleExpand(); }, cardsHtml, wireCards, chart: () => chart, decayBlock: () => dec.d ? dec.d.i : null });
 })();
 
 /* ---------- Fraction review (Validate, interpret and decide) ---------- */
@@ -3782,14 +4299,14 @@ const RC = (function () {
   function build() {
     const r = $('#scr-fractions'); r.classList.add('fixed'); r.style.overflow = 'auto';
     r.innerHTML = '<div class="scr-h"><h1>Fraction review</h1></div>' +
-      '<div class="run-top"><div class="chips" id="frChips" style="display:none"><span>Ranges one setting larger (what-if)</span></div><div class="toolbar" id="fTools"><div class="seg sm" id="fX"><button data-v="vol">mL</button><button data-v="cv">CV</button><button data-v="min">min</button></div><div class="seg sm" id="fLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div><span class="nowrap" style="display:inline-flex;align-items:center;gap:6px"><span class="lab">Drag to</span><div class="seg sm" id="fDrag"><button data-v="select" class="on">Select fractions</button><button data-v="zoom">Zoom</button></div></span><label class="chk small"><input type="checkbox" id="fRul"> Rulers</label><button class="btn sm" id="fReset">Reset zoom</button></div></div>' +
+      '<div class="run-top"><div class="chips" id="frChips" style="display:none"><span>Ranges one setting larger (what-if)</span></div><div class="toolbar" id="fTools"><div class="seg sm" id="fX"><button data-v="min">min</button><button data-v="vol">mL</button><button data-v="cv">CV</button></div><div class="seg sm" id="fLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div>' + RC.viewToggles('f') + '<span class="nowrap" style="display:inline-flex;align-items:center;gap:6px"><span class="lab">Drag to</span><div class="seg sm" id="fDrag"><button data-v="select" class="on">Select fractions</button><button data-v="zoom">Zoom</button></div></span><label class="chk small"><input type="checkbox" id="fRul"> Rulers</label><button class="btn sm" id="fReset">Reset zoom</button></div></div>' +
       '<div id="fEmpty" class="callout" style="display:none"></div>' +
       '<div class="fr-grid" id="frGrid" style="min-height:560px;grid-template-rows:minmax(0,56fr) minmax(0,44fr)">' +
       '<div class="panel" style="grid-column:1;grid-row:1"><div class="pb" style="padding:4px 8px"><div id="frOv" style="height:100%"></div></div></div>' +
       '<div class="panel fr-side" style="grid-column:2;grid-row:1"><div class="ph"><div class="ptabs" id="frTabs"><button data-v="frac" class="on">Fraction</button><button data-v="samples">Samples to send <span class="cnt" id="sampCnt">0</span></button></div><span class="sp"></span><span id="frNav" class="nowrap"></span></div><div class="pb" style="padding:4px 8px;display:flex;flex-direction:column;gap:6px;overflow:hidden" id="frSide"></div></div>' +
       '<div class="panel fr-table" style="grid-column:1 / 3;grid-row:2"><div class="ph"><h3>Fractions</h3><span class="note" id="frNote"></span><span class="sp"></span><label class="chk small" title="Relative signal-area contribution only. Not equivalent to protein mass, yield or recovery."><input type="checkbox" id="frShare"> Fluorescence share</label></div><div class="pb tbl-wrap" style="padding:0" id="frTblWrap"><table class="tbl" id="frTbl"><thead></thead><tbody></tbody></table></div></div>' +
       '</div>';
-    UI.processingButton($('#fTools'));
+    UI.processingButton($('#fTools')); RC.wireToggles($('#fTools'));
     $$('#fX button').forEach(b => b.onclick = () => { RC.view.x = b.dataset.v; sync(); ov.resetZoom(); ov.invalidate(); zoomTo(); UI.emitDirty('xmode'); });
     $$('#fLog button').forEach(b => b.onclick = () => { RC.view.log = b.dataset.v === '1'; sync(); ov.invalidate(); zm.invalidate(); });
     $$('#fDrag button').forEach(b => b.onclick = () => { ov.mode = b.dataset.v; $$('#fDrag button').forEach(x => x.classList.toggle('on', x === b)); });
@@ -3808,11 +4325,12 @@ const RC = (function () {
     });
     zm = new CH.Chart(el('<div style="height:100%"></div>'), mkZoomCfg());
     built = true; sync();
-    M.on(ev => { if (ev === 'proc' || ev === 'run' || ev === 'series') { ov.cfg.panels = ovPanels(); ov.setSeries(ovSeries()); zm.cfg.panels = zmPanels(); zm.setSeries(zmSeries()); ov.cfg.legendExtras = RC.legendExtras(); for (const c of [ov, zm]) { c.buildLegend(); c.relayout(); } lastKey = ''; mp.fid = null; } if (ev === 'cards' || ev === 'data') lastKey = ''; });
+    M.on(ev => { if (ev === 'proc' || ev === 'run' || ev === 'series' || ev === 'lt') { ov.cfg.panels = ovPanels(); ov.setSeries(ovSeries()); zm.cfg.panels = zmPanels(); zm.setSeries(zmSeries()); ov.cfg.legendExtras = RC.legendExtras(); for (const c of [ov, zm]) { c.buildLegend(); c.relayout(); } lastKey = ''; mp.fid = null; } if (ev === 'cards' || ev === 'data') lastKey = ''; });
   }
-  // overview: main panel plus the strips that carry Proposed processing (beam monitor, difference)
-  function ovPanels() { return RC.panels().filter(p => p.key === 'main' || p.key === 'bm' || p.key === 'diff' || p.key === 'decay'); }
-  function ovSeries() { return RC.seriesFor().filter(s => s.panel === 'main' || s.panel === 'bm' || s.panel === 'diff' || s.panel === 'decay'); }
+  // overview: main panel, the decay map, UV 280 when the AKTA traces are on, and the strips that carry Proposed processing
+  const OV = ['main', 'map', 'uv', 'bm', 'diff', 'decay'];
+  function ovPanels() { return RC.panels().filter(p => OV.includes(p.key)); }
+  function ovSeries() { return RC.seriesFor().filter(s => OV.includes(s.panel)); }
   function zmPanels() { return RC.panels().slice(0, 1).map(p => ({ ...p, yl: { ...p.yl, title: 'Fluor.', unit: 'V·ns' } })); }
   function zmSeries() { return RC.seriesFor().filter(s => s.panel === 'main').map(s => ({ ...s, legend: false })); }
   function mkZoomCfg() {
@@ -3839,7 +4357,7 @@ const RC = (function () {
     if (b.a != null) out.push(mk(0, b.a)); if (b.b != null) out.push(mk(1, b.b));
     return out;
   }
-  function sync() { $$('#fX button').forEach(b => b.classList.toggle('on', b.dataset.v === RC.view.x)); $$('#fLog button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === RC.view.log)); }
+  function sync() { $$('#fX button').forEach(b => b.classList.toggle('on', b.dataset.v === RC.view.x)); $$('#fLog button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === RC.view.log)); RC.syncToggles(); }
   function zoomTo() { if (!zm || !focus) return; zm.view = null; zm.zoomStack = []; zm.invalidate(); }
   function selChanged() { userPick = true; lastKey = ''; ov.invalidateOver(); zoomTo(); mp.fid = null; if (tab !== 'frac') { tab = 'frac'; $$('#frTabs button').forEach(x => x.classList.toggle('on', x.dataset.v === 'frac')); } side(true); }
   /* ---------- table ---------- */
@@ -3868,7 +4386,7 @@ const RC = (function () {
   }
   function table() {
     const R = S.run; const cols = COLS.filter(c => (!c.opt || showShare) && (!c.show || c.show()));
-    const key = JSON.stringify([R ? R.derivedN : 0, R ? R.dataGen : 0, [...sel], sortKey, sortDir, showShare, COLS.map(c => c.show ? c.show() : 1), R ? R.rules.cards.length : 0, S.decisions, M.alignmentState().fractions, RC.view.x]);
+    const key = JSON.stringify([R ? R.derivedN : 0, R ? R.dataGen : 0, R && R.lt ? R.lt.gen : 0, [...sel], sortKey, sortDir, showShare, COLS.map(c => c.show ? c.show() : 1), R ? R.rules.cards.length : 0, S.decisions, M.alignmentState().fractions, RC.view.x]);
     if (key === lastKey) return; lastKey = key;
     rows = R ? M.fractionStats(R) : [];
     if (sortKey) { const c = COLS.find(x => x.k === sortKey); rows.sort((a, b) => { const va = c.v(a), vb = c.v(b); return (va > vb ? 1 : va < vb ? -1 : 0) * sortDir; }); }
@@ -3904,7 +4422,7 @@ const RC = (function () {
   let sideKey = '';
   function side(force) {
     const R = S.run, box = $('#frSide');
-    const key = JSON.stringify([tab, focus, [...sel], S.decisions, R ? R.derivedN : 0, R ? R.rules.cards.map(c => c.status) : 0, M.procLabel(), S.th.flPct, flManual, M.plumbing(), M.alignmentState().fractions]);
+    const key = JSON.stringify([tab, focus, [...sel], S.decisions, R ? R.derivedN : 0, R && R.lt ? R.lt.gen : 0, R ? R.rules.cards.map(c => c.status) : 0, M.procLabel(), S.th.flPct, flManual, M.plumbing(), M.alignmentState().fractions]);
     if (!force && key === sideKey) return; sideKey = key;
     $('#frNav').innerHTML = tab === 'frac' && R && R.fractions.length ? '<label class="chk small eng-only" title="Median pulse of the fraction"><input type="checkbox" id="frMp"' + (showMp ? ' checked' : '') + '> Pulse</label> <button class="btn sm" id="frPrev" title="Previous fraction">Prev</button> <button class="btn sm" id="frNext" title="Next fraction">Next</button>' : '';
     const mpb = $('#frMp'); if (mpb) mpb.onchange = () => { showMp = mpb.checked; const g = $('.fr-detail-grid'); if (g) g.classList.toggle('show-mp', showMp); };
@@ -3924,6 +4442,7 @@ const RC = (function () {
     // order: fraction, linked cards and decision, confirmations, then the visual boundary comparison for the zoom chart
     $('#frDet').innerHTML = '<div><b>' + f.id + '</b> · ' + esc(st.phase) + ' · ' + fmt.ml(f.a) + ' to ' + fmt.ml(f.b) + ' mL · ' + fmt.int(st.nBlocks) + ' blocks</div>' +
       (sub.length ? '<div class="muted">' + sub.join(' · ') + '</div>' : '') +
+      (st.lt ? '<div title="' + esc(LTUI.LTIP) + '"><b>Species</b> <span class="lt-cell">' + LTUI.compBar(st.lt.comps, 90) + '<span>' + esc(LTUI.compText(st.lt.comps, 4)) + '</span></span> <span class="muted small">share of fluorescence</span></div>' : '') +
       '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px">' + (cards.length ? '<span><b>Linked cards</b> ' + cards.map(c => '<span class="flag" title="' + esc(c.obs && c.obs.indexOf(c.title) === 0 ? c.obs : c.title + (c.obs ? '. ' + c.obs : '')) + '">' + c.rule + (c.status !== 'open' ? ' ' + c.status : '') + '</span>').join('') + '</span>' : '') +
       '<span><b>Decision</b> <button class="btn sm" id="frDec">' + esc(decText(d)) + '</button></span></div>' + (d.note ? '<div class="small">Note: ' + esc(d.note) + '</div>' : '') +
       (cards.filter(c => c.confirm).map(c => '<div class="small">' + c.rule + ': ' + esc(c.confirm) + '</div>').join('')) +
@@ -3990,7 +4509,7 @@ const RC = (function () {
     ov.requestDraw(); if (zm._mounted) zm.requestDraw();
   }
   UI.register('fractions', {
-    show(o) { if (!built) build(); setTimeout(() => { ov.resize(); if (zm._mounted) zm.resize(); if (pc) pc.resize(); }, 0); lastKey = ''; sideKey = ''; zm._mounted = false; tab = o && o.anchor === 'samples' ? 'samples' : 'frac'; $$('#frTabs button').forEach(x => x.classList.toggle('on', x.dataset.v === tab)); table(); side(true); },
+    show(o) { if (!built) build(); sync(); setTimeout(() => { ov.resize(); if (zm._mounted) zm.resize(); if (pc) pc.resize(); }, 0); lastKey = ''; sideKey = ''; zm._mounted = false; tab = o && o.anchor === 'samples' ? 'samples' : 'frac'; $$('#frTabs button').forEach(x => x.classList.toggle('on', x.dataset.v === tab)); table(); side(true); },
     update, samplesText, select(id) { focus = id; sel = new Set([id]); selChanged(); },
     // a beforeKey that no longer exists (the Assignment column was removed) inserts before Cards, so Decision stays last
     addCol(col, beforeKey) { let k = COLS.findIndex(c => c.k === beforeKey); if (k < 0) k = COLS.findIndex(c => c.k === 'cards'); COLS.splice(k < 0 ? COLS.length : k, 0, col); lastKey = ''; },
@@ -4024,9 +4543,12 @@ const REC = (function () {
     });
     return out;
   }
-  function resultsHead(showAssign) {
-    return [['Fraction'], ['Phase'], ['Volume', 'mL'], ['UV 280 mean / max', 'mAU'], ['Fluor. mean / max', 'V·ns']].concat(showAssign ? [['Assignment']] : [], [['Cards']]);
+  function resultsHead(showAssign, showLt) {
+    return [['Fraction'], ['Phase'], ['Volume', 'mL'], ['UV 280 mean / max', 'mAU'], ['Fluor. mean / max', 'V·ns']].concat(showLt ? [['Species', '% of fluorescence']] : [], showAssign ? [['Assignment']] : [], [['Cards']]);
   }
+  // lifetime analysis: components with their names, and a fraction's leading species
+  function ltComps(R) { return LTM.components(R).map(c => c.tau.toFixed(2) + ' ns (' + (c.m >= 0 ? c.short : 'unassigned') + ')').join(', '); }
+  function ltShares(lt) { return lt ? lt.comps.filter(c => c.share >= 0.005).sort((a, b) => b.share - a.share).slice(0, 3).map(c => c.short + ' ' + (c.share * 100).toFixed(c.share < 0.1 ? 1 : 0)).join(', ') : ''; }
   function sections() {
     const R = S.run, s = R ? R.setupSnap : S.setup, al = M.alignmentState(), p = M.plumbing(), pi = M.presetInfo(s.pmt);
     const tpl = R ? R.tpl : M.template(), ph = R ? R.ph : TR.buildPhases(tpl), src = s.source;
@@ -4041,13 +4563,15 @@ const REC = (function () {
       ...(src === 'standalone' ? ['Alignment: not used (standalone TRIFLE, time axis).'] : [
         'Delay volumes: V1 (UV to TRIFLE) ' + fmt.ml(s.V1) + ' mL, V2 (TRIFLE to collector) ' + fmt.ml(s.V2) + ' mL, UNICORN fraction delay ' + fmt.ml(p.fracDelay) + ' mL.',
         'Alignment method: ' + (src === 'manual' || !s.flowTrace ? 'delay volumes applied in the volume domain, without a flow trace.' : 'cumulative volume from the integrated AKTA flow trace; delay volumes applied in the volume domain.')
-      ])
+      ]),
+      'Lifetime analysis (Proposed): global fit of every block decay as non-negative exponentials convolved with the stored IRF, lifetimes shared by the run, amplitudes per block (after Hales et al., J Chromatogr A 1641, 461968, 2021); number of components chosen by the data; 15 s time resolution; component names from the method template\'s expected species (assumed).'
     ].join('\n');
     if (R) {
-      const st = M.fractionStats(R), showAssign = st.some(f => f.assign === 'Uncertain');
-      out.resultsHead = resultsHead(showAssign);
-      out.resultsTable = st.map(f => [f.id, f.phase, fmt.ml(f.a) + '-' + fmt.ml(f.b), fmt.mau(f.uvMean) + ' / ' + fmt.mau(f.uvMax) + (f.uvSat ? ' (sat.)' : ''), fmt.sig3(f.fMean) + ' / ' + fmt.sig3(f.fMax)].concat(showAssign ? [f.assign] : [], [f.linked.join(' ')]));
+      const st = M.fractionStats(R), showAssign = st.some(f => f.assign === 'Uncertain'), showLt = !!(R.lt && R.lt.fit), lst = LTM.state(R);
+      out.resultsHead = resultsHead(showAssign, showLt);
+      out.resultsTable = st.map(f => [f.id, f.phase, fmt.ml(f.a) + '-' + fmt.ml(f.b), fmt.mau(f.uvMean) + ' / ' + fmt.mau(f.uvMax) + (f.uvSat ? ' (sat.)' : ''), fmt.sig3(f.fMean) + ' / ' + fmt.sig3(f.fMax)].concat(showLt ? [ltShares(f.lt)] : [], showAssign ? [f.assign] : [], [f.linked.join(' ')]));
       out.results = R.id + ': ' + fmt.int(R.acq.n) + ' blocks over ' + fmt.min1((R.state === 'complete' ? R.endAt : M.runTimeS(R)) / 60) + ' min. Fluorescence is relative (V·ns, ND-corrected); no recovery or purity is derived.' +
+        (showLt ? ' Lifetime analysis' + (lst === 'final' ? '' : ' (not final)') + ': ' + R.lt.fit.taus.length + ' components, ' + ltComps(R) + '; reduced χ² ' + R.lt.fit.chi2r.toFixed(2) + '. Species shares are shares of fluorescence, not mass or purity.' : '') +
         (st.length ? '\n' + out.resultsHead.map(h => h[0] + (h[1] ? ' (' + h[1] + ')' : '')).join('  ') + '\n' + out.resultsTable.map(r => r.join('  ').trimEnd()).join('\n') : '');
       const A = R.acq, n = R.derivedN; let disc = 0, over = 0, low = 0; for (let i = 0; i < n; i++) { disc += A.disc[i]; over += A.nOver[i]; low += R.low[i]; }
       const cards = R.rules.cards, byRule = {}; cards.forEach(c => { byRule[c.rule] = (byRule[c.rule] || 0) + 1; });
@@ -4122,20 +4646,21 @@ const REC = (function () {
   function exportBlocks() {
     const R = S.run, A = R.acq, n = R.derivedN, lad = TR.LADDERS[R.pmt], k = M.comboIdx();
     const fr = R.fractions, p = M.plumbing();
-    const lines = ['block,time_min,akta_time_min,volume_mL,CV,phase,fraction,fluor_v20_Vns,fluor_proposed_Vns,fluor_proposed_corrected_Vns,step,nd_od,range_mV,range_use_pct,waveforms_over_90pct,beam_monitor_rel,flags'];
+    const lt = R.lt && R.lt.fit ? R.lt : null, ltm = lt ? LTM.components(R).filter(c => c.m >= 0).map(c => c.m) : [];
+    const lines = ['block,time_min,akta_time_min,volume_mL,CV,phase,fraction,fluor_v20_Vns,fluor_proposed_Vns,fluor_proposed_corrected_Vns,step,nd_od,range_mV,range_use_pct,waveforms_over_90pct,beam_monitor_rel,flags' + ltm.map(m => ',species_' + lt.lib[m].key + '_Vns').join('')];
     for (let i = 0; i < n; i++) {
       const u = A.u[i], f = fr.find(q => { const [a, b] = TR.collectedRange(q, p); return u >= a && u < b; });
       const st = lad[A.step[i] - 1], flags = [A.disc[i] ? 'discarded' : '', R.low[i] ? 'low_precision' : '', A.nOver[i] > 2 ? 'overrun' : ''].filter(Boolean).join('|');
       const pr = A.F[k][i], pc = isFinite(A.bm[i]) ? pr / A.bm[i] : NaN;
-      lines.push([i + 1, (A.t[i] / 60).toFixed(4), M.aktaMin(R, A.t[i]).toFixed(4), u.toFixed(4), (u / R.cv).toFixed(4), '"' + R.ph.list[A.phase[i]].name + '"', f ? f.id : '', num(A.F[0][i]), num(pr), num(pc), A.step[i], st.nd, st.range * 1000, isFinite(A.ruse[i]) ? (A.ruse[i] * 100).toFixed(1) : '', A.disc[i] ? '' : A.nOver[i], isFinite(A.bm[i]) ? A.bm[i].toFixed(5) : '', flags].join(','));
+      lines.push([i + 1, (A.t[i] / 60).toFixed(4), M.aktaMin(R, A.t[i]).toFixed(4), u.toFixed(4), (u / R.cv).toFixed(4), '"' + R.ph.list[A.phase[i]].name + '"', f ? f.id : '', num(A.F[0][i]), num(pr), num(pc), A.step[i], st.nd, st.range * 1000, isFinite(A.ruse[i]) ? (A.ruse[i] * 100).toFixed(1) : '', A.disc[i] ? '' : A.nOver[i], isFinite(A.bm[i]) ? A.bm[i].toFixed(5) : '', flags].concat(ltm.map(m => i < lt.n ? num(lt.amp[m][i]) : '')).join(','));
     }
     const name = fileBase() + '_blocks.csv'; saved(name, UI.download(name, lines.join('\n'), 'text/csv'));
   }
   function num(v) { return isFinite(v) ? v.toPrecision(8) : ''; }
   function exportFractions() {
-    const R = S.run, st = M.fractionStats(R);
-    const lines = ['fraction,phase,volume_start_mL,volume_end_mL,collected_start_mL,collected_end_mL,CV_start,CV_end,uv280_mean_mAU,uv280_max_mAU,uv_saturated,fluor_mean_Vns,fluor_max_Vns,processing,sensitivity_changes,waveforms_over_90pct,discarded_blocks,laser_flags,low_precision_share,assignment,share_of_integrated_fluorescence_pct,cards,decision,decision_note'];
-    for (const f of st) { const d = S.decisions[f.id] || {}; lines.push([f.id, f.phase, f.a.toFixed(3), f.b.toFixed(3), f.ca.toFixed(3), f.cb.toFixed(3), f.cvA.toFixed(3), f.cvB.toFixed(3), isFinite(f.uvMean) ? f.uvMean.toFixed(1) : '', isFinite(f.uvMax) ? f.uvMax.toFixed(1) : '', f.uvSat, num(f.fMean), num(f.fMax), '"' + M.procLabel() + '"', f.chg, f.over, f.disc, f.laser, f.lowShare.toFixed(3), f.assign, isFinite(f.share) ? (f.share * 100).toFixed(2) : '', '"' + f.linked.join(' ') + '"', '"' + [['sec', 'HPLC-SEC'], ['lun', 'Lunatic'], ['proa', 'Protein A HPLC'], ['none', 'No action']].filter(k => d[k[0]]).map(k => k[1]).join('; ') + '"', '"' + (d.note || '').replace(/"/g, "'") + '"'].join(',')); }
+    const R = S.run, st = M.fractionStats(R), comps = R.lt && R.lt.fit ? LTM.components(R) : [];
+    const lines = ['fraction,phase,volume_start_mL,volume_end_mL,collected_start_mL,collected_end_mL,CV_start,CV_end,uv280_mean_mAU,uv280_max_mAU,uv_saturated,fluor_mean_Vns,fluor_max_Vns,processing,sensitivity_changes,waveforms_over_90pct,discarded_blocks,laser_flags,low_precision_share,assignment,share_of_integrated_fluorescence_pct,cards,decision,decision_note' + comps.map(c => ',species_' + (c.m >= 0 ? c.key : 'unassigned_' + (c.k + 1)) + '_pct').join('')];
+    for (const f of st) { const d = S.decisions[f.id] || {}; lines.push([f.id, f.phase, f.a.toFixed(3), f.b.toFixed(3), f.ca.toFixed(3), f.cb.toFixed(3), f.cvA.toFixed(3), f.cvB.toFixed(3), isFinite(f.uvMean) ? f.uvMean.toFixed(1) : '', isFinite(f.uvMax) ? f.uvMax.toFixed(1) : '', f.uvSat, num(f.fMean), num(f.fMax), '"' + M.procLabel() + '"', f.chg, f.over, f.disc, f.laser, f.lowShare.toFixed(3), f.assign, isFinite(f.share) ? (f.share * 100).toFixed(2) : '', '"' + f.linked.join(' ') + '"', '"' + [['sec', 'HPLC-SEC'], ['lun', 'Lunatic'], ['proa', 'Protein A HPLC'], ['none', 'No action']].filter(k => d[k[0]]).map(k => k[1]).join('; ') + '"', '"' + (d.note || '').replace(/"/g, "'") + '"'].concat(comps.map(c => { const q = f.lt && f.lt.comps.find(x => x.k === c.k); return q && isFinite(q.share) ? (q.share * 100).toFixed(2) : ''; })).join(',')); }
     const name = fileBase() + '_fractions.csv'; saved(name, UI.download(name, lines.join('\n'), 'text/csv'));
   }
   function exportJson() {
@@ -4146,6 +4671,7 @@ const REC = (function () {
       versions: { trifle: '2.0 (reference algorithms)', mockup: 'Stage ' + (window.STAGE2 ? '2' : '1') },
       setup: R ? R.setupSnap : S.setup, processing: { mode: M.procLabel(), options: S.proc }, thresholds_provisional: S.th, preset: M.presetInfo((R ? R.setupSnap : S.setup).pmt),
       alignment: M.alignmentState(), plumbing: M.plumbing(), run: R ? { id: R.id, blocks: R.acq.n, state: R.state, timer_min: R.timerMin, data_checksum: TR.fnv([R.acq.F[0], R.acq.F[3]], R.acq.n), laser_stable_at_start: R.laserStableAtStart, override: R.override, cards: R.rules.cards.map(c => ({ id: c.id, rule: c.rule, level: c.levelName, phase: c.phase, title: c.title, observation: c.obs, fractions: c.fractions, processing: c.mode, status: c.status, note: c.note, confirm: c.confirm || null })), notes: R.notes } : null,
+      lifetime_analysis: R && R.lt && R.lt.fit ? { label: 'Proposed', method: 'Global lifetime analysis: every block decay fitted as non-negative exponentials convolved with the stored IRF; lifetimes shared by the run, amplitudes per block (after Hales et al., J Chromatogr A 1641, 461968, 2021)', state: LTM.state(R), time_resolution_s: 2 * LTM.H + 1, bin_blocks: LTM.PER, bins: R.lt.fit.nBins, reduced_chi2: R.lt.fit.chi2r, components: LTM.components(R).map(c => ({ tau_ns: c.tau, se_ns: c.se, named_as: c.m >= 0 ? c.name : null, template_expected_ns: isFinite(c.exp) ? c.exp : null })), model_selection: R.lt.fit.hist.map(h => ({ components: h.K, reduced_chi2: h.chi2r, chi2_drop: h.gain != null ? h.gain : null, accepted: h.accepted, taus_ns: h.taus })), names_note: 'Component names come from the method template expected species (assumed); shares are fluorescence, not mass or purity.' } : null,
       decisions: S.decisions, audit_trail: S.audit, exports: S.exports
     };
     const name = fileBase() + '_metadata.json'; saved(name, UI.download(name, JSON.stringify(meta, null, 2), 'application/json'));
@@ -4659,6 +5185,7 @@ const ENG = (function () {
   const ROWS = [
     ['Faster access to useful measurements', 'Live acquisition and chromatogram', 'Time from acquisition to an interpretable result'],
     ['Better fraction investigation', 'Fraction review with evidence cards', 'Whether prioritised fractions match offline analytical findings'],
+    ['Resolve species that elute together', 'Lifetime analysis: species chromatograms, Decay panel and decay map (Proposed)', 'Agreement of species shares with HPLC-SEC, Protein A HPLC or capsid assays on the same fractions'],
     ['Fewer unnecessary offline analyses', 'Evidence-led suggestions for confirmation', 'Samples tested per run and what they found'],
     ['Improved reproducibility', 'Presets, readiness checks, QC flags', 'Repeatability and frequency of invalid runs'],
     ['Improved data availability', 'Structured export tied to experiment ID', 'Time to transfer and retrieve run data'],
@@ -4751,7 +5278,7 @@ const Q = (function () {
       if (R && !R.tpl.breakthroughRule) return A('Rule P2 and hypothesis H1 apply to mAb Protein A templates only. This run uses ' + R.tpl.name + '.', 'Rules P2, H1; method template');
       const p2 = R ? R.rules.cards.filter(c => c.rule === 'P2') : [], h1 = R ? R.rules.cards.find(c => c.rule === 'H1') : null;
       if (p2.length) return A('Possibly, but not confirmed. Rule P2: ' + p2[0].obs + ' H1 is a research hypothesis that mAb breakthrough may be starting. Total fluorescence cannot separate mAb from HCP. Confirm with ' + h1.confirm.replace(/\.$/, '') + '.', 'Cards ' + p2[0].id + ', ' + h1.id);
-      return A('No P2 observation in this run' + (R ? ' so far' : '') + '. P2 watches the fluorescence slope over the last 1 CV after the load plateau (limit 2 % per CV). Even if it fires, fluorescence cannot separate mAb from HCP, so breakthrough needs Protein A HPLC on the flowthrough fractions.', 'Rules P2 and H1');
+      return A('No P2 observation in this run' + (R ? ' so far' : '') + '. P2 watches the fluorescence slope over the last 1 CV after the load plateau (limit 2 % per CV). Total fluorescence cannot separate mAb from HCP; the mAb component of the lifetime analysis can (Proposed). Confirm breakthrough with Protein A HPLC on the flowthrough fractions.', 'Rules P2 and H1');
     }
     if (/trust|reliab|confiden/.test(q) && /peak|elution/.test(q) || /can i trust/.test(q)) {
       if (!R) return A('No run yet. After a run, the answer uses the elution fractions\' QC: range overruns, sensitivity changes, discarded blocks, laser flags and alignment.', 'Fraction table QC');
@@ -4825,7 +5352,7 @@ const Q = (function () {
   /* ---------- Run and Fraction review additions ---------- */
   UI.procExtras.push({ key: 'decay', label: 'Decay-shape analysis (research display)', html: () => '<div' + (S.proc.decay ? '' : ' class="eng-only"') + '><hr style="border:0;border-top:1px solid var(--border);margin:6px 0"><label class="chk"><input type="checkbox" data-k="decay"> Decay-shape analysis ' + tag('P', S.proc.decay ? 'always' : 'engineer') + '</label><div class="small muted" style="margin-left:22px">Research display, not validated. Adds the decay strip and rule P7.</div></div>', onChange: () => { if (S.run) { S.run.dataGen++; S.run.rules.replay(); } } });
   RC.extraPanels.push(() => [{ key: 'decay', px: 46, hidden: () => !S.proc.decay, yl: { title: 'Decay metric', short: 'Decay', unit: 'ns', zero: false, minSpan: 0.4 } }]);
-  RC.extraSeries.push(() => { const ref = S2.decayRef(S.run), info = S2.irfInfo(S.run ? S.run.pmt : S.setup.pmt); return [{ key: 'decay', label: 'Decay metric', color: C.decay, width: 1, panel: 'decay', src: ref ? RC.trifle('decay') : () => null, fmt: v => v.toFixed(2) + ' ns', visible: !!S.proc.decay, legend: !!S.proc.decay, tag: 'Proposed', tagScope: 'always', tip: (ref ? 'Load plateau ' + ref.mean.toFixed(2) + ' ± ' + ref.sd.toFixed(2) + ' ns SD' : 'SD pending') + '; IRF ' + info.fwhmNs.toFixed(1) + ' ns FWHM; sampling 0.2 ns. Intensity-weighted mean delay after the IRF peak, 0 to 20 ns, on the block median waveform. Computed only where input range use is between ' + Math.round(S.th.decayUseMin * 100) + ' and ' + Math.round(S.th.decayUseMax * 100) + ' %. Research display only.' }]; });
+  RC.extraSeries.push(() => { const ref = S2.decayRef(S.run), info = S2.irfInfo(S.run ? S.run.pmt : S.setup.pmt); return [{ key: 'decay', label: 'Decay metric', color: C.decay, width: 1, panel: 'decay', src: ref ? RC.trifle('decay') : () => null, fmt: v => v.toFixed(2) + ' ns', visible: !!S.proc.decay, legend: !!S.proc.decay, tag: 'Proposed', tagScope: 'always', tip: (ref ? 'Elution front ' + ref.mean.toFixed(2) + ' ± ' + ref.sd.toFixed(2) + ' ns SD' : 'SD pending') + '; IRF ' + info.fwhmNs.toFixed(1) + ' ns FWHM; sampling 0.2 ns. Intensity-weighted mean delay after the IRF peak, 0 to 20 ns, on the block median waveform. Computed only where input range use is between ' + Math.round(S.th.decayUseMin * 100) + ' and ' + Math.round(S.th.decayUseMax * 100) + ' %. Research display only.' }]; });
   RC.extraInfo.push((r, i) => { let s = ''; const pk = r.ph.list[r.acq.phase[i]].key, k = S2.conc(r.y.act[i], r, pk); if (k.state !== 'na' && k.state !== 'mixed') s += ' · ' + (k.state === 'in' ? S2.concText(r.y.act[i], r, pk) : 'concentration ' + S2.concText(r.y.act[i], r, pk).toLowerCase()); const ref = S2.decayRef(r); if (S.proc.decay && ref && isFinite(r.y.decay[i])) s += ' · decay ' + r.y.decay[i].toFixed(2) + ' ± ' + ref.sd.toFixed(2) + ' ns'; return s; });
   RC.runRows.push((R, i, row) => {
     let h = ''; if (!(i >= 0) || !R.derivedN) return h;
@@ -5042,7 +5569,7 @@ const Q = (function () {
       return '<div class="panel" style="max-width:820px"><div class="ph"><h3>Decay metric</h3>' + tag('P', 'always') + '<span class="tag" data-scope="always">Research display</span></div><div class="pb small">' +
         '<p><b>Definition.</b> Intensity-weighted mean delay after the IRF peak (' + info.peakNs.toFixed(1) + ' ns from window start), Σ (t − t<sub>peak</sub>) I(t) / Σ I(t) over 0 to 20 ns, with I(t) = −(v(t) − b) on the block median waveform and b its median baseline.</p>' +
         '<p>Computed only where input range use is between ' + Math.round(S.th.decayUseMin * 100) + ' and ' + Math.round(S.th.decayUseMax * 100) + ' %.</p>' +
-        '<p><b>Precision.</b> Block-to-block SD on the load plateau, a steady phase. ' + (ref ? 'This run: ' + ref.mean.toFixed(3) + ' ± ' + ref.sd.toFixed(3) + ' ns from ' + fmt.int(ref.n) + ' blocks.' : 'Measured once the load is acquired with decay analysis on.') + ' IRF ' + info.fwhmNs.toFixed(2) + ' ns FWHM; sampling interval 0.2 ns.</p>' +
+        '<p><b>Precision.</b> Block-to-block SD over the first 40 valid blocks of the elution peak, which are also the P7 reference. The load plateau is host-cell protein, a different species, so it is not used. ' + (ref ? 'This run: ' + ref.mean.toFixed(3) + ' ± ' + ref.sd.toFixed(3) + ' ns from ' + fmt.int(ref.n) + ' blocks.' : 'Measured once the elution peak is acquired with decay analysis on.') + ' IRF ' + info.fwhmNs.toFixed(2) + ' ns FWHM; sampling interval 0.2 ns.</p>' +
         '<p><b>Rule P7</b> fires only when a shift exceeds ' + S.th.decaySdMult + ' × SD and ' + S.th.decayThrNs + ' ns. Linked hypothesis H3 suggests HPLC-SEC.</p></div></div>';
     } },
     fit: { html: () => {
@@ -5069,7 +5596,7 @@ const Q = (function () {
 
   /* ---------- Setup additions for the AAV template ---------- */
   const aavNoted = new WeakSet();
-  M.on(ev => { const R = S.run; if (ev === 'run' && R && R.tpl.id === 'aav' && !aavNoted.has(R)) { aavNoted.add(R); M.log(R, 'system', 'AAV affinity capture template. Empty and full capsid assessment is not a TRIFLE output in this version.'); } });
+  M.on(ev => { const R = S.run; if (ev === 'run' && R && R.tpl.id === 'aav' && !aavNoted.has(R)) { aavNoted.add(R); M.log(R, 'system', 'AAV affinity capture template. The lifetime analysis names co-eluting components empty and full capsids (assumed); it reports shares of fluorescence, not an empty-to-full particle ratio.'); } });
 
   /* ---------- Questions panel additions ---------- */
   Q.addIntent((q, ctx) => {
@@ -5080,14 +5607,14 @@ const Q = (function () {
       if (!st.ok) return { text: 'Calibration ' + st.rec.id + ' does not apply to this run, so no concentration is shown (rule I7). Reason: ' + cap(st.reasons.join('; ')) + '.', source: 'Calibration record ' + st.rec.id + '; rule I7' };
       return { text: 'Calibration ' + st.rec.id + ' (' + st.rec.materialName + ', ' + st.rec.presetId + ', ' + st.rec.mode + ') is linear from ' + st.rec.fit.lo + ' to ' + st.rec.fit.hi + ' mg/mL. Indicative concentrations are shown only in elution and inside that range. Elsewhere fluorescence is relative only, and rule P6 lists the fractions above the range. Yield and recovery are not computed from fluorescence.', source: 'Calibration record ' + st.rec.id + '; rule P6' };
     }
-    if (/decay|lifetime|tryptophan environment|conformation/.test(q)) {
+    if (/decay metric|decay-shape|decay shape|tryptophan environment|conformation|\bp7\b/.test(q)) {
       if (!S.proc.decay) return { text: 'Decay-shape analysis is off. Switch it on under Processing in Engineer view to show the decay metric and rule P7. It is a Proposed research display and cannot identify a cause.', source: 'Processing options; rule P7' };
       const p7 = R ? R.rules.cards.find(c => c.rule === 'P7') : null, ref = S2.decayRef(R), info = S2.irfInfo(R ? R.pmt : S.setup.pmt);
       const def = 'The decay metric is the intensity-weighted mean delay after the IRF peak, over 0 to 20 ns of the block median waveform. It is computed where input range use is ' + Math.round(S.th.decayUseMin * 100) + ' to ' + Math.round(S.th.decayUseMax * 100) + ' %.';
       if (p7) return { text: def + ' ' + p7.obs + ' Research hypothesis H3 is a possible change in tryptophan environment. Confirm with HPLC-SEC on ' + M.rangeIds(p7.fractions) + '.', source: 'Engineer view: Decay; card ' + p7.id + '; H3' };
-      return { text: def + ' No P7 observation so far.' + (ref ? ' The load plateau reference is ' + ref.mean.toFixed(2) + ' ± ' + ref.sd.toFixed(2) + ' ns (SD), with IRF ' + info.fwhmNs.toFixed(1) + ' ns FWHM and 0.2 ns sampling.' : '') + ' P7 fires only when the shift exceeds ' + S.th.decaySdMult + ' × SD and ' + S.th.decayThrNs + ' ns.', source: 'Engineer view: Decay; rule P7' };
+      return { text: def + ' No P7 observation so far.' + (ref ? ' The elution-front reference is ' + ref.mean.toFixed(2) + ' ± ' + ref.sd.toFixed(2) + ' ns (SD), with IRF ' + info.fwhmNs.toFixed(1) + ' ns FWHM and 0.2 ns sampling.' : '') + ' P7 fires only when the shift exceeds ' + S.th.decaySdMult + ' × SD and ' + S.th.decayThrNs + ' ns.', source: 'Engineer view: Decay; rule P7' };
     }
-    if (/capsid|\bempty\b.*\bfull\b|\bfull\b.*\bempty\b/.test(q)) return { text: 'Empty and full capsid assessment is not a TRIFLE output in this version.', source: 'AAV affinity capture template' };
+    if (/capsid|\bempty\b.*\bfull\b|\bfull\b.*\bempty\b/.test(q)) return { text: 'In the AAV template the lifetime analysis can separate co-eluting capsid populations by their fluorescence decay, and names the components empty and full capsids from the template\'s expected lifetimes (assumed, not validated). It reports shares of fluorescence, not an empty-to-full particle ratio: a full capsid does not give the same fluorescence as an empty one. Confirm with AUC, cryo-EM or AEX.', source: 'AAV affinity capture template; lifetime analysis (Proposed)' };
     if (/compar|earlier run|previous run|other run/.test(q)) return { text: 'Run comparison overlays up to 4 runs of the same method template, aligned by volume, with a difference trace against a reference run and a per-fraction table. Runs with different PMT presets or processing modes are compared in relative mode only.', source: 'Procedure: Run comparison' };
     return null;
   });
@@ -5095,6 +5622,115 @@ const Q = (function () {
 
   /* ---------- wiring ---------- */
   setTimeout(() => { addFrCols(); S2.initRecord(); UI.emitDirty(); }, 0);
+})();
+
+/* =====================================================================
+   Lifetime analysis UI (Proposed): species on the chromatograms, the
+   composition row in Run values, the fraction composition column and
+   the Engineer view Lifetimes tab.
+   ===================================================================== */
+(function () {
+  const { $, $$, esc, el, tag } = UI, S = M.S, fmt = M.fmt, C = CH.C;
+  const LTIP = 'Lifetime analysis (Proposed): every block decay is fitted as a non-negative sum of exponentials convolved with the stored IRF. The lifetimes are shared by the whole run and found from the data; the amplitudes are free for every block. No elution profile is assumed and no reference decays are used. Component names come from the method template\'s expected species (assumed).';
+  // display order: the product first, then the other species from the longest expected lifetime down
+  function order(lib) { return lib.map((s, m) => m).sort((a, b) => (lib[b].product ? 1 : 0) - (lib[a].product ? 1 : 0) || lib[b].exp - lib[a].exp); }
+  const GAP = { vol: 1.0, cv: 0.25, min: 1.0, acq: 1.0 }, MODE = { vol: 1, cv: 2, min: 3, acq: 4 };
+  function src(m) {
+    return () => {
+      const R = S.run; if (!R || !R.lt || !R.lt.fit) return null; const lt = R.lt, mode = RC.sa() ? 'acq' : RC.view.x, lg = RC.view.log;
+      return { x: R.x[mode], y: m < 0 ? (lg ? lt.otherSig : lt.other) : (lg ? lt.sig[m] : lt.amp[m]), n: lt.n, brk: R.brk, maxGap: GAP[mode], gen: lt.gen * 80 + MODE[mode] * 2 + (lg ? 1 : 0) };
+    };
+  }
+  /* ---------- species on Run and Fraction review ---------- */
+  RC.extraSeries.push(() => {
+    const R = S.run; if (!R || !R.lt) return [];
+    const comps = LTM.components(R), lib = R.lt.lib, out = [];
+    for (const m of order(lib)) {
+      const c = comps.find(q => q.m === m); if (!c) continue;
+      out.push({ key: 'lt_' + c.key, label: c.short + ', ' + c.tau.toFixed(2) + ' ns', tip: c.name + ': decay-associated chromatogram, lifetime ' + c.tau.toFixed(2) + ' ns (template expects about ' + c.exp + ' ns). Mean decay over 15 s. On the log axis only amplitudes above 2 standard errors are drawn. Proposed.', color: c.color, width: c.key === 'sc' ? 1 : 1.6, panel: 'main', src: src(m), fmt: v => fmt.sig3(v) + ' V·ns' });
+    }
+    const other = comps.filter(c => c.m < 0);
+    if (other.length) out.push({ key: 'lt_other', label: 'Unassigned, ' + other.map(c => c.tau.toFixed(2)).join(', ') + ' ns', tip: 'A component with no expected species of a similar lifetime in the method template. It may be a new species, or may resolve as more of the run is fitted.', color: LTM.COLORS.other, width: 1.4, panel: 'main', src: src(-1), fmt: v => fmt.sig3(v) + ' V·ns' });
+    return out;
+  });
+  const baseExtras = RC.legendExtras;
+  RC.legendExtras = () => { const R = S.run, st = LTM.state(R); const ex = baseExtras(); if (st === 'none') return ex; const word = { waiting: 'waiting for signal', fitting: 'first fit running', live: 'updating', finalising: 'final fit running', final: 'final' }[st]; return [{ html: '<span class="ch-ll">Species: lifetime analysis, ' + word + '</span> ' + tag('P', 'always'), tip: LTIP }, ...ex]; };
+  RC.extraInfo.push((r, i) => { const a = LTM.ampsAt(r, i); if (!a) return ''; const top = a.comps.filter(c => c.share >= 0.01).sort((x, y) => y.share - x.share).slice(0, 3); return top.length ? ' · ' + top.map(c => c.short + ' ' + fmt.pct0(c.share) + ' %').join(', ') : ''; });
+
+  /* ---------- composition: stacked bar plus the leading species ---------- */
+  function compBar(comps, w) {
+    const tot = comps.reduce((s, c) => s + Math.max(0, c.a), 0); if (!(tot > 0)) return '';
+    const segs = comps.filter(c => c.a > 0).sort((a, b) => (b.product ? 1 : 0) - (a.product ? 1 : 0) || b.a - a.a);
+    return '<span class="lt-bar" style="width:' + (w || 90) + 'px" title="' + esc(segs.map(c => c.name + ' ' + pct(c.a / tot) + ' %').join('; ')) + '">' + segs.map(c => '<span style="flex:' + (c.a / tot).toFixed(4) + ' 1 0;background:' + c.color + '"></span>').join('') + '</span>';
+  }
+  function pct(f) { return f >= 0.1 ? (f * 100).toFixed(0) : (f * 100).toFixed(1); }
+  function compText(comps, n) { const tot = comps.reduce((s, c) => s + Math.max(0, c.a), 0); if (!(tot > 0)) return ''; return comps.filter(c => c.a / tot >= 0.005).sort((a, b) => b.a - a.a).slice(0, n || 4).map(c => c.short + ' ' + pct(c.a / tot) + ' %').join(' · '); }
+  window.LTUI = { compBar, compText, LTIP };
+  RC.runRows.push((R, i, row) => {
+    const st = LTM.state(R); if (st === 'none') return '';
+    const a = LTM.ampsAt(R, R.lt.n - 1);
+    return row('Species', '', a ? '<span class="lt-cell wrap" title="Latest block, 15 s window">' + compBar(a.comps, 56) + '<span>' + esc(compText(a.comps, 2)) + '</span></span>' : '<span class="muted" style="font-weight:normal">' + (st === 'waiting' ? 'Lifetime analysis after 150 blocks' : 'Fitting lifetimes…') + '</span>');
+  });
+  function addFrCol() {
+    const fr = UI.screen('fractions'); if (!fr || !fr.addCol) return;
+    fr.addCol({ k: 'lt', h: 'Species <span class="unit">(lifetime analysis)</span>', tip: 'Share of the fraction\'s fluorescence in each species, from the mean decay of its blocks. Relative signal only: not mass, purity, yield or recovery. Proposed.', show: () => !!(S.run && S.run.lt && S.run.lt.fit), v: f => f.lt ? (f.lt.comps.find(c => c.product) || { share: -1 }).share : -1, f: f => f.lt ? '<span class="lt-cell">' + compBar(f.lt.comps, 64) + '<span>' + esc(compText(f.lt.comps, 2)) + '</span></span>' : '–' }, 'qc');
+  }
+
+  /* ---------- Engineer view: Lifetimes ---------- */
+  ENG.addTab('lt', 'Lifetimes', 'wf');
+  let chiChart = null;
+  const prev = window.ENG_EXTRA || {};
+  window.ENG_EXTRA = Object.assign(prev, {
+    lt: {
+      html: () => {
+        const R = S.run; if (!R || !R.lt) return '<div class="note">Start a run to see the lifetime analysis.</div>';
+        const lt = R.lt, st = LTM.state(R), comps = LTM.components(R), lib = lt.lib, f = lt.fit;
+        const stTxt = { waiting: 'Waiting for ' + fmt.int(150) + ' blocks', fitting: 'First fit running', live: 'Updating during the run', finalising: 'Final fit running', final: 'Final fit over the whole run' }[st];
+        const sim = '<span class="tag" data-scope="always" title="Simulation parameter; a real run has no such column">Simulation</span>';
+        const comp = !f ? '<div class="note">' + esc(stTxt) + '.</div>' : '<table class="tbl"><thead><tr><th>Component</th><th class="num">τ <span class="unit">(ns)</span></th><th class="num">SE <span class="unit">(ns)</span></th><th>Named as</th><th class="num">Expected <span class="unit">(ns)</span></th><th class="num">Simulated <span class="unit">(ns)</span> ' + sim + '</th></tr></thead><tbody>' +
+          comps.map(c => '<tr><td><span class="ch-sw" style="border-top-color:' + c.color + '"></span> ' + (c.k + 1) + '</td><td class="num"><b>' + c.tau.toFixed(3) + '</b></td><td class="num">' + (isFinite(c.se) ? (c.se >= 0.001 ? c.se.toFixed(3) : '< 0.001') : '–') + '</td><td>' + esc(c.name) + '</td><td class="num">' + (isFinite(c.exp) ? c.exp : '–') + '</td><td class="num">' + (c.m >= 0 ? lib[c.m].tau : '–') + '</td></tr>').join('') + '</tbody></table>';
+        const hist = !f ? '' : '<table class="tbl" style="margin-top:8px"><thead><tr><th class="num">Components</th><th class="num">Reduced χ²</th><th class="num">χ² drop</th><th class="num">Needed</th><th>Result</th><th>Lifetimes <span class="unit">(ns)</span></th></tr></thead><tbody>' +
+          f.hist.map(h => '<tr><td class="num">' + h.K + '</td><td class="num">' + h.chi2r.toFixed(3) + '</td><td class="num">' + (h.gain != null ? fmt.int(Math.round(h.gain)) : '–') + '</td><td class="num">' + (h.gain != null ? fmt.int(TR.LT.gain * f.nBins) : '–') + '</td><td>' + (h.gain == null ? 'Start' : h.accepted ? 'Added' : 'Rejected') + '</td><td class="wrap">' + h.taus.map(t => t.toFixed(2)).join(', ') + '</td></tr>').join('') + '</tbody></table>';
+        return '<div class="grid2 lt-grid"><div class="stack"><div class="panel"><div class="ph"><h3>Global lifetimes</h3>' + tag('P', 'always') + '<span class="sp"></span><span class="note">' + esc(stTxt) + '</span></div><div class="pb">' + comp +
+          (f ? '<div class="small" style="margin-top:6px">Reduced χ² ' + f.chi2r.toFixed(3) + ' over ' + fmt.int(f.nBins) + ' bins of ' + LTM.PER + ' blocks (' + fmt.int(f.n) + ' blocks). SE from the curvature of χ², amplitudes profiled out, scaled by the reduced χ².</div>' : '') + '</div></div>' +
+          '<div class="panel"><div class="ph"><h3>Number of components</h3></div><div class="pb">' + (hist || '<div class="note">After the first fit.</div>') + '<div class="small" style="margin-top:6px">A component is added only if χ² drops by more than ' + TR.LT.gain + ' per bin, the number of amplitudes it adds, and lifetimes stay at least a factor ' + TR.LT.sep + ' apart. ' + LTM.PER + '-block bins: the model is linear in the amplitudes, so a bin is itself a mixture of the same decays.</div></div></div></div>' +
+          '<div class="stack"><div class="panel"><div class="ph"><h3>Method</h3></div><div class="pb small"><p>' + esc(LTIP) + '</p><p><b>Decay window.</b> ' + TR.LTN + ' samples (' + (TR.LTN * TR.DX).toFixed(0) + ' ns at ' + TR.DX + ' ns) from 5 ns before the IRF peak. Each block contributes the mean of its 10 waveforms, baseline removed and ND-corrected; clipped and discarded blocks are left out.</p><p><b>Amplitudes.</b> Exact non-negative least squares on the mean decay over ±' + LTM.H + ' blocks (15 s), so the chromatograms have 15 s time resolution and are in V·ns, the same units as total fluorescence. A fraction\'s composition uses the mean decay of all its blocks.</p><p><b>Live.</b> The first fit runs after 150 blocks, then each time the data grow by 30 %, a few milliseconds per tick, starting from the previous lifetimes. A final fit runs when acquisition ends.</p><p><b>Reference.</b> Hales, Aoudjane, Aeppli and Dalby, Proof-of-concept analytical instrument for label-free optical deconvolution of protein species in a mixture, J Chromatogr A 1641, 461968 (2021); Uçan, Hales et al., J Chromatogr A 1711, 464463 (2023).</p></div></div>' +
+          '<div class="panel"><div class="ph"><h3>Fit quality per block</h3></div><div class="pb" style="height:220px"><div id="ltChi" style="height:100%"></div></div></div></div></div>';
+      },
+      mount: () => {
+        const R = S.run, host = $('#ltChi'); if (!R || !R.lt || !host) return;
+        if (chiChart) chiChart.destroy();
+        chiChart = new CH.Chart(host, {
+          ariaLabel: 'Reduced chi-squared of each block\'s fit', topBand: 18, marginRight: 12, liveReadout: false,
+          xDomain: () => [0, Math.max(1, R.x.acq[Math.max(0, R.derivedN - 1)])], xTitle: () => 'Time from TRIFLE start (min)',
+          bands: () => R.standalone ? [] : R.ph.list.map(p => ({ x0: R.x.acq[Math.min(R.derivedN - 1, TR.lowerBound(R.x.min, R.derivedN, p.t0))] || 0, x1: R.x.acq[Math.min(R.derivedN - 1, TR.lowerBound(R.x.min, R.derivedN, p.t1))] || 0, label: p.name, short: p.short })),
+          panels: [{ key: 'main', yl: { title: 'Reduced χ²', unit: '', log: () => true, minLog: -1 } }],
+          series: [{ key: 'chi', label: 'Reduced χ², 15 s window', color: C.text, width: 1, panel: 'main', src: () => ({ x: R.x.acq, y: R.lt.chi, n: R.lt.n, gen: R.lt.gen }), fmt: v => v.toFixed(2) }]
+        });
+      }
+    }
+  });
+
+  /* ---------- Questions panel ---------- */
+  Q.addIntent((q, ctx) => {
+    if (!/species|co-?elut|lifetime|decay map|\bcomponents?\b|aggregat|\bhmw\b|composition|deconvol|amplitude/.test(q)) return null;
+    const R = ctx.run, src = 'Lifetime analysis (Proposed); Engineer view: Lifetimes';
+    if (!R || !R.lt) return { text: 'Start a run. The lifetime analysis fits every block\'s fluorescence decay and separates species that elute together, without assuming a peak shape or using reference decays.', source: src };
+    if (!R.lt.fit) return { text: 'The lifetime analysis has not fitted yet. The first global fit runs after 150 blocks; until then only total fluorescence is shown.', source: src };
+    const comps = LTM.components(R), el = (R.tpl.fractions.elPhase || 'el'), st = M.fractionStats(R).filter(f => f.phaseKey === el && f.lt && f.complete && (f.lt.comps.find(c => c.product) || { share: 0 }).share >= 0.5);
+    const prod = comps.find(c => c.product), imp = comps.filter(c => !c.product && c.key !== 'sc').map(c => ({ c, sh: st.map(f => ({ id: f.id, v: (f.lt.comps.find(x => x.k === c.k) || {}).share })).filter(x => isFinite(x.v)) })).filter(x => x.sh.length).sort((a, b) => Math.max(...b.sh.map(x => x.v)) - Math.max(...a.sh.map(x => x.v)))[0];
+    let tail = '';
+    if (imp && prod) { const lo = imp.sh.reduce((a, b) => b.v < a.v ? b : a), hi = imp.sh.reduce((a, b) => b.v > a.v ? b : a); tail = ' In the elution fractions where the product gives at least half the fluorescence, ' + imp.c.short + ' goes from ' + (lo.v * 100).toFixed(1) + ' % (' + lo.id + ') to ' + (hi.v * 100).toFixed(1) + ' % (' + hi.id + ') of fluorescence.'; }
+    return { text: 'The lifetime analysis ' + (LTM.state(R) === 'final' ? '' : '(still updating) ') + 'fits every block\'s decay with lifetimes shared by the whole run and finds ' + comps.length + ' components: ' + comps.map(c => c.tau.toFixed(2) + ' ns (' + (c.m >= 0 ? c.name : 'unassigned') + ')').join(', ') + '. Each component\'s amplitude against time is drawn on the Run chart; the Decay panel shows the fit at any time.' + tail + ' Shares are fluorescence, not mass or purity; names come from the template (assumed).' + (R.spKey === 'aav' ? ' Confirm capsid content offline.' : ' Confirm aggregates with HPLC-SEC.'), source: src };
+  });
+  window.Q_EXTRA_CHIPS = window.Q_EXTRA_CHIPS || {};
+  window.Q_EXTRA_CHIPS.run = (window.Q_EXTRA_CHIPS.run || []).concat(['Which species are co-eluting?']);
+  window.Q_EXTRA_CHIPS.fractions = ['Which species are co-eluting?'].concat(window.Q_EXTRA_CHIPS.fractions || []);
+
+  /* ---------- wiring ---------- */
+  // refresh the Lifetimes tab after a refit; other Engineer tabs are left alone (they may hold an input being edited)
+  M.on(ev => { const on = document.querySelector('#engTabs button.on'); if (ev === 'lt' && UI.cur() === 'engineer' && on && on.dataset.v === 'lt') UI.screen('engineer').show(); });
+  setTimeout(() => { addFrCol(); UI.emitDirty(); }, 0);
 })();
 
 /* ---------- hosted page: file saves through the viewer, reliable copy feedback ---------- */

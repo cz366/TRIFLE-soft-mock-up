@@ -6,9 +6,8 @@
 #scr-run .run-top { flex-wrap: nowrap; }
 #work.expanded #scr-run .run-top { flex: none !important; }
 #rCtlNote { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
-/* Scientist view: Run values, Run log and Evidence (Pulse is in the Engineer view) */
-body:not(.eng) .run-bottom { grid-template-columns: minmax(290px, 33fr) minmax(260px, 33fr) minmax(260px, 34fr); }
-body:not(.eng) .run-bottom.narrow { grid-template-columns: minmax(220px, 40fr) minmax(240px, 60fr); }
+/* Run values, Decay, Run log and Evidence for both roles; the Engineer view adds the raw Pulse to the Decay panel */
+#decPanel .ph .note { margin-left: 6px; }
 .run-bottom > .panel > #runValues { padding-top: 3px; }
 #runValues .sysstate { margin-bottom: 1px; }
 #runValues .rv td { height: 21px; line-height: 20px; }
@@ -19,4 +18,11 @@ body:not(.eng) .run-bottom.narrow { grid-template-columns: minmax(220px, 40fr) m
 #runValues .rv td.k { width: 1%; }
 #runValues .rbwrap > .flag, #runValues .rbwrap > b { flex: none; white-space: nowrap; }
 #runValues .rangebar { min-width: 24px; }
-@media (max-width: 820px) { #rCtlNote { flex-basis: 100%; white-space: normal; } #scr-run .scr-h .sep { display: none; } body:not(.eng) .run-bottom, body:not(.eng) .run-bottom.narrow { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 820px) { #rCtlNote { flex-basis: 100%; white-space: normal; } #scr-run .scr-h .sep { display: none; } }
+/* species composition: stacked bar with a 1px surface gap between segments, then the leading species */
+.lt-cell { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.lt-cell.wrap { flex-wrap: wrap; justify-content: flex-end; white-space: normal; row-gap: 0; }
+#runValues .rv td.v .lt-cell.wrap > span:last-child { font-size: 13px; }
+.lt-bar { display: inline-flex; gap: 1px; height: 10px; border-radius: 2px; overflow: hidden; background: #FFFFFF; flex: none; }
+.lt-bar > span { min-width: 1px; height: 100%; }
+.lt-grid { align-items: start; }

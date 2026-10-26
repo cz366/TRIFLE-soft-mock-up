@@ -147,7 +147,8 @@ const M = (function () {
     const R = S.readiness = newReadiness(); R.started = true; R.t0 = S.simT;
     R.pmtConfirmed = S._pmtConfirmed || false;
     const pmt = S.setup.pmt;
-    R.acq = TR.createAcq({ seed: TR.SEED, stream: 2, pmt, ...pmtSim(pmt), cap: 400, tEnd: 330, signalAt: (tS) => ({ S: 0.0080 * (1 + 0.004 * TR.smoothNoise(TR.SEED + 3, (R.t0 + tS) / 60, [3.1, 7.7, 13.3])), tau: 3.5, E: S.fault === 'laser' ? 0 : 1, u: 0, vp: 0, phase: 0 }) });
+    // running buffer: scatter and buffer only, the same species as the run's buffer phases
+    R.acq = TR.createAcq({ seed: TR.SEED, stream: 2, pmt, ...pmtSim(pmt), cap: 400, tEnd: 330, taus: [TR.SPECIES.protA[0].tau], signalAt: (tS) => ({ S: 0.0080 * (1 + 0.004 * TR.smoothNoise(TR.SEED + 3, (R.t0 + tS) / 60, [3.1, 7.7, 13.3])), comp: [1], E: S.fault === 'laser' ? 0 : 1, u: 0, vp: 0, phase: 0 }) });
     audit('readiness', 'Readiness checks started.');
     emit('readiness');
   }
@@ -215,7 +216,7 @@ const M = (function () {
 
   /* ---------- run model ---------- */
   function newRun() {
-    const s = S.setup, tpl = template(), ph = TR.buildPhases(tpl), prof = TR.buildProfile(tpl.id === 'free' ? 'protA' : tpl.id, ph, {});
+    const s = S.setup, tpl = template(), ph = TR.buildPhases(tpl), spKey = tpl.id === 'free' ? 'protA' : tpl.id, prof = TR.buildProfile(spKey, ph, {});
     const preMin = 1.0, timer = s.timerMin || Math.ceil(ph.totalMin + preMin + 1.0);
     const align = alignmentState(), p = plumbing();
     const R = {
@@ -233,12 +234,13 @@ const M = (function () {
     R.bmStart = 0.28 * E0 * TR.laserExcitation(R.laserTl0);
     R.acq = TR.createAcq({
       seed: TR.SEED, stream: 1, pmt: s.pmt, ...pmtSim(s.pmt), pDisc: 0.00025, beamPerBlock: s.beamPerBlock, tEnd: timer * 60, tauJit: 0.047, cap: Math.ceil(timer * 60) + 50,
+      taus: TR.SPECIES[spKey].map(q => q.tau), keepDecays: true,
       arMedian: s.autorange === 'prop', arSymmetric: s.autorange === 'prop', arUnscaled: s.autorange === 'prop', arFlatGuard: s.autorange === 'prop',
       rangeMap: s.rangeMap,
       signalAt: (tS) => {
         const tA = tS / 60 - preMin, vp = TR.pumpVolAt(ph, Math.max(0, tA)), u = vp - R.V1, pr = prof.at(u);
         const E = (S.fault === 'laser' ? 0 : 1) * (1 - 0.02 * Math.max(0, tA) / ph.totalMin) * TR.laserExcitation(R.laserTl0 + tS / 60);
-        return { S: pr.S * (1 + 0.004 * TR.smoothNoise(TR.SEED + 3, tS / 60, [3.1, 7.7, 13.3])), tau: pr.tau, E, u, vp, phase: TR.phaseIdxAtVol(ph, u) };
+        return { S: pr.S * (1 + 0.004 * TR.smoothNoise(TR.SEED + 3, tS / 60, [3.1, 7.7, 13.3])), tau: pr.tau, comp: pr.comp, E, u, vp, phase: TR.phaseIdxAtVol(ph, u) };
       }
     });
     const cap = R.acq.cap;
@@ -248,6 +250,8 @@ const M = (function () {
     R.robust = new Uint8Array(cap); R.low = new Uint8Array(cap); R.brk = new Uint8Array(cap); R.derivedN = 0;
     R.ak = { vol: new Float64Array(R.akta.n), cv: new Float64Array(R.akta.n), min: new Float64Array(R.akta.n) };
     for (let i = 0; i < R.akta.n; i++) { R.ak.vol[i] = R.akta.v[i]; R.ak.cv[i] = R.akta.v[i] / tpl.cv; R.ak.min[i] = R.akta.t[i]; }
+    R.spKey = spKey;
+    for (const h of runHooks) if (h.init) h.init(R);
     R.rules = new RuleEngine(R);
     S.run = R;
     log(R, 'system', 'TRIFLE acquisition started. Experiment timer ' + timer + ' min. Filter wheel to OD 4; beam monitor block captured (' + R.bmStart.toFixed(3) + ' V).');
@@ -268,7 +272,8 @@ const M = (function () {
       R.robust[i] = A.ruse[i] >= S.th.lowPrec ? 1 : 0; R.low[i] = A.disc[i] ? 0 : (A.ruse[i] < S.th.lowPrec ? 1 : 0);
       if (R.brkNext && !A.disc[i]) { R.brk[i] = 1; R.brkNext = false; }
     }
-    R.derivedN = n;
+    const from = R.derivedN; R.derivedN = n;
+    for (const h of runHooks) if (h.derive) h.derive(R, from, n);
   }
   function deriveY(R, i, k, lc) {
     const A = R.acq; if (A.disc[i]) { for (const key in R.y) R.y[key][i] = NaN; return; }
@@ -342,6 +347,7 @@ const M = (function () {
     R.aktaN = R.akta.n;
     log(R, 'system', (reason === 'timer' ? 'Experiment timer ended. ' : 'Acquisition ended by ' + S.setup.operator + '. ') + 'Filter wheel to OD 4; beam monitor block captured (' + R.bmEnd.toFixed(3) + ' V). Record saved.');
     R.rules.process(true);
+    for (const h of runHooks) if (h.finish) h.finish(R);
     audit('run', R.id + ' complete: ' + fmt.int(R.acq.n) + ' blocks.');
     emit('run');
   }
@@ -375,7 +381,8 @@ const M = (function () {
     { id: 'H2', src: SRC1, cond: () => 'Raised with P3 or P4. Possible flow cell fouling or carry-over. Confirm with a buffer blank run.' }
   ];
   function ruleById(id) { return RULES.find(r => r.id === id) || null; }
-  const ruleHooks = [], fracHooks = [];
+  // ruleHooks extend the rule engine, fracHooks the fraction table, runHooks the run (init, derive, tick, finish)
+  const ruleHooks = [], fracHooks = [], runHooks = [];
   class RuleEngine {
     constructor(R) { this.R = R; this.reset(); }
     reset() {
@@ -475,7 +482,7 @@ const M = (function () {
       const c = this.cond('P2', slope > th.p2SlopePct, i, () => {
         const x0 = R.acq.u[dq[0]], fr = this.fracsIn(x0, u);
         const p = this.card({ rule: 'P2', phaseIdx: ph, title: 'Fluorescence rising after the load plateau', obs: '', x0, x1: u, fractions: fr, maxSlope: slope, plateau: this.plateau.level });
-        this.card({ rule: 'H1', phaseIdx: ph, linkedTo: p.id, title: 'Possible onset of mAb breakthrough', obs: 'Total fluorescence cannot separate mAb from HCP.', x0, x1: u, fractions: fr, confirm: 'Protein A HPLC on ' + (fr.length ? rangeIds(fr) : 'the linked flowthrough fractions') + '.' });
+        this.card({ rule: 'H1', phaseIdx: ph, linkedTo: p.id, title: 'Possible onset of mAb breakthrough', obs: 'Total fluorescence cannot separate mAb from HCP; the mAb component of the lifetime analysis can. Check it over the same interval.', x0, x1: u, fractions: fr, features: [{ name: 'Lifetime analysis', label: 'P' }], confirm: 'Protein A HPLC on ' + (fr.length ? rangeIds(fr) : 'the linked flowthrough fractions') + '.' });
         return p;
       });
       if (c) { if (slope > c.maxSlope) c.maxSlope = slope; c.x1 = u; c.fractions = this.fracsIn(c.x0, c.x1); c.obs = 'Fluorescence slope ' + c.maxSlope.toFixed(1) + ' % per CV over the last 1 CV of the load (' + fmt.ml(c.x0) + ' to ' + fmt.ml(c.x1) + ' mL), after a plateau at ' + fmt.sig3(c.plateau) + ' V·ns. Limit ' + th.p2SlopePct + ' % per CV.'; const h = this.cards.find(k => k.linkedTo === c.id); if (h) { h.fractions = c.fractions; h.x1 = c.x1; h.confirm = 'Protein A HPLC on ' + rangeIds(c.fractions) + '.'; } }
@@ -612,12 +619,12 @@ const M = (function () {
   /* ---------- clock tick ---------- */
   function tick(dtS) {
     S.simT += dtS; laserUpdate(); readinessStep();
-    if (S.run) stepRun(S.run);
+    if (S.run) { stepRun(S.run); for (const h of runHooks) if (h.tick) h.tick(S.run); }
   }
 
   return {
     S, fmt, wall, stamp, pmtSim, emit, on, audit, TH_INFO, presetInfo, presetCheck, procMode, procLabel, comboIdx, template, plumbing, alignmentState,
-    laserUpdate, laserText, laserDetail, RD_CHECKS, darkLimit, bufLimits, readinessStart, readinessStep, readinessSummary, bufferMetrics, newRun, log, runTimeS, aktaMin, deriveTo, rederive, stepRun, finishRun, pauseRun, continueRun, fastForward,
-    SAVE_KB, saveStep, LEVELS, RULES, ruleById, ruleHooks, fracHooks, cardRespond, fractionStats, uvPool, flBounds, addNote, tick, rangeIds
+    laserUpdate, laserText, laserDetail, RD_CHECKS, darkLimit, bufLimits, readinessStart, readinessStep, readinessSummary, bufferMetrics, fluorOf, newRun, log, runTimeS, aktaMin, deriveTo, rederive, stepRun, finishRun, pauseRun, continueRun, fastForward,
+    SAVE_KB, saveStep, LEVELS, RULES, ruleById, ruleHooks, fracHooks, runHooks, cardRespond, fractionStats, uvPool, flBounds, addNote, tick, rangeIds
   };
 })();

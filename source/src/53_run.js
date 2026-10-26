@@ -1,7 +1,8 @@
 /* ---------- shared chromatogram configuration (Run and Fraction review) ---------- */
 const RC = (function () {
   const S = M.S, fmt = M.fmt, C = CH.C, { esc } = UI;
-  const view = { x: 'vol', log: false };
+  // TRIFLE view by default: time axis, decay map on, AKTA traces off (they belong to UNICORN; one click away)
+  const view = { x: 'min', log: false, akta: false, map: true };
   const extraSeries = [], extraPanels = [], extraInfo = [], runRows = [];
   const XT = { vol: 'Volume (mL)', cv: 'Column volumes (CV)', min: 'Time (min)' };
   function R() { return S.run; }
@@ -33,15 +34,16 @@ const RC = (function () {
   }
   function akta(key) { return () => { const r = R(); if (!r || r.setupSnap.source !== 'import') return null; return { x: r.ak[view.x], y: r.akta[key], n: r.aktaN, gen: { vol: 1, cv: 2, min: 3 }[view.x] }; }; }
   function seriesFor(opts) {
-    const p = M.procMode(), lc = S.proc.laser, cmp = S.proc.compare, r = R(), bmOn = r ? r.setupSnap.beamPerBlock : S.setup.beamPerBlock, imp = (r ? r.setupSnap.source : S.setup.source) === 'import';
-    const ff = v => fmt.sig3(v) + ' V·ns';
+    const p = M.procMode(), lc = S.proc.laser, cmp = S.proc.compare, r = R(), bmOn = r ? r.setupSnap.beamPerBlock : S.setup.beamPerBlock, imp = (r ? r.setupSnap.source : S.setup.source) === 'import', ak = imp && view.akta;
+    const ff = v => fmt.sig3(v) + ' V·ns', tot = 'Total fluorescence';
+    // total fluorescence in primary ink, like the species it is the sum of; UV 280 has its own strip (one y axis per panel)
     const list = [
-      { key: 'v20', label: 'Fluorescence, v2.0 reference', color: C.v20, width: 1.25, panel: 'main', src: trifle('v20'), fmt: ff, visible: p === 'v20' || cmp, shade: true },
-      { key: 'prop', label: 'Fluorescence, Proposed' + (lc ? ' (corrected)' : ''), color: C.prop, dash: 'dash', width: 1.25, panel: 'main', src: trifle('prop'), fmt: ff, visible: p === 'prop', legend: p === 'prop' },
-      { key: 'propU', label: 'Fluorescence, Proposed, uncorrected', color: C.prop, width: 0.9, panel: 'main', src: trifle('propU'), fmt: ff, visible: p === 'prop' && lc, legend: p === 'prop' && lc },
-      { key: 'uv', label: 'UV 280', color: C.uv, width: 1.25, panel: 'main', side: 'r', src: akta('uv'), fmt: v => fmt.mau(v) + ' mAU', visible: imp, legend: imp },
-      { key: 'cond', label: 'Conductivity', color: C.cond, width: 1, panel: 'cond', src: akta('cond'), fmt: v => fmt.cond(v) + ' mS/cm', visible: imp, legend: imp },
-      { key: 'ph', label: 'pH', color: C.ph, width: 1, panel: 'ph', src: akta('ph'), fmt: v => fmt.ph(v), visible: imp, legend: imp },
+      { key: 'v20', label: tot + (p === 'v20' && !cmp ? '' : ', v2.0 reference'), tip: 'Total fluorescence, ND-corrected: the integral of each pulse (v2.0 reference processing)', color: C.text, width: 1.25, z: 2, panel: 'main', src: trifle('v20'), fmt: ff, visible: p === 'v20' || cmp, shade: true },
+      { key: 'prop', label: tot + ', Proposed' + (lc ? ' (corrected)' : ''), color: C.text, dash: 'dash', width: 1.25, z: 2, panel: 'main', src: trifle('prop'), fmt: ff, visible: p === 'prop', legend: p === 'prop' },
+      { key: 'propU', label: tot + ', Proposed, uncorrected', color: C.cond, width: 0.9, panel: 'main', src: trifle('propU'), fmt: ff, visible: p === 'prop' && lc, legend: p === 'prop' && lc },
+      { key: 'uv', label: 'UV 280', color: C.uv, width: 1.25, panel: 'uv', src: akta('uv'), fmt: v => fmt.mau(v) + ' mAU', visible: ak, legend: ak },
+      { key: 'cond', label: 'Conductivity', color: C.cond, width: 1, panel: 'cond', src: akta('cond'), fmt: v => fmt.cond(v) + ' mS/cm', visible: ak, legend: ak },
+      { key: 'ph', label: 'pH', color: C.ph, width: 1, panel: 'ph', src: akta('ph'), fmt: v => fmt.ph(v), visible: ak, legend: ak },
       { key: 'bm', label: 'Beam monitor', color: C.beam, width: 1, panel: 'bm', src: trifle('bm'), fmt: v => v.toFixed(1) + ' %', visible: bmOn, legend: bmOn, tag: 'Proposed', tagScope: lc ? 'always' : 'engineer' },
       { key: 'diff', label: 'Difference, Proposed minus v2.0', color: C.diff, width: 1, panel: 'diff', src: trifle('diff'), fmt: v => UI.sgn(v, 1) + ' %', visible: cmp && p === 'prop', legend: cmp && p === 'prop' }
     ];
@@ -52,11 +54,13 @@ const RC = (function () {
   function panels(extraStrips) {
     const r = () => R();
     const bmOn = () => (r() ? r().setupSnap.beamPerBlock : S.setup.beamPerBlock);
-    const imp = () => (r() ? r().setupSnap.source : S.setup.source) === 'import';
+    const imp = () => (r() ? r().setupSnap.source : S.setup.source) === 'import', ak = () => imp() && view.akta;
     const out = [
-      { key: 'main', yl: { title: 'Fluorescence', unit: 'V·ns, ND-corrected', log: () => view.log, minLog: -3 }, yr: (r() ? r().setupSnap.source : S.setup.source) === 'import' ? { title: 'UV 280', unit: 'mAU', fixed: [0, 4000] } : null },
-      { key: 'cond', px: 46, hidden: () => !imp(), yl: { title: 'Conductivity', short: 'Cond.', unit: 'mS/cm', fixed: [0, 100], tickFmt: v => v.toFixed(0) } },
-      { key: 'ph', px: 46, hidden: () => !imp(), yl: { title: 'pH', short: 'pH', unit: '', fixed: [0, 14] } },
+      { key: 'main', yl: { title: 'Fluorescence', unit: 'V·ns, ND-corrected', log: () => view.log, minLog: -3 } },
+      { key: 'map', px: 64, hidden: () => !view.map || !(r() && r().acq.dw), yl: { title: 'Decay map', short: 'Decay map', unit: 'ns', fixed: [0, 30], zero: false, tickFmt: v => v.toFixed(0) }, draw: mapDraw },
+      { key: 'uv', px: 46, hidden: () => !ak(), yl: { title: 'UV 280', short: 'UV 280', unit: 'mAU', fixed: [0, 4000], tickFmt: v => v.toFixed(0) } },
+      { key: 'cond', px: 46, hidden: () => !ak(), yl: { title: 'Conductivity', short: 'Cond.', unit: 'mS/cm', fixed: [0, 100], tickFmt: v => v.toFixed(0) } },
+      { key: 'ph', px: 46, hidden: () => !ak(), yl: { title: 'pH', short: 'pH', unit: '', fixed: [0, 14] } },
       { key: 'bm', px: 46, hidden: () => !bmOn(), yl: { title: 'Beam monitor', short: 'Beam mon.', unit: '%', fixed: [96, 102] } },
       { key: 'diff', px: 46, hidden: () => !(S.proc.compare && M.procMode() === 'prop'), yl: { title: 'Difference', short: 'Difference', unit: '%', sym: true, symMin: 5, zero: false } }
     ];
@@ -95,15 +99,54 @@ const RC = (function () {
     for (let i = i0; i < i1; i++) { const y = r.y.act[i]; if (y === y) { s += y; n++; } }
     return 'R1 ' + fmt.ml(va) + ', R2 ' + fmt.ml(vb) + ' mL · Δ ' + fmt.ml(vb - va) + ' mL, ' + fmt.min1(tb - ta) + ' min · mean ' + (n ? fmt.sig3(s / n) + ' V·ns' : '–');
   }
+  /* ---------- decay map: every block's decay, normalised per pixel column, log intensity ---------- */
+  // Sequential blue ramp (one hue, light to dark); the lightest step recedes to the white chart surface.
+  // A sample below 3 SD of its column's noise is white, and a column fades towards white when its peak is near
+  // the noise, so low-signal phases do not look like data. Zoomed in, a column between blocks shows the nearest.
+  const LUT = (() => { const st = ['#FFFFFF', '#CDE2FB', '#9EC5F4', '#6DA7EC', '#3987E5', '#256ABF', '#184F95', '#0D366B'].map(h => [1, 3, 5].map(k => parseInt(h.substr(k, 2), 16))), out = new Uint8ClampedArray(256 * 3);
+    for (let i = 0; i < 256; i++) { const t = i / 255 * (st.length - 1), k = Math.min(st.length - 2, Math.floor(t)), f = t - k; for (let c = 0; c < 3; c++) out[i * 3 + c] = Math.round(st[k][c] * (1 - f) + st[k + 1][c] * f); }
+    return out; })();
+  const MAP_NS = 30, MAP_DECADES = 2.5, mapY = new Float64Array(TR.LTN);
+  function mapDraw(ctx, p, ch, c0, c1) {
+    const r = R(); if (!r || !r.acq.dw) return;
+    const A = r.acq, n = r.derivedN, xs = r.x[sa() ? 'acq' : view.x], L = TR.LTN, w = Math.max(1, Math.floor(p.w)), h = Math.max(1, Math.floor(p.h));
+    let m = ch._map; if (!m || m.w !== w || m.h !== h) { const off = document.createElement('canvas'); off.width = w; off.height = h; m = ch._map = { w, h, off, octx: off.getContext('2d'), img: new ImageData(w, h) }; }
+    const img = m.img.data; c1 = Math.min(c1, w - 1); if (c1 < c0) return;
+    for (let c = c0; c <= c1; c++) {
+      const xa = ch.pxToX(p.x + c), xb = ch.pxToX(p.x + c + 1); let ia = TR.lowerBound(xs, n, xa), ib = TR.lowerBound(xs, n, xb);
+      if (ib === ia && ia > 0 && ia < n) { const xm = (xa + xb) / 2; if (xm - xs[ia - 1] < xs[ia] - xm) ia--; ib = ia + 1; }
+      // only discarded or clipped blocks here: use the nearest usable block within 10 blocks
+      if (ib > ia && ib - ia <= 10) { let ok = false; for (let i = ia; i < ib; i++) if (!A.disc[i] && !A.clip[i]) { ok = true; break; } if (!ok) for (let d = 1; d <= 10; d++) { if (ib - 1 + d < n && !A.disc[ib - 1 + d] && !A.clip[ib - 1 + d]) { ia = ib - 1 + d; ib = ia + 1; break; } if (ia - d >= 0 && !A.disc[ia - d] && !A.clip[ia - d]) { ia -= d; ib = ia + 1; break; } } }
+      mapY.fill(0); let cnt = 0, v2 = 0;
+      for (let i = ia; i < ib; i++) { if (A.disc[i] || A.clip[i]) continue; const o = i * L; for (let s = 0; s < L; s++) mapY[s] += A.dw[o + s]; v2 += A.dsd[i] * A.dsd[i]; cnt++; }
+      let mx = 0; for (let s = 0; s < L; s++) if (mapY[s] > mx) mx = mapY[s];
+      const sd = Math.sqrt(v2), conf = cnt && mx > 0 ? Math.min(1, Math.max(0, (mx / sd - 4) / 20)) : 0;
+      for (let row = 0; row < h; row++) {
+        const k = (row * w + c) * 4; let t = 0;
+        if (conf > 0) { const s = Math.min(L - 1, Math.round((1 - (row + 0.5) / h) * MAP_NS / TR.DX)), v = mapY[s] / mx; t = mapY[s] > 3 * sd ? Math.min(1, Math.max(0, 1 + Math.log10(v) / MAP_DECADES)) * conf : 0; }
+        const q = Math.round(t * 255) * 3; img[k] = LUT[q]; img[k + 1] = LUT[q + 1]; img[k + 2] = LUT[q + 2]; img[k + 3] = 255;
+      }
+    }
+    m.octx.putImageData(m.img, 0, 0, c0, 0, c1 - c0 + 1, h);
+    ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(m.off, c0, 0, c1 - c0 + 1, h, p.x + c0, p.y, c1 - c0 + 1, h); ctx.restore();
+  }
   function legendExtras() { return [{ html: '<span class="ch-sw box" style="background:rgba(183,121,31,0.12);border:1px solid rgba(183,121,31,0.5)"></span><span class="ch-ll">Low precision</span>', tip: 'Pulse fills under ' + Math.round(S.th.lowPrec * 100) + ' % of the input range (provisional). Not used for the y-axis autoscale; values beyond the axis are marked at its edge.' }]; }
   function xTitle() { return sa() ? 'Time from TRIFLE start (min)' : XT[view.x]; }
-  return { extraSeries, extraPanels, extraInfo, runRows, view, XT, xTitle, sa, toX, fromX, xDomain, bands, fracItems, trifle, akta, seriesFor, panels, markers, hatches, intervals, info, rulerInfo, legendExtras };
+  // view toggles shared by Run and Fraction review
+  function viewToggles(id) { return '<label class="chk small" title="Every block\'s decay against time, normalised per column (log intensity)"><input type="checkbox" id="' + id + 'Map" data-vk="map"> Decay map</label><label class="chk small" title="UV 280, conductivity and pH from the UNICORN result export, each in its own strip"><input type="checkbox" id="' + id + 'Ak" data-vk="akta"> AKTA traces</label>'; }
+  function wireToggles(host) { UI.$$('input[data-vk]', host).forEach(cb => { cb.checked = !!view[cb.dataset.vk]; cb.onchange = () => { view[cb.dataset.vk] = cb.checked; M.emit('series'); UI.emitDirty(); }; }); }
+  function syncToggles() { UI.$$('input[data-vk]').forEach(cb => { cb.checked = !!view[cb.dataset.vk]; }); }
+  return { extraSeries, extraPanels, extraInfo, runRows, view, XT, xTitle, sa, toX, fromX, xDomain, bands, fracItems, trifle, akta, seriesFor, panels, markers, hatches, intervals, info, rulerInfo, legendExtras, mapDraw, viewToggles, wireToggles, syncToggles };
 })();
 
 /* ---------- Run (Acquire and Validate) ---------- */
 (function () {
   const { $, $$, esc, el, tag } = UI, S = M.S, fmt = M.fmt, C = CH.C;
   let chart = null, pulseChart = null, built = false, engLaid = null, logFilter = 'all', logN = 0, cardsKey = '', pulseLog = false, highlight = null, expanded = false, narrowTab = 'log';
+  // Decay panel: the block under the cursor, else the pinned block, else the latest (live) or the fluorescence maximum (complete)
+  let decChart = null, decPane = 'decay', pin = null, hov = null, decKey = '', decAt = 0, decSer = '', apex = { gen: -1, i: -1 };
+  const LTN = TR.LTN, dec = { x: new Float64Array(LTN), y: new Float64Array(LTN), f: new Float64Array(LTN), r: new Float64Array(LTN), c: [], n: 0, gen: 0, d: null };
+  for (let s = 0; s < LTN; s++) dec.x[s] = s * TR.DX;
   const pulse = { x: new Float64Array(600), y: new Float64Array(600), ly: new Float64Array(600), iy: new Float64Array(600), liy: new Float64Array(600), n: 0, gen: 0, blk: -1 };
   for (let j = 0; j < 600; j++) pulse.x[j] = j * 0.2;
   function build() {
@@ -111,11 +154,11 @@ const RC = (function () {
     r.innerHTML = '<div class="scr-h"><h1>Run</h1><div class="chips acq-chips"></div><span class="sp"></span>' +
       '<button class="btn primary" id="rStart">Start</button><button class="btn" id="rPause">Pause</button><button class="btn" id="rCont">Continue</button><button class="btn" id="rEnd">End</button><span class="sep"></span><button class="btn" id="rMark">Mark event</button><button class="btn" id="rNote">Add note</button></div>' +
       '<div class="run-top">' +
-      '<div class="toolbar" id="rTools"><div class="seg sm" id="rX" role="group" aria-label="X-axis units"><button data-v="vol">mL</button><button data-v="cv">CV</button><button data-v="min">min</button></div><div class="seg sm" id="rLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div><label class="chk small"><input type="checkbox" id="rRul"> Rulers</label><button class="btn sm" id="rReset" title="Right-click the chart to undo one zoom step">Reset zoom</button><button class="btn sm" id="rExp" title="Esc exits the expanded view">Expand chart</button></div><span class="note" id="rCtlNote"></span></div>' +
+      '<div class="toolbar" id="rTools"><div class="seg sm" id="rX" role="group" aria-label="X-axis units"><button data-v="min">min</button><button data-v="vol">mL</button><button data-v="cv">CV</button></div><div class="seg sm" id="rLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div>' + RC.viewToggles('r') + '<label class="chk small"><input type="checkbox" id="rRul"> Rulers</label><button class="btn sm" id="rReset" title="Right-click the chart to undo one zoom step">Reset zoom</button><button class="btn sm" id="rExp" title="Esc exits the expanded view">Expand chart</button></div><span class="note" id="rCtlNote"></span></div>' +
       '<div class="panel run-chart expand-target"><div class="pb"><div id="runChart" style="flex:1;min-height:0"></div></div></div>' +
       '<div class="run-bottom" id="runBottom">' +
       '<div class="panel"><div class="ph"><h3>Run values</h3></div><div class="pb" id="runValues"></div></div>' +
-      '<div class="panel eng-only" id="pulsePanel"><div class="ph"><h3>Pulse</h3><span class="sp"></span><div class="seg sm" id="rPLog"><button data-v="0" class="on">Linear</button><button data-v="1">Log</button></div></div><div class="pb" style="padding:2px 4px"><div id="runPulse" style="height:100%"></div></div></div>' +
+      '<div class="panel" id="decPanel"><div class="ph"><h3>Decay</h3><span class="note" id="decWhen"></span><span class="sp"></span><button class="btn sm" id="decLatest" style="display:none" title="Follow the latest block again">Latest</button><div class="seg sm eng-only" id="rDecV" title="Species decay or the raw pulse"><button data-v="decay" class="on">Decay</button><button data-v="pulse">Pulse</button></div><div class="seg sm" id="rPLog"><button data-v="0" class="on">Linear</button><button data-v="1">Log</button></div></div><div class="pb" style="padding:2px 4px;overflow:hidden"><div id="runDecay" style="height:100%"></div><div id="runPulse" style="height:100%;display:none"></div></div></div>' +
       '<div class="panel" id="logPanel"><div class="ph"><h3>Run log</h3><span class="sp"></span><select id="rLogF" class="small" style="height:22px" aria-label="Filter run log"><option value="all">All entries</option><option value="sensitivity">Sensitivity</option><option value="laser">Laser</option><option value="alignment">Alignment</option><option value="note">Notes and events</option><option value="card">Cards</option><option value="system">System</option></select></div><div class="pb log" id="runLog"></div></div>' +
       '<div class="panel" id="cardPanel"><div class="ph"><h3>Evidence</h3><span class="cnt" id="cardCnt">0</span></div><div class="pb" id="runCards"><div class="cards"></div></div></div>' +
       '</div>';
@@ -125,7 +168,10 @@ const RC = (function () {
     $('#rEnd').onclick = endRun; $('#rMark').onclick = () => noteDlg('event'); $('#rNote').onclick = () => noteDlg('note');
     $$('#rX button').forEach(b => b.onclick = () => { RC.view.x = b.dataset.v; syncSeg(); chart.resetZoom(); chart.invalidate(); UI.emitDirty('xmode'); });
     $$('#rLog button').forEach(b => b.onclick = () => { RC.view.log = b.dataset.v === '1'; syncSeg(); chart.invalidate(); });
-    $$('#rPLog button').forEach(b => b.onclick = () => { pulseLog = b.dataset.v === '1'; $$('#rPLog button').forEach(x => x.classList.toggle('on', x === b)); pulseChart.invalidate(); });
+    $$('#rPLog button').forEach(b => b.onclick = () => { pulseLog = b.dataset.v === '1'; $$('#rPLog button').forEach(x => x.classList.toggle('on', x === b)); pulseChart.invalidate(); decKey = ''; });
+    $$('#rDecV button').forEach(b => b.onclick = () => { decPane = b.dataset.v; showPane(); });
+    $('#decLatest').onclick = () => { pin = null; chart.invalidateBase(); decKey = ''; };
+    RC.wireToggles($('#rTools'));
     $('#rRul').onchange = e => { chart.rulersOn = e.target.checked; if (chart.rulersOn) { const R = S.run, xs = R && R.derivedN ? R.x[RC.sa() ? 'acq' : RC.view.x] : null, [a, b0] = chart.xRange(), b = xs ? Math.min(b0, xs[R.derivedN - 1]) : b0, h = Math.max((b - a) * 0.1, 20 * (b0 - a) / chart.pw), r0 = Math.max(a, (a + b) / 2 - h); chart.rulers = [r0, r0 + 2 * h]; } chart.invalidateOver(); chart.updateReadout(); };
     $('#rReset').onclick = () => chart.resetZoom();
     $('#rExp').onclick = toggleExpand;
@@ -134,7 +180,18 @@ const RC = (function () {
       ariaLabel: 'Chromatogram with TRIFLE fluorescence and AKTA traces', rulers: [0, 1], rulerColor: C.v20,
       xDomain: RC.xDomain, xTitle: RC.xTitle, panels: RC.panels(), series: RC.seriesFor(), bands: RC.bands, fractions: RC.fracItems,
       markers: () => RC.markers(true), hatches: RC.hatches, intervals: RC.intervals, info: RC.info, rulerInfo: RC.rulerInfo, legendExtras: RC.legendExtras(),
-      highlights: () => highlight ? [{ x0: RC.toX(highlight[0]), x1: RC.toX(highlight[1]) }] : []
+      highlights: () => highlight ? [{ x0: RC.toX(highlight[0]), x1: RC.toX(highlight[1]) }] : [],
+      // fraction cuts come from UNICORN: shown with the AKTA traces; Fraction review always shows them
+      fractions: () => RC.view.akta ? RC.fracItems() : null,
+      vlines: () => { const R = S.run; return R && pin != null && pin < R.derivedN ? [{ x: R.x[RC.sa() ? 'acq' : RC.view.x][pin], color: C.accent, dash: 'solid', label: 'Decay', align: 'left' }] : []; },
+      onHover: x => { const i = x == null ? null : blockAt(x); if (i !== hov) { hov = i; decKey = ''; } },
+      onClick: x => { const i = blockAt(x); if (i != null) { pin = i; chart.invalidateBase(); decKey = ''; } }
+    });
+    decChart = new CH.Chart($('#runDecay'), {
+      ariaLabel: 'Fluorescence decay with its species components', topBand: 8, marginRight: 8, marginLeft: 58, bottom: 32, liveReadout: false,
+      xDomain: () => [0, 32], xTitle: () => 'Time (ns)',
+      panels: [{ key: 'main', yl: { title: 'Decay', unit: 'V', log: () => pulseLog, zero: true, minLog: -5 } }, { key: 'res', px: 34, yl: { title: 'Weighted residual', short: 'Residual', unit: 'σ', sym: true, symMin: 3, zero: false } }],
+      series: decSeries(), info: () => decInfo()
     });
     pulseChart = new CH.Chart($('#runPulse'), {
       ariaLabel: 'Latest pulse', topBand: 12, marginRight: 8, marginLeft: 46, bottom: 32, liveReadout: false,
@@ -149,9 +206,9 @@ const RC = (function () {
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && expanded) toggleExpand(); });
     window.addEventListener('resize', layoutBottom);
     built = true; syncSeg(); layoutBottom();
-    M.on(ev => { if (ev === 'proc' || ev === 'run' || ev === 'series' || ev === 'setup') { chart.cfg.panels = RC.panels(); chart.setSeries(RC.seriesFor()); chart.cfg.legendExtras = RC.legendExtras(); chart.buildLegend(); chart.relayout(); pulse.blk = -1; } if (ev === 'cards') cardsKey = ''; if (ev === 'notes') chart.invalidateBase(); if (ev === 'setup') syncSeg(); });
+    M.on(ev => { if (ev === 'proc' || ev === 'run' || ev === 'series' || ev === 'setup' || ev === 'lt') { chart.cfg.panels = RC.panels(); chart.setSeries(RC.seriesFor()); chart.cfg.legendExtras = RC.legendExtras(); chart.buildLegend(); chart.relayout(); pulse.blk = -1; decKey = ''; syncSeg(); } if (ev === 'run' && S.run && S.run.state === 'acquiring' && S.run.derivedN === 0) { pin = null; hov = null; } if (ev === 'cards') cardsKey = ''; if (ev === 'notes') chart.invalidateBase(); if (ev === 'setup') syncSeg(); });
   }
-  function layoutBottom() { const rb = $('#runBottom'); if (!rb) return; const w = rb.getBoundingClientRect().width; if (!w) return; const narrow = w < (S.engineer ? 1200 : 980); rb.classList.toggle('narrow', narrow); $('#cardPanel').style.display = narrow && narrowTab === 'log' ? 'none' : ''; $('#logPanel').style.display = narrow && narrowTab === 'cards' ? 'none' : ''; ensureTabs(narrow); }
+  function layoutBottom() { const rb = $('#runBottom'); if (!rb) return; const w = rb.getBoundingClientRect().width; if (!w) return; const narrow = w < 1200; rb.classList.toggle('narrow', narrow); $('#cardPanel').style.display = narrow && narrowTab === 'log' ? 'none' : ''; $('#logPanel').style.display = narrow && narrowTab === 'cards' ? 'none' : ''; ensureTabs(narrow); }
   function ensureTabs(narrow) {
     for (const id of ['logPanel', 'cardPanel']) {
       const ph = $('#' + id + ' .ph'); let t = $('.ptabs', ph);
@@ -160,7 +217,65 @@ const RC = (function () {
       if (t) { $$('button', t).forEach(b => b.classList.toggle('on', b.dataset.v === narrowTab)); $('h3', ph).style.display = 'none'; } else $('h3', ph).style.display = '';
     }
   }
-  function syncSeg() { $$('#rX button').forEach(b => { b.classList.toggle('on', b.dataset.v === RC.view.x && !RC.sa()); b.disabled = RC.sa(); }); $$('#rLog button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === RC.view.log)); }
+  function syncSeg() { $$('#rX button').forEach(b => { b.classList.toggle('on', b.dataset.v === RC.view.x && !RC.sa()); b.disabled = RC.sa(); }); $$('#rLog button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === RC.view.log)); RC.syncToggles(); }
+  /* ---------- Decay panel ---------- */
+  function showPane() {
+    if (!S.engineer) decPane = 'decay';
+    $$('#rDecV button').forEach(b => b.classList.toggle('on', b.dataset.v === decPane));
+    $('#runDecay').style.display = decPane === 'decay' ? '' : 'none'; $('#runPulse').style.display = decPane === 'pulse' ? '' : 'none';
+    setTimeout(() => { (decPane === 'decay' ? decChart : pulseChart).resize(); }, 0); decKey = '';
+  }
+  // nearest block that has data to an x position of the main chart
+  function blockAt(x) {
+    const R = S.run; if (!R || !R.derivedN) return null; const xs = R.x[RC.sa() ? 'acq' : RC.view.x], n = R.derivedN;
+    let i = Math.min(n - 1, TR.lowerBound(xs, n, x)); if (i > 0 && Math.abs(xs[i - 1] - x) <= Math.abs(xs[i] - x)) i--;
+    for (let d = 0; d < 6; d++) { if (i + d < n && !R.acq.disc[i + d]) return i + d; if (i - d >= 0 && !R.acq.disc[i - d]) return i - d; }
+    return null;
+  }
+  function apexBlock(R) {
+    if (apex.gen === R.dataGen * 1e7 + R.derivedN) return apex.i; let mx = -Infinity, im = -1;
+    for (let i = 0; i < R.derivedN; i++) { const y = R.y.act[i]; if (R.robust[i] && y > mx) { mx = y; im = i; } }
+    apex = { gen: R.dataGen * 1e7 + R.derivedN, i: im }; return im;
+  }
+  function shownBlock(R) {
+    if (hov != null && hov < R.derivedN) return { i: hov, why: 'Cursor' };
+    if (pin != null && pin < R.derivedN) return { i: pin, why: 'Pinned' };
+    if (R.state === 'complete') { const i = apexBlock(R); if (i >= 0) return { i, why: 'Fluorescence maximum' }; }
+    const lt = R.lt, i = lt && lt.fit ? lt.n - 1 : R.derivedN - 1 - LTM.H; return { i: Math.max(0, i), why: 'Latest' };
+  }
+  function decSeries() {
+    const comps = dec.d ? dec.d.comps : [], sh = c => (c.a > 0 && dec.d.total > 0 ? ' ' + (c.a / dec.d.total * 100).toFixed(c.a / dec.d.total < 0.1 ? 1 : 0) + ' %' : ' 0 %');
+    const pos = a => pulseLog ? Float64Array.from(a, v => v > 0 ? v : NaN) : a;
+    return [
+      { key: 'd', label: 'Data', tip: 'Mean decay of the blocks in the 15 s window, ND-corrected', mode: 'points', shape: 'dot', size: 3, color: '#8C96A0', panel: 'main', src: () => dec.n ? { x: dec.x, y: pos(dec.y), n: dec.n } : null },
+      ...(dec.d && dec.d.fit ? [{ key: 'f', label: 'Fit', tip: 'Sum of the components', color: C.text, width: 1.5, panel: 'main', src: () => ({ x: dec.x, y: pos(dec.f), n: dec.n, gen: dec.gen * 2 + (pulseLog ? 1 : 0) }), fmt: v => fmt.sig3(v) + ' V' }] : []),
+      ...comps.map((c, k) => ({ key: 'c' + c.key, label: c.short + sh(c), tip: c.name + ', τ ' + c.tau.toFixed(2) + ' ns: ' + fmt.sig3(c.a) + ' V·ns', color: c.color, width: 1.25, panel: 'main', src: () => dec.c[k] ? { x: dec.x, y: pos(dec.c[k]), n: dec.n, gen: dec.gen * 2 + (pulseLog ? 1 : 0) } : null, fmt: v => fmt.sig3(v) + ' V' })),
+      ...(dec.d && dec.d.fit ? [{ key: 'r', label: 'Residual', legend: false, mode: 'points', shape: 'dot', size: 2, color: '#8C96A0', panel: 'res', src: () => ({ x: dec.x, y: dec.r, n: dec.n }) }] : [])
+    ];
+  }
+  function decInfo() {
+    const R = S.run, d = dec.d; if (!R || !d) return R ? 'No decay yet.' : '';
+    const A = R.acq, i = d.i, f = R.fractions.find(q => A.u[i] >= q.a && A.u[i] < q.b), lt = R.lt;
+    const where = R.standalone ? fmt.min1(A.t[i] / 60) + ' min' : fmt.min1(R.x.min[i]) + ' min · ' + fmt.ml(A.u[i]) + ' mL' + (f ? ' · ' + f.id : '');
+    const st = LTM.state(R), fitTxt = d.fit ? ' · χ²ᵣ ' + d.chi2r.toFixed(2) : st === 'waiting' ? ' · lifetime analysis after ' + fmt.int(150) + ' blocks' : st === 'fitting' ? ' · first lifetime fit running' : '';
+    return where + fitTxt + ' · block ' + fmt.int(i + 1) + ', ' + d.nBlocks + ' blocks averaged';
+  }
+  function updDecay() {
+    const R = S.run; if (!R || !R.acq.dw) { if (dec.n) { dec.n = 0; dec.d = null; decChart.setSeries(decSeries()); } $('#decWhen').textContent = ''; return; }
+    const sb = shownBlock(R), key = sb.i + '|' + (R.lt ? R.lt.gen : 0) + '|' + pulseLog + '|' + sb.why;
+    $('#decLatest').style.display = pin != null ? '' : 'none';
+    if (key === decKey) return;
+    // the latest block moves every tick while live: refresh at most 4 times a second
+    if (sb.why === 'Latest' && decKey && performance.now() - decAt < 250) return;
+    decKey = key; decAt = performance.now();
+    const d = LTM.decayAt(R, sb.i); dec.d = d; dec.gen++;
+    if (!d) { dec.n = 0; } else {
+      dec.n = LTN; dec.y = d.y; if (d.fit) { dec.f = d.fit; dec.r = d.res; } dec.c = d.comps.map(c => c.y);
+    }
+    $('#decWhen').textContent = sb.why === 'Cursor' ? '' : sb.why;
+    const sig = JSON.stringify(decSeries().map(s => [s.key, s.label]));
+    if (sig !== decSer) { decSer = sig; decChart.setSeries(decSeries()); } else decChart.invalidate();
+  }
   function toggleExpand() { expanded = !expanded; $('#work').classList.toggle('expanded', expanded); $('#rExp').textContent = expanded ? 'Exit expanded (Esc)' : 'Expand chart'; $('#scr-run .run-top').classList.add('expand-target'); $('#scr-run .run-top').style.display = ''; setTimeout(() => chart.resize(), 0); }
   async function start() {
     const sm = M.readinessSummary(), pc = M.presetCheck();
@@ -300,11 +415,11 @@ const RC = (function () {
   }
   function update(d) {
     if (!built) build();
-    if (engLaid !== S.engineer) { engLaid = S.engineer; layoutBottom(); }
-    controls(); runValues(); runLog(); runCards(); updPulse(); UI.renderChips();
+    if (engLaid !== S.engineer) { engLaid = S.engineer; layoutBottom(); showPane(); }
+    controls(); runValues(); runLog(); runCards(); if (decPane === 'pulse') updPulse(); else updDecay(); UI.renderChips();
     if (d.all || d.xmode) { chart.invalidateBase(); }
     if (S.run) { if (S.run.acq.changes.length !== chart._nch || S.run.rules.cards.length !== chart._ncards) { chart._nch = S.run.acq.changes.length; chart._ncards = S.run.rules.cards.length; chart.invalidateBase(); } }
     chart.requestDraw();
   }
-  UI.register('run', { show() { if (!built) build(); setTimeout(() => { chart.resize(); pulseChart.resize(); layoutBottom(); }, 0); logN = -1; cardsKey = ''; }, update, hide() { if (expanded) toggleExpand(); }, cardsHtml, wireCards, chart: () => chart });
+  UI.register('run', { show() { if (!built) build(); setTimeout(() => { chart.resize(); pulseChart.resize(); decChart.resize(); layoutBottom(); }, 0); logN = -1; cardsKey = ''; decKey = ''; syncSeg(); }, update, hide() { if (expanded) toggleExpand(); }, cardsHtml, wireCards, chart: () => chart, decayBlock: () => dec.d ? dec.d.i : null });
 })();

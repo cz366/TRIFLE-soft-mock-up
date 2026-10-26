@@ -8,7 +8,7 @@ const S2 = (function () {
   Object.assign(S.th, { calDepPct: 5, calExpiryDays: 30, decayThrNs: 0.2, decaySdMult: 3, decayUseMin: 0.20, decayUseMax: 0.90, decayWinMl: 0.5 });
   Object.assign(M.TH_INFO, {
     calDepPct: ['Calibration linear range: largest departure from the fit', '%'], calExpiryDays: ['Calibration expires after', 'days'],
-    decayThrNs: ['P7: decay metric shift larger than', 'ns'], decaySdMult: ['P7: shift larger than this multiple of the steady-phase SD', '× SD'],
+    decayThrNs: ['P7: decay metric shift larger than', 'ns'], decaySdMult: ['P7: shift larger than this multiple of the elution-front SD', '× SD'],
     decayUseMin: ['Decay metric computed only above this input range use', 'fraction'], decayUseMax: ['Decay metric computed only below this input range use', 'fraction'], decayWinMl: ['P7: comparison window', 'mL']
   });
   // Stage 2 rules in the catalogue (discrepancy 1). The Stage 2 prompt names "Calibration not applicable" I6;
@@ -16,7 +16,7 @@ const S2 = (function () {
   M.RULES.push(
     { id: 'I7', src: 'Stage 2, section 1', cond: th => 'The active calibration does not apply: different PMT preset or processing mode, older than ' + th.calExpiryDays + ' days, or no demonstrated linear range.' },
     { id: 'P6', src: 'Stage 2, section 1', cond: () => 'Fluorescence above the calibrated linear range within a fraction.' },
-    { id: 'P7', src: 'Stage 2, section 2.3', cond: th => 'Decay metric over ' + th.decayWinMl + ' mL shifted from the load-plateau reference by more than ' + th.decayThrNs + ' ns and ' + th.decaySdMult + ' × SD (decay analysis on).' },
+    { id: 'P7', src: 'Stage 2, section 2.3', cond: th => 'Decay metric over ' + th.decayWinMl + ' mL shifted from the elution-front reference by more than ' + th.decayThrNs + ' ns and ' + th.decaySdMult + ' × SD, where fluorescence is at least 20 times the buffer baseline (decay analysis on).' },
     { id: 'H3', src: 'Stage 2, section 2.3', cond: () => 'Raised with P7. Possible change in tryptophan environment. Confirm with HPLC-SEC on the linked fractions.' }
   );
   S.proc.decay = false;
@@ -129,7 +129,7 @@ const S2 = (function () {
 
   /* ---------- rules I7, P6, P7 and H3 ---------- */
   M.ruleHooks.push({
-    reset(E) { E.s2 = { i7: null, p6: {}, i7At: E.s2 ? E.s2.i7At : 0 }; E.s2d = { vals: [], ref: null, win: [], sum: 0 }; },
+    reset(E) { E.s2 = { i7: null, p6: {}, i7At: E.s2 ? E.s2.i7At : 0 }; E.s2d = { vals: [], ref: null, win: [], sum: 0, buf: null }; },
     pre(E, n) {
       const R = E.R; if (R.standalone || !n) return;
       const st = status(R), at = Math.min(E.s2.i7At || 0, n - 1);
@@ -151,8 +151,17 @@ const S2 = (function () {
       // P7: decay metric shift (research display; only when decay analysis is on)
       if (!S.proc.decay) return;
       const v = R.y.decay[i]; if (!isFinite(v)) return;
-      const L = R.ph.list, pk = L[ph].key, d = E.s2d, cv = R.cv, load = L.find(p => p.key === 'load');
-      if (!d.ref) { if (pk === 'load' && load && u > load.v0 + Math.min(2 * cv, load.vol * 0.4) && u < load.v1 - Math.min(cv, load.vol * 0.2)) d.vals.push([u, v]); return; }
+      // Reference: the first 40 valid metrics of the elution peak. The load plateau is host-cell protein, a
+      // different species, so it cannot serve as the product's reference (lifetime analysis). Only blocks with
+      // fluorescence at least 20 times the buffer baseline count, so that prompt scatter does not move the metric.
+      const L = R.ph.list, pk = L[ph].key, d = E.s2d, elKey = R.tpl.fractions.elPhase || 'el';
+      if (d.buf == null) { const ref = R.readyAcq ? TR.medianOf(M.fluorOf(R.readyAcq, 20, 320)) : NaN; d.buf = isFinite(ref) && ref > 0 ? ref : 0.008; }
+      if (!(y >= 20 * d.buf)) return;
+      if (!d.ref) {
+        if (pk !== elKey) return; d.vals.push([u, v]); if (d.vals.length < 40) return;
+        const w = d.vals.map(x => x[1]), mean = w.reduce((a, b) => a + b, 0) / w.length, sd = Math.sqrt(w.reduce((a, b) => a + (b - mean) * (b - mean), 0) / (w.length - 1));
+        d.ref = { mean, sd, n: w.length, u0: d.vals[0][0], u1: d.vals[d.vals.length - 1][0] }; setTimeout(() => M.emit('series'), 0); return;
+      }
       d.win.push([u, v]); d.sum += v; while (d.win.length && u - d.win[0][0] > S.th.decayWinMl) d.sum -= d.win.shift()[1];
       if (d.win.length < 20) return;
       const m = d.sum / d.win.length, shift = m - d.ref.mean, unc = Math.sqrt(d.ref.sd * d.ref.sd / d.win.length + d.ref.sd * d.ref.sd / d.ref.n);
@@ -160,22 +169,16 @@ const S2 = (function () {
       const card = E.cond('P7', on, i, () => {
         const fr = E.fracsIn(x0, u), info = irfInfo(R.pmt);
         const p = E.card({ rule: 'P7', phaseIdx: ph, title: 'Decay metric changed', obs: '', x0, x1: u, fractions: fr, shift, unc, features: [{ name: 'Decay-shape analysis (research display)', label: 'P' }] });
-        E.card({ rule: 'H3', phaseIdx: ph, linkedTo: p.id, title: 'Possible change in tryptophan environment', obs: 'Possible change in tryptophan environment, for example conformational change at low pH. Fluorescence decay alone does not identify the cause.', x0, x1: u, fractions: fr, confirm: 'HPLC-SEC on ' + (fr.length ? M.rangeIds(fr) : 'the linked fractions') + '.' });
+        E.card({ rule: 'H3', phaseIdx: ph, linkedTo: p.id, title: 'Possible change in tryptophan environment', obs: 'Possible change in tryptophan environment, for example conformational change at low pH, or aggregates eluting with the product. The decay metric alone does not identify the cause; the species composition of the linked fractions (lifetime analysis) shows which component grows.', x0, x1: u, fractions: fr, confirm: 'HPLC-SEC on ' + (fr.length ? M.rangeIds(fr) : 'the linked fractions') + '.' });
         return p;
       });
       if (card && on) {
         if (Math.abs(shift) >= Math.abs(card.shift)) { card.shift = shift; card.unc = unc; card.x0 = x0; card.x1 = u; card.fractions = E.fracsIn(x0, u); }
         const info = irfInfo(R.pmt);
-        card.obs = 'Decay metric changed by ' + sgn(card.shift, 2) + ' ± ' + card.unc.toFixed(2) + ' ns between the ' + fmt.ml(card.x0) + ' to ' + fmt.ml(card.x1) + ' mL window and the load plateau reference (' + fmt.ml(d.ref.u0) + ' to ' + fmt.ml(d.ref.u1) + ' mL, ' + d.ref.mean.toFixed(2) + ' ± ' + d.ref.sd.toFixed(2) + ' ns SD). IRF about ' + info.fwhmNs.toFixed(1) + ' ns FWHM; sampling 0.2 ns.'; card.eng = [' IRF about ' + info.fwhmNs.toFixed(1) + ' ns FWHM; sampling 0.2 ns.'];
+        card.obs = 'Decay metric changed by ' + sgn(card.shift, 2) + ' ± ' + card.unc.toFixed(2) + ' ns between the ' + fmt.ml(card.x0) + ' to ' + fmt.ml(card.x1) + ' mL window and the elution-front reference (' + fmt.ml(d.ref.u0) + ' to ' + fmt.ml(d.ref.u1) + ' mL, ' + d.ref.mean.toFixed(2) + ' ± ' + d.ref.sd.toFixed(2) + ' ns SD). IRF about ' + info.fwhmNs.toFixed(1) + ' ns FWHM; sampling 0.2 ns.'; card.eng = [' IRF about ' + info.fwhmNs.toFixed(1) + ' ns FWHM; sampling 0.2 ns.'];
         const h = E.cards.find(c => c.linkedTo === card.id); if (h) { h.fractions = card.fractions; h.x0 = card.x0; h.x1 = card.x1; h.confirm = 'HPLC-SEC on ' + (card.fractions.length ? M.rangeIds(card.fractions) : 'the linked fractions') + '.'; }
       }
     },
-    endPhase(E, ph) {
-      const d = E.s2d; if (d.ref || E.R.ph.list[ph].key !== 'load' || d.vals.length < 30) return;
-      const v = d.vals.map(x => x[1]), mean = v.reduce((a, b) => a + b, 0) / v.length, sd = Math.sqrt(v.reduce((a, b) => a + (b - mean) * (b - mean), 0) / (v.length - 1));
-      d.ref = { mean, sd, n: v.length, u0: d.vals[0][0], u1: d.vals[d.vals.length - 1][0] };
-      setTimeout(() => M.emit('series'), 0);
-    }
   });
   M.fracHooks.push((st, R, i0, i1) => {
     // indicative concentration only where the whole fraction is inside the linear range; decay metric mean
@@ -199,8 +202,8 @@ const S2 = (function () {
   function startArchived(def) {
     if (archive[def.id]) return archive[def.id];
     const tpl = TR.cloneTemplate(def.tpl), ph = TR.buildPhases(tpl), prof = TR.buildProfile(def.tpl, ph, def.mods), pre = 1, V1 = 0.20, tEnd = Math.ceil(ph.totalMin + 2) * 60;
-    const acq = TR.createAcq({ seed: TR.SEED, stream: def.stream, pmt: def.pmt, ...M.pmtSim(def.pmt), pDisc: 0.00025, tauJit: 0.047, tEnd, cap: tEnd + 50,
-      signalAt: tS => { const tA = tS / 60 - pre, vp = TR.pumpVolAt(ph, Math.max(0, tA)), u = vp - V1, pr = prof.at(u); return { S: pr.S * (1 + 0.004 * TR.smoothNoise(TR.SEED + 3 + def.stream, tS / 60, [3.1, 7.7, 13.3])), tau: pr.tau, E: 1 - 0.02 * Math.max(0, tA) / ph.totalMin, u, vp, phase: TR.phaseIdxAtVol(ph, u) }; } });
+    const acq = TR.createAcq({ seed: TR.SEED, stream: def.stream, pmt: def.pmt, ...M.pmtSim(def.pmt), pDisc: 0.00025, tauJit: 0.047, tEnd, cap: tEnd + 50, taus: TR.SPECIES[def.tpl].map(q => q.tau),
+      signalAt: tS => { const tA = tS / 60 - pre, vp = TR.pumpVolAt(ph, Math.max(0, tA)), u = vp - V1, pr = prof.at(u); return { S: pr.S * (1 + 0.004 * TR.smoothNoise(TR.SEED + 3 + def.stream, tS / 60, [3.1, 7.7, 13.3])), tau: pr.tau, comp: pr.comp, E: 1 - 0.02 * Math.max(0, tA) / ph.totalMin, u, vp, phase: TR.phaseIdxAtVol(ph, u) }; } });
     return (archive[def.id] = { def, tpl, ph, acq, tEnd, done: false, cv: tpl.cv, fractions: TR.buildFractions(ph, tpl.fractions) });
   }
   function stepArchived(a, budgetMs) { const t0 = performance.now(); while (!a.done && performance.now() - t0 < budgetMs) { TR.acqStep(a.acq, Math.min(a.tEnd, a.acq.tCursor + 120)); if (a.acq.done || a.acq.tCursor >= a.tEnd - 1) a.done = true; } return a.done; }

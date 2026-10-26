@@ -70,9 +70,20 @@ async function confirmReady(page, until) {
     await until('() => M.S.run && M.S.run.state === "complete" && !UI.isFF()');
     await page.waitForTimeout(1500);
     await shot('07_run_complete');
+    await until('() => LTM.state(M.S.run) === "final"', 60000); await page.waitForTimeout(800);
+    await shot('07b_run_species_final');
     await page.click('#rExp'); await page.waitForTimeout(800);
     await shot('08_run_chart_expanded');
     await page.click('#rExp'); await page.waitForTimeout(500);
+    { // zoom into the elution and pin the decay in the tail
+      const box = await page.$eval('#runChart .ch-over', c => { const r = c.getBoundingClientRect(); return { x: r.left, y: r.top }; });
+      const xs = await page.evaluate(() => { const ch = UI.screen('run').chart(), el = M.S.run.ph.list.find(p => p.key === 'el'); return [ch.xToPx(el.t0 + 1.5), ch.xToPx(el.t0 + 9), ch.xToPx(el.t0 + 7)]; });
+      await page.mouse.move(box.x + xs[0], box.y + 120); await page.mouse.down(); await page.mouse.move(box.x + xs[1], box.y + 120, { steps: 5 }); await page.mouse.up(); await page.waitForTimeout(600);
+      await page.mouse.click(box.x + xs[2], box.y + 200); await page.click('#rPLog button[data-v="1"]'); await page.waitForTimeout(600);
+      await shot('08b_run_elution_decay_pinned');
+      await page.click('#rPLog button[data-v="0"]'); await page.click('#decLatest'); await page.click('#rReset'); await page.waitForTimeout(300);
+      await page.click('#rAk'); await page.waitForTimeout(600); await shot('08c_run_with_akta_traces'); await page.click('#rAk'); await page.waitForTimeout(300);
+    }
 
     await page.click('.nav[data-go=fractions]'); await page.waitForTimeout(1500);
     await page.click('#frTbl tbody tr[data-id="FT09"]'); await page.waitForTimeout(800);
@@ -109,7 +120,7 @@ async function confirmReady(page, until) {
     await page.click('[data-go=run]'); await page.waitForTimeout(1200);
     await shot('19_engineer_run_with_pulse');
     await page.click('.nav[data-go=engineer]'); await page.waitForTimeout(800);
-    const tabs = [['tests', '20_engineer_reference_tests'], ['align', '21_engineer_alignment'], ['ar', '22_engineer_auto_range'], ['wf', '23_engineer_waveforms'], ['th', '24_engineer_rules'], ['disc', '25_engineer_discrepancies']];
+    const tabs = [['tests', '20_engineer_reference_tests'], ['align', '21_engineer_alignment'], ['ar', '22_engineer_auto_range'], ['wf', '23_engineer_waveforms'], ['th', '24_engineer_rules'], ['disc', '25_engineer_discrepancies'], ['lt', '26_engineer_lifetimes']];
     for (const [k, name] of tabs) {
       const b = await page.$('#engTabs button[data-v=' + k + ']'); if (!b) { console.log('no tab', k); continue; }
       await b.click(); await page.waitForTimeout(900); await shot(name, true);
