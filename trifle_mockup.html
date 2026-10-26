@@ -1946,7 +1946,8 @@ const CH = (function () {
   // y ticks for a panel h px tall: fewer ticks until labels sit at least 16 px apart
   function yTicks(a, b, n, h) { let t = ticks(a, b, n); while (n > 1 && t.length > 2 && h * (t[1] - t[0]) / (b - a) < 16) { n--; t = ticks(a, b, n); } return t; }
   function tickFmt(v, st) { const d = Math.max(0, -Math.floor(Math.log10(st) + 1e-9)); return v.toFixed(Math.min(6, d)); }
-  function logTicks(a, b) { const out = []; for (let e = Math.floor(a); e <= Math.ceil(b); e++) if (e >= a - 1e-9 && e <= b + 1e-9) out.push(e); return out; }
+  // decade ticks; on a panel h px tall, every k-th decade so that labels sit at least 14 px apart
+  function logTicks(a, b, h) { const out = [], k = h ? Math.max(1, Math.ceil(14 / (h / Math.max(1e-9, b - a)))) : 1; for (let e = Math.floor(a); e <= Math.ceil(b); e++) if (e >= a - 1e-9 && e <= b + 1e-9 && ((e % k) + k) % k === 0) out.push(e); return out; }
   function supExp(e) { const v = Math.pow(10, e); return Math.abs(e) <= 3 ? (e < 0 ? v.toFixed(-e) : String(v)) : '1e' + e; }
   function lb(arr, n, x) { let lo = 0, hi = n; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] < x) lo = m + 1; else hi = m; } return lo; }
   function dashFor(s, w) { if (s === 'dash') return [5, 3]; if (s === 'dot') return [1.5, 2.5]; if (s === 'dashdot') return [6, 2.5, 1.5, 2.5]; return []; }
@@ -2135,13 +2136,13 @@ const CH = (function () {
         const s = sc[pi];
         ctx.strokeStyle = C.grid; ctx.lineWidth = 1; ctx.beginPath();
         for (const v of xt) { const x = Math.round(this.xToPx(v)) + 0.5; ctx.moveTo(x, p.y); ctx.lineTo(x, p.y + p.h); }
-        if (s.l) { const yt = s.l.lin ? yTicks(s.l.a, s.l.b, p.cfg.px ? 2 : Math.max(3, Math.floor(p.h / 45)), p.h) : logTicks(s.l.a, s.l.b); for (const v of yt) { const y = Math.round(p.y + p.h - (v - s.l.a) / (s.l.b - s.l.a) * p.h) + 0.5; ctx.moveTo(p.x, y); ctx.lineTo(p.x + p.w, y); } }
+        if (s.l) { const yt = s.l.lin ? yTicks(s.l.a, s.l.b, p.cfg.px ? 2 : Math.max(3, Math.floor(p.h / 45)), p.h) : logTicks(s.l.a, s.l.b, p.h); for (const v of yt) { const y = Math.round(p.y + p.h - (v - s.l.a) / (s.l.b - s.l.a) * p.h) + 0.5; ctx.moveTo(p.x, y); ctx.lineTo(p.x + p.w, y); } }
         ctx.stroke();
         ctx.strokeStyle = C.axis; ctx.strokeRect(p.x + 0.5, p.y + 0.5, p.w - 1, p.h - 1);
         // left axis labels
         ctx.fillStyle = C.text2; ctx.font = FONT_S; ctx.textBaseline = 'middle';
         if (s.l) {
-          const n = p.cfg.px ? 2 : Math.max(3, Math.floor(p.h / 45)), yt = s.l.lin ? yTicks(s.l.a, s.l.b, n, p.h) : logTicks(s.l.a, s.l.b), st = yt.length > 1 ? yt[1] - yt[0] : 1;
+          const n = p.cfg.px ? 2 : Math.max(3, Math.floor(p.h / 45)), yt = s.l.lin ? yTicks(s.l.a, s.l.b, n, p.h) : logTicks(s.l.a, s.l.b, p.h), st = yt.length > 1 ? yt[1] - yt[0] : 1;
           ctx.textAlign = 'right';
           for (const v of yt) { const y = p.y + p.h - (v - s.l.a) / (s.l.b - s.l.a) * p.h; if (p.cfg.px && y < p.y + 6) continue; ctx.fillText(s.l.lin ? (s.l.ax.tickFmt ? s.l.ax.tickFmt(v) : tickFmt(v, st)) : supExp(v), p.x - 4, Math.min(p.y + p.h - 5, Math.max(p.y + 5, y))); }
           ctx.save(); ctx.fillStyle = C.text; ctx.textAlign = 'center';
@@ -2149,7 +2150,7 @@ const CH = (function () {
           ctx.restore();
         }
         if (s.r) {
-          const yt = s.r.lin ? yTicks(s.r.a, s.r.b, Math.max(3, Math.floor(p.h / 45)), p.h) : logTicks(s.r.a, s.r.b), st = yt.length > 1 ? yt[1] - yt[0] : 1;
+          const yt = s.r.lin ? yTicks(s.r.a, s.r.b, Math.max(3, Math.floor(p.h / 45)), p.h) : logTicks(s.r.a, s.r.b, p.h), st = yt.length > 1 ? yt[1] - yt[0] : 1;
           ctx.textAlign = 'left'; ctx.fillStyle = C.text2;
           for (const v of yt) { const y = p.y + p.h - (v - s.r.a) / (s.r.b - s.r.a) * p.h; ctx.fillText(s.r.lin ? tickFmt(v, st) : supExp(v), p.x + p.w + 4, Math.min(p.y + p.h - 5, Math.max(p.y + 5, y))); }
           ctx.save(); ctx.fillStyle = C.text; ctx.textAlign = 'center'; ctx.translate(this.W - 8, p.y + p.h / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(s.r.ax.title + (s.r.ax.unit ? ' (' + s.r.ax.unit + ')' : ''), 0, 0); ctx.restore();
@@ -3279,7 +3280,9 @@ const LTM = (function () {
   const S = M.S, fmt = M.fmt, L = TR.LTN;
   const H = 7;    // chromatograms use the mean decay over ±7 blocks: 15 s time resolution
   const PER = 20; // blocks per bin in the global fit
-  const FIRST = 150, GROW = 1.3; // first global fit after 150 blocks, then each time the data grow by 30 %
+  // first global fit after 150 blocks, then each time the data grow by 30 %, or sooner when the fit degrades
+  // (MISFIT), at most once every REFIT blocks
+  const FIRST = 150, GROW = 1.3, MISFIT = 3, REFIT = 120;
   // Species colours follow the species, never their rank: product blue, impurity orange, flow-through aqua,
   // scatter neutral grey (validated categorical slots 1 to 3; see README)
   const COLORS = { sc: '#8C96A0', hcp: '#1BAF7A', mab: '#2A78D6', hmw: '#EB6834', empty: '#EB6834', full: '#2A78D6', other: '#6250D6' };
@@ -3289,7 +3292,7 @@ const LTM = (function () {
     const cap = R.acq.cap, sp = TR.SPECIES[R.spKey || 'protA'];
     // amp: amplitudes (V·ns) per expected species; sig: the same, but 0 where an amplitude is under 2 standard
     // errors (the log display, where noise around zero would otherwise look like signal)
-    R.lt = { lib: sp, fit: null, B: null, assign: [], amp: sp.map(() => new Float64Array(cap).fill(NaN)), sig: sp.map(() => new Float64Array(cap).fill(NaN)), other: new Float64Array(cap).fill(NaN), otherSig: new Float64Array(cap).fill(NaN), chi: new Float32Array(cap), n: 0, gen: 1, job: null, nextFit: FIRST, fits: 0, kLogged: 0 };
+    R.lt = { lib: sp, fit: null, B: null, assign: [], amp: sp.map(() => new Float64Array(cap).fill(NaN)), sig: sp.map(() => new Float64Array(cap).fill(NaN)), other: new Float64Array(cap).fill(NaN), otherSig: new Float64Array(cap).fill(NaN), chi: new Float32Array(cap), n: 0, gen: 1, job: null, nextFit: FIRST, lastStart: 0, fits: 0, kLogged: 0 };
   }
   // Mean decay over blocks j0..j1 (inclusive) that are neither discarded nor clipped; v is the mean noise variance
   function meanDecay(R, j0, j1, out) {
@@ -3317,9 +3320,11 @@ const LTM = (function () {
   }
   function finalN(R) { return R.state === 'complete' ? R.derivedN : Math.max(0, R.derivedN - H); }
   function derive(R) { const lt = R.lt; if (!lt || !lt.B) return; const nf = finalN(R); if (nf > lt.n) { compute(R, lt.n, nf, R.derivedN); lt.n = nf; } }
+  // the latest 30 blocks' mean reduced chi-squared: above 3, the current lifetimes no longer describe the data
+  function misfit(R) { const lt = R.lt; let s = 0, c = 0; for (let i = Math.max(0, lt.n - 30); i < lt.n; i++) { const v = lt.chi[i]; if (v > 0) { s += v; c++; } } return c >= 10 && s / c > MISFIT; }
   function startJob(R, final) {
     const lt = R.lt, n = R.derivedN, bins = TR.ltBins(R.acq, 0, n, PER);
-    lt.nextFit = Math.max(n + FIRST, Math.ceil(n * GROW));
+    lt.nextFit = Math.max(n + FIRST, Math.ceil(n * GROW)); lt.lastStart = n;
     if (bins.n < 5) return;
     lt.job = { gen: TR.ltGlobalGen(R.pmt, bins, lt.fit ? lt.fit.taus : null), bins, n, final };
   }
@@ -3347,7 +3352,7 @@ const LTM = (function () {
     derive(R) { derive(R); },
     tick(R) {
       const lt = R.lt; if (!lt) return;
-      if (!lt.job && R.state === 'acquiring' && R.derivedN >= lt.nextFit) startJob(R, false);
+      if (!lt.job && R.state === 'acquiring' && (R.derivedN >= lt.nextFit || (lt.fit && R.derivedN - lt.lastStart >= REFIT && misfit(R)))) startJob(R, false);
       if (lt.job) stepJob(R, R.state === 'complete' ? 60 : 12);
     },
     finish(R) { const lt = R.lt; if (!lt) return; derive(R); if (!lt.job) startJob(R, true); }
@@ -5694,7 +5699,7 @@ const Q = (function () {
         return '<div class="grid2 lt-grid"><div class="stack"><div class="panel"><div class="ph"><h3>Global lifetimes</h3>' + tag('P', 'always') + '<span class="sp"></span><span class="note">' + esc(stTxt) + '</span></div><div class="pb">' + comp +
           (f ? '<div class="small" style="margin-top:6px">Reduced χ² ' + f.chi2r.toFixed(3) + ' over ' + fmt.int(f.nBins) + ' bins of ' + LTM.PER + ' blocks (' + fmt.int(f.n) + ' blocks). SE from the curvature of χ², amplitudes profiled out, scaled by the reduced χ².</div>' : '') + '</div></div>' +
           '<div class="panel"><div class="ph"><h3>Number of components</h3></div><div class="pb">' + (hist || '<div class="note">After the first fit.</div>') + '<div class="small" style="margin-top:6px">A component is added only if χ² drops by more than ' + TR.LT.gain + ' per bin, the number of amplitudes it adds, and lifetimes stay at least a factor ' + TR.LT.sep + ' apart. ' + LTM.PER + '-block bins: the model is linear in the amplitudes, so a bin is itself a mixture of the same decays.</div></div></div></div>' +
-          '<div class="stack"><div class="panel"><div class="ph"><h3>Method</h3></div><div class="pb small"><p>' + esc(LTIP) + '</p><p><b>Decay window.</b> ' + TR.LTN + ' samples (' + (TR.LTN * TR.DX).toFixed(0) + ' ns at ' + TR.DX + ' ns) from 5 ns before the IRF peak. Each block contributes the mean of its 10 waveforms, baseline removed and ND-corrected; clipped and discarded blocks are left out.</p><p><b>Amplitudes.</b> Exact non-negative least squares on the mean decay over ±' + LTM.H + ' blocks (15 s), so the chromatograms have 15 s time resolution and are in V·ns, the same units as total fluorescence. A fraction\'s composition uses the mean decay of all its blocks.</p><p><b>Live.</b> The first fit runs after 150 blocks, then each time the data grow by 30 %, a few milliseconds per tick, starting from the previous lifetimes. A final fit runs when acquisition ends.</p><p><b>Reference.</b> Hales, Aoudjane, Aeppli and Dalby, Proof-of-concept analytical instrument for label-free optical deconvolution of protein species in a mixture, J Chromatogr A 1641, 461968 (2021); Uçan, Hales et al., J Chromatogr A 1711, 464463 (2023).</p></div></div>' +
+          '<div class="stack"><div class="panel"><div class="ph"><h3>Method</h3></div><div class="pb small"><p>' + esc(LTIP) + '</p><p><b>Decay window.</b> ' + TR.LTN + ' samples (' + (TR.LTN * TR.DX).toFixed(0) + ' ns at ' + TR.DX + ' ns) from 5 ns before the IRF peak. Each block contributes the mean of its 10 waveforms, baseline removed and ND-corrected; clipped and discarded blocks are left out.</p><p><b>Amplitudes.</b> Exact non-negative least squares on the mean decay over ±' + LTM.H + ' blocks (15 s), so the chromatograms have 15 s time resolution and are in V·ns, the same units as total fluorescence. A fraction\'s composition uses the mean decay of all its blocks.</p><p><b>Live.</b> The first fit runs after 150 blocks, then each time the data grow by 30 %, or sooner when the mean reduced χ² of the latest 30 blocks rises above 3 (at most every 120 blocks), a few milliseconds per tick, starting from the previous lifetimes. A final fit runs when acquisition ends.</p><p><b>Reference.</b> Hales, Aoudjane, Aeppli and Dalby, Proof-of-concept analytical instrument for label-free optical deconvolution of protein species in a mixture, J Chromatogr A 1641, 461968 (2021); Uçan, Hales et al., J Chromatogr A 1711, 464463 (2023).</p></div></div>' +
           '<div class="panel"><div class="ph"><h3>Fit quality per block</h3></div><div class="pb" style="height:220px"><div id="ltChi" style="height:100%"></div></div></div></div></div>';
       },
       mount: () => {

@@ -15,7 +15,8 @@ const CH = (function () {
   // y ticks for a panel h px tall: fewer ticks until labels sit at least 16 px apart
   function yTicks(a, b, n, h) { let t = ticks(a, b, n); while (n > 1 && t.length > 2 && h * (t[1] - t[0]) / (b - a) < 16) { n--; t = ticks(a, b, n); } return t; }
   function tickFmt(v, st) { const d = Math.max(0, -Math.floor(Math.log10(st) + 1e-9)); return v.toFixed(Math.min(6, d)); }
-  function logTicks(a, b) { const out = []; for (let e = Math.floor(a); e <= Math.ceil(b); e++) if (e >= a - 1e-9 && e <= b + 1e-9) out.push(e); return out; }
+  // decade ticks; on a panel h px tall, every k-th decade so that labels sit at least 14 px apart
+  function logTicks(a, b, h) { const out = [], k = h ? Math.max(1, Math.ceil(14 / (h / Math.max(1e-9, b - a)))) : 1; for (let e = Math.floor(a); e <= Math.ceil(b); e++) if (e >= a - 1e-9 && e <= b + 1e-9 && ((e % k) + k) % k === 0) out.push(e); return out; }
   function supExp(e) { const v = Math.pow(10, e); return Math.abs(e) <= 3 ? (e < 0 ? v.toFixed(-e) : String(v)) : '1e' + e; }
   function lb(arr, n, x) { let lo = 0, hi = n; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] < x) lo = m + 1; else hi = m; } return lo; }
   function dashFor(s, w) { if (s === 'dash') return [5, 3]; if (s === 'dot') return [1.5, 2.5]; if (s === 'dashdot') return [6, 2.5, 1.5, 2.5]; return []; }
@@ -204,13 +205,13 @@ const CH = (function () {
         const s = sc[pi];
         ctx.strokeStyle = C.grid; ctx.lineWidth = 1; ctx.beginPath();
         for (const v of xt) { const x = Math.round(this.xToPx(v)) + 0.5; ctx.moveTo(x, p.y); ctx.lineTo(x, p.y + p.h); }
-        if (s.l) { const yt = s.l.lin ? yTicks(s.l.a, s.l.b, p.cfg.px ? 2 : Math.max(3, Math.floor(p.h / 45)), p.h) : logTicks(s.l.a, s.l.b); for (const v of yt) { const y = Math.round(p.y + p.h - (v - s.l.a) / (s.l.b - s.l.a) * p.h) + 0.5; ctx.moveTo(p.x, y); ctx.lineTo(p.x + p.w, y); } }
+        if (s.l) { const yt = s.l.lin ? yTicks(s.l.a, s.l.b, p.cfg.px ? 2 : Math.max(3, Math.floor(p.h / 45)), p.h) : logTicks(s.l.a, s.l.b, p.h); for (const v of yt) { const y = Math.round(p.y + p.h - (v - s.l.a) / (s.l.b - s.l.a) * p.h) + 0.5; ctx.moveTo(p.x, y); ctx.lineTo(p.x + p.w, y); } }
         ctx.stroke();
         ctx.strokeStyle = C.axis; ctx.strokeRect(p.x + 0.5, p.y + 0.5, p.w - 1, p.h - 1);
         // left axis labels
         ctx.fillStyle = C.text2; ctx.font = FONT_S; ctx.textBaseline = 'middle';
         if (s.l) {
-          const n = p.cfg.px ? 2 : Math.max(3, Math.floor(p.h / 45)), yt = s.l.lin ? yTicks(s.l.a, s.l.b, n, p.h) : logTicks(s.l.a, s.l.b), st = yt.length > 1 ? yt[1] - yt[0] : 1;
+          const n = p.cfg.px ? 2 : Math.max(3, Math.floor(p.h / 45)), yt = s.l.lin ? yTicks(s.l.a, s.l.b, n, p.h) : logTicks(s.l.a, s.l.b, p.h), st = yt.length > 1 ? yt[1] - yt[0] : 1;
           ctx.textAlign = 'right';
           for (const v of yt) { const y = p.y + p.h - (v - s.l.a) / (s.l.b - s.l.a) * p.h; if (p.cfg.px && y < p.y + 6) continue; ctx.fillText(s.l.lin ? (s.l.ax.tickFmt ? s.l.ax.tickFmt(v) : tickFmt(v, st)) : supExp(v), p.x - 4, Math.min(p.y + p.h - 5, Math.max(p.y + 5, y))); }
           ctx.save(); ctx.fillStyle = C.text; ctx.textAlign = 'center';
@@ -218,7 +219,7 @@ const CH = (function () {
           ctx.restore();
         }
         if (s.r) {
-          const yt = s.r.lin ? yTicks(s.r.a, s.r.b, Math.max(3, Math.floor(p.h / 45)), p.h) : logTicks(s.r.a, s.r.b), st = yt.length > 1 ? yt[1] - yt[0] : 1;
+          const yt = s.r.lin ? yTicks(s.r.a, s.r.b, Math.max(3, Math.floor(p.h / 45)), p.h) : logTicks(s.r.a, s.r.b, p.h), st = yt.length > 1 ? yt[1] - yt[0] : 1;
           ctx.textAlign = 'left'; ctx.fillStyle = C.text2;
           for (const v of yt) { const y = p.y + p.h - (v - s.r.a) / (s.r.b - s.r.a) * p.h; ctx.fillText(s.r.lin ? tickFmt(v, st) : supExp(v), p.x + p.w + 4, Math.min(p.y + p.h - 5, Math.max(p.y + 5, y))); }
           ctx.save(); ctx.fillStyle = C.text; ctx.textAlign = 'center'; ctx.translate(this.W - 8, p.y + p.h / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(s.r.ax.title + (s.r.ax.unit ? ' (' + s.r.ax.unit + ')' : ''), 0, 0); ctx.restore();

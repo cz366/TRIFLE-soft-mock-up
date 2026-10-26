@@ -8,7 +8,9 @@ const LTM = (function () {
   const S = M.S, fmt = M.fmt, L = TR.LTN;
   const H = 7;    // chromatograms use the mean decay over ±7 blocks: 15 s time resolution
   const PER = 20; // blocks per bin in the global fit
-  const FIRST = 150, GROW = 1.3; // first global fit after 150 blocks, then each time the data grow by 30 %
+  // first global fit after 150 blocks, then each time the data grow by 30 %, or sooner when the fit degrades
+  // (MISFIT), at most once every REFIT blocks
+  const FIRST = 150, GROW = 1.3, MISFIT = 3, REFIT = 120;
   // Species colours follow the species, never their rank: product blue, impurity orange, flow-through aqua,
   // scatter neutral grey (validated categorical slots 1 to 3; see README)
   const COLORS = { sc: '#8C96A0', hcp: '#1BAF7A', mab: '#2A78D6', hmw: '#EB6834', empty: '#EB6834', full: '#2A78D6', other: '#6250D6' };
@@ -18,7 +20,7 @@ const LTM = (function () {
     const cap = R.acq.cap, sp = TR.SPECIES[R.spKey || 'protA'];
     // amp: amplitudes (V·ns) per expected species; sig: the same, but 0 where an amplitude is under 2 standard
     // errors (the log display, where noise around zero would otherwise look like signal)
-    R.lt = { lib: sp, fit: null, B: null, assign: [], amp: sp.map(() => new Float64Array(cap).fill(NaN)), sig: sp.map(() => new Float64Array(cap).fill(NaN)), other: new Float64Array(cap).fill(NaN), otherSig: new Float64Array(cap).fill(NaN), chi: new Float32Array(cap), n: 0, gen: 1, job: null, nextFit: FIRST, fits: 0, kLogged: 0 };
+    R.lt = { lib: sp, fit: null, B: null, assign: [], amp: sp.map(() => new Float64Array(cap).fill(NaN)), sig: sp.map(() => new Float64Array(cap).fill(NaN)), other: new Float64Array(cap).fill(NaN), otherSig: new Float64Array(cap).fill(NaN), chi: new Float32Array(cap), n: 0, gen: 1, job: null, nextFit: FIRST, lastStart: 0, fits: 0, kLogged: 0 };
   }
   // Mean decay over blocks j0..j1 (inclusive) that are neither discarded nor clipped; v is the mean noise variance
   function meanDecay(R, j0, j1, out) {
@@ -46,9 +48,11 @@ const LTM = (function () {
   }
   function finalN(R) { return R.state === 'complete' ? R.derivedN : Math.max(0, R.derivedN - H); }
   function derive(R) { const lt = R.lt; if (!lt || !lt.B) return; const nf = finalN(R); if (nf > lt.n) { compute(R, lt.n, nf, R.derivedN); lt.n = nf; } }
+  // the latest 30 blocks' mean reduced chi-squared: above 3, the current lifetimes no longer describe the data
+  function misfit(R) { const lt = R.lt; let s = 0, c = 0; for (let i = Math.max(0, lt.n - 30); i < lt.n; i++) { const v = lt.chi[i]; if (v > 0) { s += v; c++; } } return c >= 10 && s / c > MISFIT; }
   function startJob(R, final) {
     const lt = R.lt, n = R.derivedN, bins = TR.ltBins(R.acq, 0, n, PER);
-    lt.nextFit = Math.max(n + FIRST, Math.ceil(n * GROW));
+    lt.nextFit = Math.max(n + FIRST, Math.ceil(n * GROW)); lt.lastStart = n;
     if (bins.n < 5) return;
     lt.job = { gen: TR.ltGlobalGen(R.pmt, bins, lt.fit ? lt.fit.taus : null), bins, n, final };
   }
@@ -76,7 +80,7 @@ const LTM = (function () {
     derive(R) { derive(R); },
     tick(R) {
       const lt = R.lt; if (!lt) return;
-      if (!lt.job && R.state === 'acquiring' && R.derivedN >= lt.nextFit) startJob(R, false);
+      if (!lt.job && R.state === 'acquiring' && (R.derivedN >= lt.nextFit || (lt.fit && R.derivedN - lt.lastStart >= REFIT && misfit(R)))) startJob(R, false);
       if (lt.job) stepJob(R, R.state === 'complete' ? 60 : 12);
     },
     finish(R) { const lt = R.lt; if (!lt) return; derive(R); if (!lt.job) startJob(R, true); }
