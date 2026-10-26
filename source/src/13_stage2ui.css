@@ -1,0 +1,13 @@
+/* Stage 2 screens: column layouts that stack on narrow screens */
+.cal-grid { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+#scr-calibration { container-type: inline-size; }
+@container (max-width: 1100px) { .cal-grid { grid-template-columns: minmax(0, 1fr); } }
+.cmp-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr); }
+.fit-grid { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+.form.s2-form { grid-template-columns: 150px minmax(0, 1fr); }
+#cmpLoad:empty, #cmpNote:empty { display: none; }
+#calRec .tbl th { white-space: normal; }
+#scr-comparison.cmp-none .cmp-grid > .panel, #scr-comparison.cmp-none > .panel, #scr-comparison.cmp-none .scr-h .toolbar, #scr-comparison.cmp-none #cmpLoad, #scr-comparison.cmp-none .cmp-grid .ph .note { display: none !important; }
+@media (max-width: 820px) {
+  .cal-grid, .cmp-grid, .fit-grid, .form.s2-form { grid-template-columns: minmax(0, 1fr); }
+}

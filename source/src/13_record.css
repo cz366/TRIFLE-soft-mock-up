@@ -1,0 +1,7 @@
+/* Record */
+#scr-record .rec-grid { grid-template-columns: minmax(0, 1fr); }
+#exStage2 { display: contents; }
+/* Units under the column name, so the fraction table fits the summary panel */
+#recBody .tbl th { height: auto; padding-top: 4px; padding-bottom: 4px; vertical-align: bottom; }
+#recBody .tbl th .unit { display: block; }
+@media print { #scr-record .rec-grid > .panel > .ph { display: none; } }

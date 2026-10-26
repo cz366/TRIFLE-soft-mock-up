@@ -1,0 +1,6 @@
+/* ---------- UI core additions ---------- */
+.proc-grp { display: flex; flex-direction: column; align-items: flex-start; }
+.proc-grp > .chk { margin-top: 4px; }
+.proc-cmp { margin-top: 8px; }
+.demo-box .seg { align-self: flex-start; }
+.lbl-tbl td:first-child { width: 1%; white-space: nowrap; }

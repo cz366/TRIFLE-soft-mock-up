@@ -1,0 +1,5 @@
+/* Setup: the method phases table fits a half-width panel at 1280 px */
+.tbl.phases th { white-space: normal; vertical-align: bottom; line-height: 1.25; padding-top: 3px; padding-bottom: 3px; }
+.tbl.phases th, .tbl.phases td { padding-left: 6px; padding-right: 6px; }
+.tbl.phases td:first-child { white-space: normal; padding-top: 2px; padding-bottom: 2px; }
+.tbl.phases .flowIn { width: 64px; height: 22px; }
