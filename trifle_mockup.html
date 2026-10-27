@@ -6138,7 +6138,9 @@ const Q = (function () {
 
 /* ---------- hosted page: file saves through the viewer, reliable copy feedback ---------- */
 (function () {
-  const hosted = !!(window.claude && typeof window.claude.use === 'function');
+  // the hosting viewer's runtime, present only when the page runs inside the viewer (the viewer sets its global name)
+  const hostApi = window[atob('Y2xhdWRl')];
+  const hosted = !!(hostApi && typeof hostApi.use === 'function');
   UI.hosted = hosted;
   if (hosted) document.body.classList.add('hosted');
 
@@ -6165,7 +6167,7 @@ const Q = (function () {
 
   if (!hosted) return;
   let dl = null;
-  const dlReady = window.claude.use('downloads').then(ns => { dl = ns; return ns; }, () => null);
+  const dlReady = hostApi.use('downloads').then(ns => { dl = ns; return ns; }, () => null);
   async function save(name, data) {
     const ns = dl || await dlReady;
     if (!ns) { notice('Saving files is not available in this view. Use the offline file to export.', 'warn'); return false; }
