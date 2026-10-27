@@ -8,6 +8,7 @@ Interactive single-file mock-up of the TRIFLE control and analysis software (in-
 - Test with `bash source/run_suite.sh` (Node, Playwright, Chromium; about 8 minutes). Every script must end "no console errors". Expected values are listed in `source/DEVELOPING.md`; when a deliberate change moves them (checksum, sensitivity-change count), update `run_suite.sh`, `DEVELOPING.md` and `README.md` together.
 - Screenshots: `node source/tests/render_hd.js "$PWD/trifle_mockup.html" <outdir> 4` (36 screens, desktop and phone).
 - Commit the rebuilt `trifle_mockup.html` with its sources. Keep `README.md` in step with the behaviour.
+- Commits are authored as `cz366 <84466214+cz366@users.noreply.github.com>` (set `git config user.name` and `user.email` in a new checkout). Work goes on `main`.
 
 ## Versions
 
