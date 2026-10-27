@@ -12,7 +12,7 @@ Interactive single-file mock-up of the TRIFLE control and analysis software (in-
 ## Versions
 
 - `stage1/trifle_mockup_stage1.html`: Stage 1 build.
-- `stage2/trifle_mockup_stage2_trifle_view.html`, git tag `v2-trifle-view`: Stage 2 with the TRIFLE view and lifetime analysis, before the interface simplification.
+- `stage2/trifle_mockup_stage2_trifle_view.html` (built at the commit "Refit live when the fit degrades"): Stage 2 with the TRIFLE view and lifetime analysis, before the interface simplification.
 - `trifle_mockup.html`: current build.
 
 ## Decisions to keep
