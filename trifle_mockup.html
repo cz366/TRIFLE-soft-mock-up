@@ -5277,13 +5277,13 @@ const ENG = (function () {
   // Discrepancies: one entry per item feeds both the summary row and the detail panel
   const DISC = [
     {
-      n: 1, title: 'Rule ID clash', v20: 'Not in v2.0. The Stage 2 prompt gives I6 to a second rule.', src: 'Stage 2 prompt, section 1; Stage 1, section 11', plain: true,
+      n: 1, title: 'Rule ID clash', v20: 'Not in v2.0. The Stage 2 specification gave I6 to a second rule.', src: 'Stage 2 specification; Stage 1 rule list', plain: true,
       effect: () => 'One ID for two rules would make cards, responses and exports ambiguous.', res: 'Calibration not applicable is I7. No ID is reused.',
       status: () => UI.stateHtml('ok', 'Resolved'), e: false, p: false, h: false,
       detail: () => ({
-        v20: p('Not in v2.0, which has no rule IDs. The Stage 2 prompt (section 1) gives I6 to Calibration not applicable. Stage 1 (section 11) already uses I6 for Laser output changed.'),
+        v20: p('Not in v2.0, which has no rule IDs. The Stage 2 specification gave I6 to Calibration not applicable, but Stage 1 already uses I6 for Laser output changed.'),
         effect: p('Rule IDs are stored in card IDs (for example I6-load-1), responses, the audit trail and the JSON and CSV exports. One ID for two rules would make those records ambiguous.'),
-        res: p('Calibration not applicable is I7; P6, P7 and H3 are unchanged. The Stage 2 prompt is to be corrected.') + '<button class="btn sm" id="discGoTh">Open Rules</button>',
+        res: p('Calibration not applicable is I7; P6, P7 and H3 are unchanged.') + '<button class="btn sm" id="discGoTh">Open Rules</button>',
         check: p('None needed.')
       })
     },
