@@ -180,8 +180,8 @@ const TR = (function () {
     protA: [
       { key: 'sc', name: 'Scatter and buffer', short: 'Scatter', tau: 0.25, exp: 0.3 },
       { key: 'hcp', name: 'Host-cell proteins', short: 'HCP', tau: 2.2, exp: 2.0 },
-      { key: 'mab', name: 'mAb (IgG1)', short: 'mAb', tau: 3.5, exp: 3.6, product: true },
-      { key: 'hmw', name: 'Aggregates (HMW)', short: 'HMW', tau: 5.4, exp: 5.3 }],
+      { key: 'mab', name: 'mAb monomer', short: 'Monomer', tau: 3.5, exp: 3.6, product: true },
+      { key: 'hmw', name: 'HMW aggregates, dimer and larger', short: 'HMW', tau: 5.4, exp: 5.3 }],
     aav: [
       { key: 'sc', name: 'Scatter and buffer', short: 'Scatter', tau: 0.25, exp: 0.3 },
       { key: 'hcp', name: 'Lysate proteins', short: 'Lysate', tau: 2.2, exp: 2.0 },

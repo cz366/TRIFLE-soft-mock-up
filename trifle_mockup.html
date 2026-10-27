@@ -186,6 +186,14 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 .ch-plot canvas { position: absolute; left: 0; top: 0; }
 .ch-plot canvas.ch-over { cursor: crosshair; }
 .ch-plot canvas.ch-over:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* hover tooltip: values lead, labels follow, each row keyed by a short stroke of the series colour */
+.ch-tip { position: absolute; z-index: 3; pointer-events: none; background: rgba(255,255,255,0.97); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 2px 8px rgba(31,41,51,0.12); padding: 6px 9px 7px; font-size: 12.5px; line-height: 1.5; white-space: nowrap; }
+.ch-tip .tt-h { color: var(--text2); margin-bottom: 2px; }
+.ch-tip .tt-r { display: flex; align-items: center; gap: 6px; }
+.ch-tip .tt-k { width: 12px; border-top: 2px solid; flex: none; }
+.ch-tip .tt-r b { color: var(--text); font-variant-numeric: tabular-nums; }
+.ch-tip .tt-l { color: var(--text2); }
+.ch-tip .tt-x { color: var(--text2); margin-top: 3px; padding-top: 3px; border-top: 1px solid var(--border); }
 .toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .toolbar .sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
 .toolbar .lab { font-size: 13.5px; color: var(--text2); }
@@ -197,7 +205,7 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 .chips span:last-child { border-right: 0; }
 .run-chart { flex: 1 1 58%; min-height: 0; display: flex; flex-direction: column; }
 .run-chart > .pb { flex: 1; min-height: 0; padding: 4px 8px 4px; display: flex; flex-direction: column; }
-.run-bottom { flex: 0 0 clamp(180px, 27%, 248px); display: grid; grid-template-columns: minmax(230px, 24fr) minmax(280px, 30fr) minmax(200px, 23fr) minmax(200px, 23fr); gap: 8px; min-height: 0; }
+.run-bottom { flex: 0 0 clamp(168px, 24%, 228px); display: grid; grid-template-columns: minmax(230px, 24fr) minmax(280px, 30fr) minmax(200px, 23fr) minmax(200px, 23fr); gap: 8px; min-height: 0; }
 .run-bottom > .panel { display: flex; flex-direction: column; min-height: 0; }
 .run-bottom > .panel > .pb { flex: 1; min-height: 0; overflow: auto; padding: 4px 8px; }
 .run-bottom > .panel > .ph { height: 28px; }
@@ -524,6 +532,13 @@ body:not(.eng) .run-bottom { grid-template-columns: minmax(250px, 28fr) minmax(3
 
 /* Readiness: checks and laser at a readable width */
 body:not(.eng) #scr-readiness > * { max-width: 920px; }
+
+/* Suggested next step for a fraction (Proposed): a quiet pill; Pool carries the accent */
+.sug { display: inline-block; padding: 0 7px; border-radius: 9px; font-size: 12.5px; line-height: 18px; border: 1px solid var(--border2); color: var(--text); background: #fff; white-space: nowrap; }
+.sug.sug-pool { background: var(--accent-bg); border-color: #B9C6D8; color: var(--accent); font-weight: bold; }
+.sug.sug-none, .sug.sug-buffer { color: var(--text2); border-style: dashed; }
+.sug-why { margin-bottom: 6px; color: var(--text2); }
+.sug-why .sug { margin-right: 2px; }
 </style>
 </head>
 <body>
@@ -1405,8 +1420,8 @@ const TR = (function () {
     protA: [
       { key: 'sc', name: 'Scatter and buffer', short: 'Scatter', tau: 0.25, exp: 0.3 },
       { key: 'hcp', name: 'Host-cell proteins', short: 'HCP', tau: 2.2, exp: 2.0 },
-      { key: 'mab', name: 'mAb (IgG1)', short: 'mAb', tau: 3.5, exp: 3.6, product: true },
-      { key: 'hmw', name: 'Aggregates (HMW)', short: 'HMW', tau: 5.4, exp: 5.3 }],
+      { key: 'mab', name: 'mAb monomer', short: 'Monomer', tau: 3.5, exp: 3.6, product: true },
+      { key: 'hmw', name: 'HMW aggregates, dimer and larger', short: 'HMW', tau: 5.4, exp: 5.3 }],
     aav: [
       { key: 'sc', name: 'Scatter and buffer', short: 'Scatter', tau: 0.25, exp: 0.3 },
       { key: 'hcp', name: 'Lysate proteins', short: 'Lysate', tau: 2.2, exp: 2.0 },
@@ -1992,14 +2007,15 @@ const CH = (function () {
   function logTicks(a, b, h) { const out = [], k = h ? Math.max(1, Math.ceil(14 / (h / Math.max(1e-9, b - a)))) : 1; for (let e = Math.floor(a); e <= Math.ceil(b); e++) if (e >= a - 1e-9 && e <= b + 1e-9 && ((e % k) + k) % k === 0) out.push(e); return out; }
   function supExp(e) { const v = Math.pow(10, e); return Math.abs(e) <= 3 ? (e < 0 ? v.toFixed(-e) : String(v)) : '1e' + e; }
   function lb(arr, n, x) { let lo = 0, hi = n; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] < x) lo = m + 1; else hi = m; } return lo; }
+  function rgba(hex, a) { const n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; }
   function dashFor(s, w) { if (s === 'dash') return [5, 3]; if (s === 'dot') return [1.5, 2.5]; if (s === 'dashdot') return [6, 2.5, 1.5, 2.5]; return []; }
 
   class Chart {
     constructor(host, cfg) {
       this.host = host; this.cfg = cfg;
       host.classList.add('chart');
-      host.innerHTML = '<div class="ch-legend" role="list"></div><div class="ch-info"></div><div class="ch-plot"><canvas class="ch-base"></canvas><canvas class="ch-data"></canvas><canvas class="ch-over" tabindex="0" aria-label="' + (cfg.ariaLabel || 'Chart') + '"></canvas></div>';
-      this.legendEl = host.querySelector('.ch-legend'); this.infoEl = host.querySelector('.ch-info'); this.plotEl = host.querySelector('.ch-plot');
+      host.innerHTML = '<div class="ch-legend" role="list"></div><div class="ch-info"></div><div class="ch-plot"><canvas class="ch-base"></canvas><canvas class="ch-data"></canvas><canvas class="ch-over" tabindex="0" aria-label="' + (cfg.ariaLabel || 'Chart') + '"></canvas><div class="ch-tip" role="status" hidden></div></div>';
+      this.legendEl = host.querySelector('.ch-legend'); this.infoEl = host.querySelector('.ch-info'); this.plotEl = host.querySelector('.ch-plot'); this.tipEl = host.querySelector('.ch-tip');
       [this.cBase, this.cData, this.cOver] = host.querySelectorAll('canvas');
       this.xBase = cfg.xBase || null; this.view = null; this.zoomStack = []; this.cursorX = null; this.dragging = null;
       this.rulers = cfg.rulers ? cfg.rulers.slice() : null; this.rulersOn = !!cfg.rulersOn;
@@ -2122,6 +2138,7 @@ const CH = (function () {
       if (!(hi >= lo)) { lo = ax.def ? ax.def[0] : 0; hi = ax.def ? ax.def[1] : 1; }
       if (ax.zero !== false) { lo = Math.min(0, lo); }
       if (ax.sym) { const m = Math.max(Math.abs(lo), Math.abs(hi), ax.symMin || 0); lo = -m; hi = m; }
+      const mt = typeof ax.minTop === 'function' ? ax.minTop() : ax.minTop; if (mt != null && hi < mt) hi = mt;
       if (hi - lo < (ax.minSpan || 1e-9)) { const m = (hi + lo) / 2, h = (ax.minSpan || 1e-6) / 2; lo = m - h; hi = m + h; }
       const span = hi - lo, st = nice(span * 1.08, 5); let a = Math.floor((lo - (ax.zero !== false && lo >= 0 ? 0 : span * 0.04)) / st) * st, b2 = Math.ceil((hi + span * 0.06) / st) * st;
       if (ax.zero !== false && lo >= 0) a = 0;
@@ -2224,11 +2241,8 @@ const CH = (function () {
       }
       // hatched intervals (alignment uncertain) and interval bars (laser change)
       for (const h of (cfg.hatches ? cfg.hatches() : [])) { const x0 = Math.max(main.x, this.xToPx(h.x0)), x1 = Math.min(main.x + main.w, this.xToPx(h.x1)); if (x1 > x0) for (const p of this.panels) this.hatch(ctx, x0, p.y, x1 - x0, p.h, 'rgba(91,102,112,0.28)'); }
-      let ivRow = 0;
-      for (const iv of (cfg.intervals ? cfg.intervals() : [])) {
-        const x0 = Math.max(main.x, this.xToPx(iv.x0)), x1 = Math.min(main.x + main.w, Math.max(this.xToPx(iv.x1), this.xToPx(iv.x0) + 2)); if (x1 <= main.x || x0 >= main.x + main.w) continue;
-        ctx.fillStyle = iv.color || C.warn; ctx.fillRect(x0, main.y + 1 + ivRow * 16, x1 - x0, 3); ivRow = (ivRow + 1) % 3;
-      }
+      this.ivLay = this.ivLayout(ctx);
+      for (const v of this.ivLay) { ctx.fillStyle = v.iv.color || C.warn; ctx.fillRect(v.x0, main.y + 1 + v.row * 16, v.x1 - v.x0, 3); }
       // x axis
       const yAx = this.bottomY; ctx.strokeStyle = C.axis; ctx.beginPath(); ctx.moveTo(this.px0, yAx + 0.5); ctx.lineTo(this.px0 + this.pw, yAx + 0.5); ctx.stroke();
       ctx.fillStyle = C.text2; ctx.textAlign = 'center'; ctx.font = FONT_S; ctx.textBaseline = 'top';
@@ -2242,6 +2256,20 @@ const CH = (function () {
         else { ctx.font = FONT_S; const tw = ctx.measureText(m.label || '').width; mRow = x - tw / 2 < mEnd ? mRow + 1 : 0; mEnd = x + tw / 2 + 3; const ly = yAx - 10 - mRow * 13; ctx.fillStyle = m.color || C.text; ctx.beginPath(); ctx.moveTo(x, yAx - 9); ctx.lineTo(x - 4, yAx - 1); ctx.lineTo(x + 4, yAx - 1); ctx.closePath(); ctx.fill(); this.markerLabels.push({ x, y: ly, label: m.label || '', color: m.color || C.text }); this.markerHits.push({ x, y0: ly - 12, y1: yAx + 2, text: m.text }); }
       }
       ctx.textBaseline = 'alphabetic';
+    }
+    // intervals (laser change, co-elution): a bar and a label at the top of the main panel, in up to three rows; a label
+    // that fits no row is left to the tooltip
+    ivLayout(ctx) {
+      const main = this.panels[0], rows = [[], [], []], out = []; if (!main) return out;
+      ctx.save(); ctx.font = FONT_S;
+      for (const iv of (this.cfg.intervals ? this.cfg.intervals() : [])) {
+        const x0 = Math.max(main.x, this.xToPx(iv.x0)), x1 = Math.min(main.x + main.w, Math.max(this.xToPx(iv.x1), this.xToPx(iv.x0) + 2)); if (x1 <= main.x || x0 >= main.x + main.w) continue;
+        const tw = ctx.measureText(iv.label).width, lx = Math.min(x0 + 1, main.x + main.w - tw - 5), r0 = Math.min(lx, x0), r1 = Math.max(x1, lx + tw + 6);
+        let row = rows.findIndex(r => !r.some(([a, b]) => r0 < b + 6 && r1 > a - 6)), label = true;
+        if (row < 0) { row = rows.findIndex(r => !r.some(([a, b]) => x0 < b && x1 > a)); label = false; if (row < 0) row = 0; }
+        rows[row].push(label ? [r0, r1] : [x0, x1]); out.push({ iv, x0, x1, row, label, lx, tw });
+      }
+      ctx.restore(); return out;
     }
     hatch(ctx, x, y, w, h, color) {
       ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip(); ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.beginPath();
@@ -2268,13 +2296,30 @@ const CH = (function () {
           for (const s of ordered) {
             if (s.mode === 'points') { this.drawPoints(ctx, p, sc, s); continue; }
             const b = s.b; if (!b) continue;
-            const hover = this.hoverKey === s.key;
-            ctx.strokeStyle = s.color; ctx.lineWidth = (s.width || 1.25) * (hover ? 2 : 1); ctx.setLineDash(dashFor(s.dash)); ctx.lineJoin = 'round';
-            ctx.beginPath();
-            let started = false, start = c0;
+            // a hovered legend entry lifts its trace and fades the others
+            const hover = this.hoverKey === s.key, faded = this.hoverKey != null && !hover;
+            let start = c0;
             // walk back to the previous filled column to connect the line
             for (let c = c0 - 1; c >= 0 && c >= c0 - 4000; c--) if (b.cnt[c]) { start = c; break; }
             const Y = v => this.yToPx(p, sc, sc.lin ? v : v);
+            ctx.globalAlpha = faded ? 0.3 : 1;
+            // area wash under a trace (species chromatograms): the series hue at low opacity, down to zero or the panel floor
+            if (s.fill) {
+              const base = sc.lin ? Math.min(p.y + p.h, Math.max(p.y, Y(0))) : p.y + p.h; let open = false, lastX = 0;
+              ctx.fillStyle = rgba(s.color, s.fill); ctx.beginPath();
+              for (let c = start; c <= c1; c++) {
+                if (!b.cnt[c]) continue;
+                const top = sc.lin ? b.max[c] : b.maxPos[c]; if (!sc.lin && !(top > 0)) { if (open) { ctx.lineTo(lastX, base); open = false; } continue; }
+                const x = p.x + c + 0.5, y = Math.max(p.y, Y(top));
+                if (!open || b.brk[c]) { if (open) ctx.lineTo(lastX, base); ctx.moveTo(x, base); ctx.lineTo(x, y); open = true; } else ctx.lineTo(x, y);
+                lastX = x;
+              }
+              if (open) ctx.lineTo(lastX, base);
+              ctx.fill();
+            }
+            ctx.strokeStyle = s.color; ctx.lineWidth = (s.width || 1.25) + (hover ? 1 : 0); ctx.setLineDash(dashFor(s.dash)); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+            ctx.beginPath();
+            let started = false;
             for (let c = start; c <= c1; c++) {
               if (!b.cnt[c]) continue;
               let mn = b.min[c], mx = b.max[c], fi = b.first[c], la = b.last[c];
@@ -2283,7 +2328,7 @@ const CH = (function () {
               if (!started || b.brk[c]) { ctx.moveTo(x, yf); started = true; } else ctx.lineTo(x, yf);
               if (b.cnt[c] > 1) { ctx.lineTo(x, ymn); ctx.lineTo(x, ymx); ctx.lineTo(x, yl); }
             }
-            ctx.stroke(); ctx.setLineDash([]);
+            ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.lineCap = 'butt';
             // off-scale indicators
             ctx.fillStyle = s.color;
             for (let c = c0; c <= c1; c++) { if (!b.cnt[c]) continue; const hi = sc.lin ? b.max[c] : Math.log10(b.maxPos[c]), lo = sc.lin ? b.min[c] : (b.minPos[c] < Infinity ? Math.log10(b.minPos[c]) : sc.a); if (hi > sc.b) ctx.fillRect(p.x + c, p.y, 1, 3); if (sc.lin && lo < sc.a) ctx.fillRect(p.x + c, p.y + p.h - 3, 1, 3); }
@@ -2321,20 +2366,78 @@ const CH = (function () {
         if (g.label) { ctx.font = FONT_S; ctx.textBaseline = 'top'; const tw = ctx.measureText(g.label).width, flip = (g.flip && x - 6 - tw >= main.x) || x + 6 + tw > main.x + main.w, lx = flip ? x - 6 - tw : x + 6, ly = top + 1 + (g.row || 0) * 11; ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(lx - 1, ly - 1, tw + 2, 13); ctx.fillStyle = g.color; ctx.textAlign = 'left'; ctx.fillText(g.label, lx, ly); }
       }
       if (this.cursorX != null && !this.dragging) { const x = Math.round(this.xToPx(this.cursorX)) + 0.5; ctx.strokeStyle = 'rgba(31,41,51,0.45)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bot); ctx.stroke(); }
+      this.drawHover(ctx);
+      if (this.dragging) this.tipEl.hidden = true;
       if (this.dragging && (this.dragging.kind === 'zoom' || this.dragging.kind === 'select')) {
         const d = this.dragging, x0 = Math.min(d.x0, d.x1), x1 = Math.max(d.x0, d.x1), y0 = d.kind === 'zoom' ? Math.min(d.y0, d.y1) : top, y1 = d.kind === 'zoom' ? Math.max(d.y0, d.y1) : bot;
         ctx.fillStyle = 'rgba(27,54,93,0.08)'; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); ctx.strokeStyle = C.accent; ctx.lineWidth = 1; ctx.strokeRect(x0 + 0.5, y0 + 0.5, x1 - x0, y1 - y0);
       }
       ctx.textBaseline = 'alphabetic';
     }
+    // hover layer (cfg.tooltip): a dot with a white ring on each trace at the cursor, and one tooltip for every series
+    hoverRows() {
+      if (this.cursorX == null || this.dragging || !this.scales) return [];
+      const rows = [];
+      this.panels.forEach((p, pi) => {
+        for (const s of this.series) {
+          if (!s.visible || s.panel !== p.key || s.mode === 'points' || s.inTip === false) continue;
+          const sc = this.scales[pi][s.side || 'l']; if (!sc) continue;
+          const v = this.valueAt(s, this.cursorX); if (!v || !(v.y === v.y)) continue;
+          const y = this.yToPx(p, sc, v.y);
+          rows.push({ s, v, y: isFinite(y) && y >= p.y - 1 && y <= p.y + p.h + 1 ? y : null });
+        }
+      });
+      return rows;
+    }
+    drawHover(ctx) {
+      const tip = this.tipEl; if (!this.cfg.tooltip) return;
+      const rows = this.hoverRows(); if (!rows.length) { tip.hidden = true; return; }
+      const x = this.xToPx(this.cursorX);
+      for (const r of rows) { if (r.y == null || r.s.dot === false) continue; ctx.beginPath(); ctx.arc(x, r.y, 4, 0, 2 * Math.PI); ctx.fillStyle = r.s.color; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#FFFFFF'; ctx.stroke(); }
+      // values lead, labels follow; each row keyed by a short stroke of the series colour
+      tip.textContent = '';
+      const head = this.cfg.tipHead ? this.cfg.tipHead(this.cursorX) : ''; if (head) { const h = document.createElement('div'); h.className = 'tt-h'; h.textContent = head; tip.append(h); }
+      for (const r of rows) {
+        const row = document.createElement('div'); row.className = 'tt-r';
+        const k = document.createElement('span'); k.className = 'tt-k'; k.style.borderTopColor = r.s.color; if (r.s.dash) k.style.borderTopStyle = 'dashed';
+        const val = document.createElement('b'); val.textContent = r.s.fmt ? r.s.fmt(r.v.y, r.v.i) : String(r.v.y);
+        const lab = document.createElement('span'); lab.className = 'tt-l'; lab.textContent = r.s.tipLabel || r.s.label;
+        row.append(k, val, lab); tip.append(row);
+      }
+      const extra = this.cfg.tipExtra ? this.cfg.tipExtra(this.cursorX) : ''; if (extra) { const e = document.createElement('div'); e.className = 'tt-x'; e.textContent = extra; tip.append(e); }
+      tip.hidden = false;
+      const tw = tip.offsetWidth, th = tip.offsetHeight, main = this.panels[0], ys = rows.map(r => r.y).filter(y => y != null);
+      let lx = x + 16; if (lx + tw > this.px0 + this.pw) lx = x - 16 - tw; lx = Math.max(2, lx);
+      const yc = ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : main.y + main.h / 2;
+      tip.style.left = Math.round(lx) + 'px'; tip.style.top = Math.round(Math.max(main.y, Math.min(this.H - th - 2, yc - th / 2))) + 'px';
+    }
+    // direct labels on the main panel (detected peaks): a ringed dot at the point and its name above, never overlapping
+    drawAnnotations(ctx, placed) {
+      const main = this.panels[0], sc = this.scales && this.scales[0] && this.scales[0].l; if (!main || !sc || !this.cfg.annotations) return;
+      ctx.save(); ctx.font = 'bold ' + FONT_S; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      const list = this.cfg.annotations().map(a => ({ ...a, px: this.xToPx(a.x), py: this.yToPx(main, sc, a.y) })).filter(a => a.px >= main.x + 2 && a.px <= main.x + main.w - 2 && isFinite(a.py)).sort((a, b) => a.py - b.py);
+      for (const a of list) {
+        const py = Math.max(main.y + 4, Math.min(main.y + main.h, a.py)), tw = ctx.measureText(a.label).width, lx = Math.min(main.x + main.w - tw / 2 - 3, Math.max(main.x + tw / 2 + 3, a.px));
+        let y = py - 8; const box = yy => [lx - tw / 2 - 3, yy - 14, lx + tw / 2 + 3, yy + 1];
+        for (let k = 0; k < 6 && placed.find(t => box(y)[0] < t[2] && box(y)[2] > t[0] && box(y)[1] < t[3] && box(y)[3] > t[1]); k++) y -= 15;
+        if (y - 14 < main.y + 2) y = Math.max(main.y + 16, py + 22);
+        const b = box(y); if (placed.find(t => b[0] < t[2] && b[2] > t[0] && b[1] < t[3] && b[3] > t[1])) continue; placed.push(b);
+        if (y < py - 9) { ctx.strokeStyle = 'rgba(91,102,112,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(a.px + 0.5, y + 1); ctx.lineTo(a.px + 0.5, py - 5); ctx.stroke(); }
+        ctx.beginPath(); ctx.arc(a.px, py, 4, 0, 2 * Math.PI); ctx.fillStyle = a.color; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.fillRect(b[0], b[1], b[2] - b[0], b[3] - b[1]); ctx.fillStyle = C.text; ctx.fillText(a.label, lx, y);
+      }
+      ctx.restore();
+    }
     // labels drawn above the traces with a backing: interval labels, strip titles, marker and reference-line labels (also on the PNG, without drag lines)
     drawLabels(ctx, noDrag) {
       const main = this.panels[0]; if (!main) return;
-      let ivRow = 0; ctx.font = FONT_S; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-      for (const iv of (this.cfg.intervals ? this.cfg.intervals() : [])) { const x0 = Math.max(main.x, this.xToPx(iv.x0)); if (this.xToPx(iv.x1) < main.x || x0 >= main.x + main.w) continue; const y = main.y + 11 + ivRow * 16, tw = ctx.measureText(iv.label).width; ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.fillRect(x0 + 1, y - 7, tw + 4, 14); ctx.fillStyle = iv.color || C.warn; ctx.fillText(iv.label, x0 + 3, y); ivRow = (ivRow + 1) % 3; }
-      const tbox = [], hit = (b, list) => list.find(t => b[0] < t[2] && b[2] > t[0] && b[1] < t[3] && b[3] > t[1]);
+      ctx.font = FONT_S; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      const tbox = [];
+      for (const v of (this.ivLay || this.ivLayout(ctx))) { if (!v.label) continue; const y = main.y + 11 + v.row * 16; ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.fillRect(v.lx, y - 7, v.tw + 4, 14); ctx.fillStyle = v.iv.color || C.warn; ctx.fillText(v.iv.label, v.lx + 2, y); tbox.push([v.lx, y - 7, v.lx + v.tw + 4, y + 7]); }
+      const hit = (b, list) => list.find(t => b[0] < t[2] && b[2] > t[0] && b[1] < t[3] && b[3] > t[1]);
       for (const p of this.panels) { const ax = p.cfg.yl; if (!p.cfg.px || !ax) continue; const t = (ax.short || ax.title) + (ax.unit ? ' (' + ax.unit + ')' : ''); ctx.font = FONT_S; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; const tw = ctx.measureText(t).width; ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(p.x + 2, p.y + 2, tw + 8, 16); ctx.fillStyle = C.text2; ctx.fillText(t, p.x + 6, p.y + 4); tbox.push([p.x + 2, p.y + 2, p.x + tw + 10, p.y + 18]); }
       const placed = [];
+      this.drawAnnotations(ctx, placed.concat(tbox));
       for (const m of (this.markerLabels || [])) {
         ctx.font = FONT_S; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; const tw = ctx.measureText(m.label).width, box = y => [m.x - tw / 2 - 2, y - 13, m.x + tw / 2 + 2, y]; let y = m.y;
         for (let k = 0; k < 4; k++) { const t = hit(box(y), tbox), q = !t && hit(box(y), placed); if (!t && !q) break; y = t ? t[1] - 1 : q[1]; }
@@ -2358,18 +2461,18 @@ const CH = (function () {
       return { i, y: d.y[i] };
     }
     updateReadout() {
-      const live = this.cursorX == null;
+      const live = this.cursorX == null || !!this.cfg.tooltip;
       for (const s of this.series) {
         if (!s._valEl) continue;
         if (!s.visible) { s._valEl.textContent = ''; continue; }
         let v = null;
-        if (live) { if (this.cfg.liveReadout === false) { s._valEl.textContent = ''; continue; } const d = s.src(); if (d && d.n && s.mode !== 'points') { let i = d.n - 1; while (i > 0 && !(d.y[i] === d.y[i])) i--; v = { i, y: d.y[i] }; } }
+        if (live) { if (this.cfg.liveReadout === false) { s._valEl.textContent = ''; continue; } const d = s.src(); if (d && d.n && s.mode !== 'points') { const li = this.cfg.liveIndex ? this.cfg.liveIndex() : null; let i = li != null && li < d.n ? li : d.n - 1; while (i > 0 && !(d.y[i] === d.y[i])) i--; v = { i, y: d.y[i] }; } }
         else v = this.valueAt(s, this.cursorX);
         s._valEl.textContent = v && v.y === v.y ? (s.fmt ? s.fmt(v.y, v.i) : String(v.y)) : (s.mode === 'points' ? '' : '–');
       }
       let info = '';
       if (this.hoverMarker) info = this.hoverMarker;
-      else if (this.cfg.info) info = this.cfg.info(this.cursorX, this);
+      else if (this.cfg.info && !(this.cfg.tooltip && this.cursorX != null && this.cfg.hoverInfo && !this.cfg.hoverInfo())) info = this.cfg.info(this.cursorX, this);
       if (this.rulers && this.rulersOn && this.cfg.rulerInfo) info = this.cfg.rulerInfo(this.rulers[0], this.rulers[1]) + (info ? '   |   ' + info : '');
       this.infoEl.textContent = info || ' ';
     }
@@ -2394,7 +2497,7 @@ const CH = (function () {
         this.drawOver(); this.updateReadout();
         if (this.cfg.onHover) this.cfg.onHover(this.cursorX);
       });
-      el.addEventListener('mouseleave', () => { if (!this.dragging) { this.cursorX = null; this.hoverMarker = null; this.drawOver(); this.updateReadout(); if (this.cfg.onHover) this.cfg.onHover(null); } });
+      el.addEventListener('mouseleave', () => { this.tipEl.hidden = true; if (!this.dragging) { this.cursorX = null; this.hoverMarker = null; this.drawOver(); this.updateReadout(); if (this.cfg.onHover) this.cfg.onHover(null); } });
       el.addEventListener('mousedown', e => {
         if (e.button !== 0) return; const [x, y] = pos(e); el.focus();
         const near = this.dragLines().find(g => Math.abs(this.xToPx(g.x) - x) <= 4);
@@ -2490,13 +2593,15 @@ const M = (function () {
     th: {
       laserFallPct: 20, laserHoldPct: 2, laserHoldMin: 5, laserNoStepMin: 60,
       i2Count: 2, i3Count: 3, i4V: 0.005, i5Tol: 0.05, i6Pct: 2, p2SlopePct: 2, p2PlateauPct: 1, p3Pct: 10, p4Pct: 10, p5Pct: 5,
-      lowPrec: 0.20, clearS: 60, bufNoise: 0.0015, bufDrift: 0.0002, bufWander: 0.0015, darkRms: 0.0005, flPct: 5
+      lowPrec: 0.20, clearS: 60, bufNoise: 0.0015, bufDrift: 0.0002, bufWander: 0.0015, darkRms: 0.0005, flPct: 5,
+      poolPct: 95, exclPct: 20, breakPct: 2
     },
     demo: { laserEarly: false, delayNotUpdated: false },
     audit: [], laserLog: [], laser: null, readiness: null, run: null, decisions: {}, responses: {}, notes: [], exports: [],
     alignChecked: '2026-09-28', listeners: []
   };
   const TH_INFO = {
+    poolPct: ['Suggest Pool: product share of the sample fluorescence at least', '%'], exclPct: ['Suggest leaving out: an impurity share at least', '%'], breakPct: ['Suggest Protein A HPLC on a flow-through fraction: product share at least', '%'],
     laserFallPct: ['Laser step-down: controller reading falls by more than', '%'], laserHoldPct: ['Laser stable: reading held within', '±%'], laserHoldMin: ['Laser stable: held for at least', 'min'], laserNoStepMin: ['Laser stable with no step-down after', 'min'],
     i2Count: ['I2: waveforms above 90 % of range, more than this many of the last 10', 'count'], i3Count: ['I3: discarded blocks in 1 min, more than', 'count'], i4V: ['I4: beam monitor minimum', 'V'], i5Tol: ['I5: fraction delay tolerance', 'mL'],
     i6Pct: ['I6: laser change, more than', '%'], p2SlopePct: ['P2: fluorescence slope over the last 1 CV, more than', '% per CV'], p2PlateauPct: ['P2: plateau when the slope is below', '% per CV'], p3Pct: ['P3: buffer baseline difference from pre-run, more than', '%'], p4Pct: ['P4: Wash 2 difference from equilibration, more than', '%'], p5Pct: ['P5: beam monitor change from run start, more than', '%'],
@@ -2926,7 +3031,7 @@ const M = (function () {
       const c = this.cond('P2', slope > th.p2SlopePct, i, () => {
         const x0 = R.acq.u[dq[0]], fr = this.fracsIn(x0, u);
         const p = this.card({ rule: 'P2', phaseIdx: ph, title: 'Fluorescence rising after the load plateau', obs: '', x0, x1: u, fractions: fr, maxSlope: slope, plateau: this.plateau.level });
-        this.card({ rule: 'H1', phaseIdx: ph, linkedTo: p.id, title: 'Possible onset of mAb breakthrough', obs: 'Total fluorescence cannot separate mAb from HCP; the mAb component of the lifetime analysis can. Check it over the same interval.', x0, x1: u, fractions: fr, features: [{ name: 'Lifetime analysis', label: 'P' }], confirm: 'Protein A HPLC on ' + (fr.length ? rangeIds(fr) : 'the linked flowthrough fractions') + '.' });
+        this.card({ rule: 'H1', phaseIdx: ph, linkedTo: p.id, title: 'Possible onset of mAb breakthrough', obs: 'Total fluorescence cannot separate mAb from HCP; the monomer component of the lifetime analysis can. Check it over the same interval.', x0, x1: u, fractions: fr, features: [{ name: 'Lifetime analysis', label: 'P' }], confirm: 'Protein A HPLC on ' + (fr.length ? rangeIds(fr) : 'the linked flowthrough fractions') + '.' });
         return p;
       });
       if (c) { if (slope > c.maxSlope) c.maxSlope = slope; c.x1 = u; c.fractions = this.fracsIn(c.x0, c.x1); c.obs = 'Fluorescence slope ' + c.maxSlope.toFixed(1) + ' % per CV over the last 1 CV of the load (' + fmt.ml(c.x0) + ' to ' + fmt.ml(c.x1) + ' mL), after a plateau at ' + fmt.sig3(c.plateau) + ' V·ns. Limit ' + th.p2SlopePct + ' % per CV.'; const h = this.cards.find(k => k.linkedTo === c.id); if (h) { h.fractions = c.fractions; h.x1 = c.x1; h.confirm = 'Protein A HPLC on ' + rangeIds(c.fractions) + '.'; } }
@@ -3329,12 +3434,22 @@ const LTM = (function () {
   // scatter neutral grey (validated categorical slots 1 to 3; see README)
   const COLORS = { sc: '#8C96A0', hcp: '#1BAF7A', mab: '#2A78D6', hmw: '#EB6834', empty: '#EB6834', full: '#2A78D6', other: '#6250D6' };
   const ybuf = new Float64Array(L), abuf = new Float64Array(TR.LT.kMax);
+  // a block (or fraction) is buffer only when scatter gives over half its signal
+  const BUFFER = 0.5;
+  // detection (Proposed; development assumptions): a species region is where its amplitude stays above 5 % of its
+  // own run maximum (gaps up to 20 blocks bridged, at least 10 blocks long) and it gives at least 5 % of the sample
+  // fluorescence somewhere in the region; it is labelled at its apex. Two species co-elute where both give at least
+  // 2 % for 60 blocks (1 min) or more, stretches of the same pair under 2 min apart counting as one
+  const DET = { rel: 0.05, apexShare: 0.05, gap: 20, minLen: 10, coShare: 0.02, coMin: 60, coGap: 120 };
 
   function init(R) {
     const cap = R.acq.cap, sp = TR.SPECIES[R.spKey || 'protA'];
     // amp: amplitudes (V·ns) per expected species; sig: the same, but 0 where an amplitude is under 2 standard
-    // errors (the log display, where noise around zero would otherwise look like signal)
-    R.lt = { lib: sp, fit: null, B: null, assign: [], amp: sp.map(() => new Float64Array(cap).fill(NaN)), sig: sp.map(() => new Float64Array(cap).fill(NaN)), other: new Float64Array(cap).fill(NaN), otherSig: new Float64Array(cap).fill(NaN), chi: new Float32Array(cap), n: 0, gen: 1, job: null, nextFit: FIRST, lastStart: 0, fits: 0, kLogged: 0 };
+    // errors (the log display, where noise around zero would otherwise look like signal); show: sig, and 0 for
+    // every species while only buffer passes (buf: scatter over half the signal), so the traces are flat until
+    // the sample reaches the flow cell
+    const nan = () => new Float64Array(cap).fill(NaN);
+    R.lt = { lib: sp, sc: sp.findIndex(q => q.key === 'sc'), fit: null, B: null, assign: [], amp: sp.map(nan), sig: sp.map(nan), show: sp.map(nan), other: nan(), otherSig: nan(), otherShow: nan(), buf: new Uint8Array(cap), chi: new Float32Array(cap), n: 0, gen: 1, job: null, nextFit: FIRST, lastStart: 0, fits: 0, kLogged: 0, feat: null };
   }
   // Mean decay over blocks j0..j1 (inclusive) that are neither discarded nor clipped; v is the mean noise variance
   function meanDecay(R, j0, j1, out) {
@@ -3346,9 +3461,9 @@ const LTM = (function () {
   // Amplitudes for blocks i0..i1-1 from the decay window around each block (blocks up to nAvail-1 exist)
   function compute(R, i0, i1, nAvail) {
     const lt = R.lt, A = R.acq, B = lt.B; if (!B) return;
-    const K = B.K, a = abuf.subarray(0, K), sp = lt.amp, sg = lt.sig;
+    const K = B.K, a = abuf.subarray(0, K), sp = lt.amp, sg = lt.sig, sh = lt.show;
     for (let i = i0; i < i1; i++) {
-      for (let s = 0; s < sp.length; s++) sp[s][i] = sg[s][i] = NaN; lt.other[i] = lt.otherSig[i] = NaN;
+      for (let s = 0; s < sp.length; s++) sp[s][i] = sg[s][i] = sh[s][i] = NaN; lt.other[i] = lt.otherSig[i] = lt.otherShow[i] = NaN; lt.buf[i] = 0;
       if (A.disc[i]) continue;
       const m = meanDecay(R, Math.max(0, i - H), Math.min(nAvail - 1, i + H), ybuf); if (!m.c) continue;
       const rss = TR.ltFitDecay(B, ybuf, 0, a);
@@ -3358,6 +3473,9 @@ const LTM = (function () {
         if (s >= 0) { sp[s][i] += a[k]; if (ok) sg[s][i] += a[k]; } else { lt.other[i] += a[k]; if (ok) lt.otherSig[i] += a[k]; }
       }
       lt.chi[i] = rss / (m.v * (L - K));
+      let tot = lt.other[i]; for (let s = 0; s < sp.length; s++) tot += sp[s][i];
+      const buf = lt.sc >= 0 && tot > 0 && sp[lt.sc][i] > BUFFER * tot; lt.buf[i] = buf ? 1 : 0;
+      for (let s = 0; s < sp.length; s++) sh[s][i] = buf ? 0 : sg[s][i]; lt.otherShow[i] = buf ? 0 : lt.otherSig[i];
     }
   }
   function finalN(R) { return R.state === 'complete' ? R.derivedN : Math.max(0, R.derivedN - H); }
@@ -3439,10 +3557,38 @@ const LTM = (function () {
     out.fit = fit; out.res = res; out.chi2r = rss / (m.v * (L - K)); out.total = a.reduce((s, v) => s + v, 0);
     return out;
   }
+  // Detected species regions (peaks, each with its apex) and co-elution stretches, from the displayed amplitudes
+  function features(R) {
+    const lt = R && R.lt; if (!lt || !lt.fit) return { peaks: [], coel: [] };
+    const key = lt.gen * 1e7 + lt.n; if (lt.feat && lt.feat.key === key) return lt.feat;
+    const n = lt.n, lib = lt.lib, ms = lib.map((q, m) => m).filter(m => m !== lt.sc && lt.assign.includes(m)), tot = new Float64Array(n);
+    for (let i = 0; i < n; i++) { let t = 0; for (const m of ms) { const v = lt.show[m][i]; if (v > 0) t += v; } tot[i] = t; }
+    const runs = (ok, gap) => { const out = []; let a = -1, last = -1e9; for (let i = 0; i < n; i++) if (ok(i)) { if (a < 0 || i - last > gap) { if (a >= 0) out.push([a, last + 1]); a = i; } last = i; } if (a >= 0) out.push([a, last + 1]); return out; };
+    const peaks = [], coel = [];
+    for (const m of ms) {
+      const y = lt.show[m]; let mx = 0; for (let i = 0; i < n; i++) if (y[i] > mx) mx = y[i]; if (!(mx > 0)) continue;
+      for (const [a, b] of runs(i => y[i] >= DET.rel * mx, DET.gap)) {
+        if (b - a < DET.minLen) continue; let ia = a, share = 0; for (let i = a; i < b; i++) { if (y[i] > y[ia]) ia = i; if (tot[i] > 0 && y[i] / tot[i] > share) share = y[i] / tot[i]; }
+        if (share < DET.apexShare) continue;
+        peaks.push({ m, key: lib[m].key, short: lib[m].short, name: lib[m].name, i0: a, i1: b, ia, h: y[ia], share });
+      }
+    }
+    for (let x = 0; x < ms.length; x++) for (let z = x + 1; z < ms.length; z++) {
+      const a = ms[x], b = ms[z], ya = lt.show[a], yb = lt.show[b];
+      const ok = i => tot[i] > 0 && ya[i] >= DET.coShare * tot[i] && yb[i] >= DET.coShare * tot[i];
+      for (const [i0, i1] of runs(ok, DET.coGap)) {
+        if (i1 - i0 < DET.coMin) continue; let sa = 0, sb = 0; for (let i = i0; i < i1; i++) { sa += ya[i] > 0 ? ya[i] : 0; sb += yb[i] > 0 ? yb[i] : 0; }
+        const minor = sa < sb ? a : b, ym = lt.show[minor]; let lo = 1, hi = 0;
+        for (let i = i0; i < i1; i++) if (ok(i)) { const f = ym[i] / tot[i]; if (f < lo) lo = f; if (f > hi) hi = f; }
+        coel.push({ a, b, i0, i1, minor, lo, hi, label: lib[a].short + ' + ' + lib[b].short, minorShort: lib[minor].short });
+      }
+    }
+    return (lt.feat = { key, peaks, coel, tot });
+  }
   // Composition of every fraction (Fraction review, Record exports)
   M.fracHooks.push((st, R, i0, i1) => { st.lt = composition(R, i0, i1); });
 
-  return { H, PER, COLORS, state, components, ampsAt, composition, decayAt, meanDecay };
+  return { H, PER, COLORS, BUFFER, DET, state, components, ampsAt, composition, decayAt, meanDecay, features };
 })();
 
 /* =====================================================================
@@ -3655,7 +3801,7 @@ const UI = (function () {
     foot.append(sw);
     const demo = el('<div class="demo-box" aria-label="Demo controls"><div class="demo-h">Demo controls</div>' +
       '<div class="seg sm" id="speedSeg" role="group" aria-label="Playback speed"><button data-v="1">1×</button><button data-v="10">10×</button><button data-v="60">60×</button></div>' +
-      '<label class="demo-sel" title="In use, the AKTA run comes from the UNICORN export">AKTA run<select id="demoAkta">' + Object.keys(window.AKTA_RUNS || {}).map(k => '<option value="' + k + '">' + esc(window.AKTA_RUNS[k]) + '</option>').join('') + '</select></label>' +
+      '<label class="demo-sel" title="In use, the AKTA run comes from the UNICORN export">AKTA run<select id="demoAkta">' + Object.keys(window.AKTA_RUNS || {}).map(k => '<option value="' + k + '"' + (/^aav/.test(k) ? ' class="eng-only"' : '') + '>' + esc(window.AKTA_RUNS[k]) + '</option>').join('') + '</select></label>' +
       '<label title="Allows Start before the laser is stable (rule I1)"><input type="checkbox" id="demoEarly"> Start before laser stable</label>' +
       '<label title="Uses the UNICORN fraction delay from before TRIFLE was fitted (rule I5)"><input type="checkbox" id="demoDelay"> Old fraction delay</label>' +
       '<div class="demo-btns"><button class="btn sm" id="demoFF" title="Simulates the rest of the run immediately">Fast-forward</button>' +
@@ -3727,7 +3873,8 @@ const UI = (function () {
   // The AKTA run TRIFLE watches comes from the UNICORN export, not from Setup.
   // In the mock-up a demo control picks which simulated AKTA run is used.
   const AKTA_RUNS = { 'protA|import': 'Protein A platform', 'free|import': 'Free run', 'protA|manual': 'Manual event marks', 'protA|standalone': 'No AKTA data' };
-  if (window.STAGE2) AKTA_RUNS['aav|import'] = 'AAV capture';
+  // AAV is out of scope for GSK downstream for now: offered in the Engineer view only
+  if (window.STAGE2) AKTA_RUNS['aav|import'] = 'AAV capture (Engineer view)';
   window.AKTA_RUNS = AKTA_RUNS;
   window.aktaRunKey = () => { const k = S.setup.template + '|' + S.setup.source; return AKTA_RUNS[k] ? k : 'protA|import'; };
   window.setAktaRun = function (v) {
@@ -3928,9 +4075,9 @@ const UI = (function () {
 /* ---------- shared chromatogram configuration (Run and Fraction review) ---------- */
 const RC = (function () {
   const S = M.S, fmt = M.fmt, C = CH.C, { esc } = UI;
-  // TRIFLE view by default: time axis, species chromatogram only. The decay map and the AKTA traces (which
-  // belong to UNICORN) are one click away in the View menu.
-  const view = { x: 'min', log: false, akta: false, map: false };
+  // TRIFLE view by default: time axis, the species chromatogram and the decay map of the whole run. The AKTA traces
+  // (which belong to UNICORN) are one click away in the View menu.
+  const view = { x: 'min', log: false, akta: false, map: true };
   const extraSeries = [], extraPanels = [], extraInfo = [], runRows = [];
   const XT = { vol: 'Volume (mL)', cv: 'Column volumes (CV)', min: 'Time (min)' };
   function R() { return S.run; }
@@ -3966,8 +4113,8 @@ const RC = (function () {
     const ff = v => fmt.sig3(v) + ' V·ns', tot = 'Total fluorescence';
     // total fluorescence in primary ink, like the species it is the sum of; UV 280 has its own strip (one y axis per panel)
     const list = [
-      { key: 'v20', label: tot + (p === 'v20' && !cmp ? '' : ', v2.0 reference'), tip: 'Total fluorescence, ND-corrected: the integral of each pulse (v2.0 reference processing)', color: C.text, width: 1.25, z: 2, panel: 'main', src: trifle('v20'), fmt: ff, visible: p === 'v20' || cmp, shade: S.engineer },
-      { key: 'prop', label: tot + ', Proposed' + (lc ? ' (corrected)' : ''), color: C.text, dash: 'dash', width: 1.25, z: 2, panel: 'main', src: trifle('prop'), fmt: ff, visible: p === 'prop', legend: p === 'prop' },
+      { key: 'v20', label: tot + (p === 'v20' && !cmp ? '' : ', v2.0 reference'), tip: 'Total fluorescence, ND-corrected: the integral of each pulse (v2.0 reference processing)', color: C.text, width: 2, z: 2, panel: 'main', src: trifle('v20'), fmt: ff, visible: p === 'v20' || cmp, shade: S.engineer },
+      { key: 'prop', label: tot + ', Proposed' + (lc ? ' (corrected)' : ''), color: C.text, dash: 'dash', width: 2, z: 2, panel: 'main', src: trifle('prop'), fmt: ff, visible: p === 'prop', legend: p === 'prop' },
       { key: 'propU', label: tot + ', Proposed, uncorrected', color: C.cond, width: 0.9, panel: 'main', src: trifle('propU'), fmt: ff, visible: p === 'prop' && lc, legend: p === 'prop' && lc },
       { key: 'uv', label: 'UV 280', color: C.uv, width: 1.25, panel: 'uv', src: akta('uv'), fmt: v => fmt.mau(v) + ' mAU', visible: ak, legend: ak },
       { key: 'cond', label: 'Conductivity', color: C.cond, width: 1, panel: 'cond', src: akta('cond'), fmt: v => fmt.cond(v) + ' mS/cm', visible: ak, legend: ak },
@@ -3984,7 +4131,8 @@ const RC = (function () {
     const bmOn = () => (r() ? r().setupSnap.beamPerBlock : S.setup.beamPerBlock);
     const imp = () => (r() ? r().setupSnap.source : S.setup.source) === 'import', ak = () => imp() && view.akta;
     const out = [
-      { key: 'main', yl: { title: 'Fluorescence', unit: S.engineer ? 'V·ns, ND-corrected' : 'V·ns', log: () => view.log, minLog: -3 } },
+      // scientist view: the axis spans at least 0.2 V·ns, so buffer reads as a flat line near zero, not as magnified noise
+      { key: 'main', yl: { title: 'Fluorescence', unit: S.engineer ? 'V·ns, ND-corrected' : 'V·ns', log: () => view.log, minLog: -3, minTop: () => S.engineer ? null : 0.2 } },
       { key: 'map', px: 64, hidden: () => !view.map || !(r() && r().acq.dw), yl: { title: 'Decay map', short: 'Decay map', unit: 'ns', fixed: [0, 30], zero: false, tickFmt: v => v.toFixed(0) }, draw: mapDraw },
       { key: 'uv', px: 46, hidden: () => !ak(), yl: { title: 'UV 280', short: 'UV 280', unit: 'mAU', fixed: [0, 4000], tickFmt: v => v.toFixed(0) } },
       { key: 'cond', px: 46, hidden: () => !ak(), yl: { title: 'Conductivity', short: 'Cond.', unit: 'mS/cm', fixed: [0, 100], tickFmt: v => v.toFixed(0) } },
@@ -4007,8 +4155,17 @@ const RC = (function () {
   function hatches() { const r = R(), al = M.alignmentState(); if (!r || al.detector !== 'Uncertain') return []; const d = xDomain(); return [{ x0: d[0], x1: d[1] }]; }
   function intervals() {
     const r = R(); if (!r) return [];
-    return r.rules.cards.filter(c => c.rule === 'I6' || (c.rule === 'I1' && c.x1 > c.x0)).map(c => ({ x0: toX(c.x0), x1: toX(c.x1), label: c.rule === 'I6' ? 'I6 laser change' : 'I1 warm-up', color: C.warn }));
+    return r.rules.cards.filter(c => c.rule === 'I6' || (c.rule === 'I1' && c.x1 > c.x0)).map(c => ({ x0: toX(c.x0), x1: toX(c.x1), label: c.rule === 'I6' ? 'I6 laser change' : 'I1 warm-up', color: C.warn }))
+      .concat(api.coelution ? api.coelution() : []);
   }
+  // nearest block to a chart x; the tooltip heading names the time, volume and fraction there
+  function idxAt(x) { const r = R(); if (!r || !r.derivedN || x == null) return null; const xs = r.x[sa() ? 'acq' : view.x], n = r.derivedN; let i = Math.min(n - 1, TR.lowerBound(xs, n, x)); if (i > 0 && Math.abs(xs[i - 1] - x) <= Math.abs(xs[i] - x)) i--; return i; }
+  function tipHead(x) {
+    const r = R(); if (!r || x == null) return ''; if (sa()) return fmt.min1(x) + ' min from TRIFLE start';
+    const v = fromX(x), t = view.x === 'min' ? x : TR.timeAtVol(r.ph, v), f = r.fractions.find(q => v >= q.a && v < q.b);
+    return fmt.min1(t) + ' min · ' + fmt.ml(v) + ' mL' + (f ? ' · ' + f.id : '');
+  }
+  function tipExtraAt(x) { return api.tipExtra ? api.tipExtra(idxAt(x)) : ''; }
   function info(x) {
     const r = R(); if (x == null || !r) return '';
     if (sa()) return fmt.min1(x) + ' min from TRIFLE start';
@@ -4076,7 +4233,9 @@ const RC = (function () {
     host.append(b); count(); M.on(ev => { if (ev === 'series') count(); });
     return b;
   }
-  return { extraSeries, extraPanels, extraInfo, runRows, view, XT, xTitle, sa, toX, fromX, xDomain, bands, fracItems, trifle, akta, seriesFor, panels, markers, hatches, intervals, info, rulerInfo, legendExtras, mapDraw, viewMenu };
+  // annotations (detected peaks), coelution and tipExtra (by block) are supplied by the lifetime analysis UI
+  const api = { extraSeries, extraPanels, extraInfo, runRows, view, XT, xTitle, sa, toX, fromX, xDomain, bands, fracItems, trifle, akta, seriesFor, panels, markers, hatches, intervals, info, rulerInfo, legendExtras, mapDraw, viewMenu, idxAt, tipHead, tipExtraAt, annotations: null, coelution: null, tipExtra: null };
+  return api;
 })();
 
 /* ---------- Run (Acquire and Validate) ---------- */
@@ -4119,6 +4278,8 @@ const RC = (function () {
       ariaLabel: 'Chromatogram with TRIFLE fluorescence and AKTA traces', rulers: [0, 1], rulerColor: C.v20,
       xDomain: RC.xDomain, xTitle: RC.xTitle, panels: RC.panels(), series: RC.seriesFor(), bands: RC.bands, fractions: RC.fracItems,
       markers: () => RC.markers(true), hatches: RC.hatches, intervals: RC.intervals, info: RC.info, rulerInfo: RC.rulerInfo, legendExtras: RC.legendExtras(),
+      tooltip: true, tipHead: RC.tipHead, tipExtra: RC.tipExtraAt, annotations: () => RC.annotations ? RC.annotations() : [], hoverInfo: () => S.engineer,
+      liveIndex: () => { const R = S.run; return R && R.lt && R.lt.fit ? R.lt.n - 1 : null; },
       highlights: () => highlight ? [{ x0: RC.toX(highlight[0]), x1: RC.toX(highlight[1]) }] : [],
       // fraction cuts come from UNICORN: shown with the AKTA traces; Fraction review always shows them
       fractions: () => RC.view.akta ? RC.fracItems() : null,
@@ -4191,8 +4352,8 @@ const RC = (function () {
     const pos = a => pulseLog ? Float64Array.from(a, v => v > 0 ? v : NaN) : a;
     return [
       { key: 'd', label: 'Data', tip: 'Mean decay of the blocks in the 15 s window, ND-corrected', mode: 'points', shape: 'dot', size: 3, color: '#8C96A0', panel: 'main', src: () => dec.n ? { x: dec.x, y: pos(dec.y), n: dec.n } : null },
-      ...(dec.d && dec.d.fit ? [{ key: 'f', label: 'Fit', tip: 'Sum of the components', color: C.text, width: 1.5, panel: 'main', src: () => ({ x: dec.x, y: pos(dec.f), n: dec.n, gen: dec.gen * 2 + (pulseLog ? 1 : 0) }), fmt: v => fmt.sig3(v) + ' V' }] : []),
-      ...comps.map(c => ({ key: 'c' + c.key, label: c.short + sh(c), tip: c.name + (S.engineer ? ', τ ' + c.tau.toFixed(2) + ' ns' : '') + ': ' + fmt.sig3(c.a) + ' V·ns', color: c.color, width: 1.25, panel: 'main', src: () => dec.c[c.k] ? { x: dec.x, y: pos(dec.c[c.k]), n: dec.n, gen: dec.gen * 2 + (pulseLog ? 1 : 0) } : null, fmt: v => fmt.sig3(v) + ' V' })),
+      ...(dec.d && dec.d.fit ? [{ key: 'f', label: 'Fit', tip: 'Sum of the components', color: C.text, width: 2, panel: 'main', src: () => ({ x: dec.x, y: pos(dec.f), n: dec.n, gen: dec.gen * 2 + (pulseLog ? 1 : 0) }), fmt: v => fmt.sig3(v) + ' V' }] : []),
+      ...comps.map(c => ({ key: 'c' + c.key, label: c.short + sh(c), tip: c.name + (S.engineer ? ', τ ' + c.tau.toFixed(2) + ' ns' : '') + ': ' + fmt.sig3(c.a) + ' V·ns', color: c.color, width: 2, panel: 'main', src: () => dec.c[c.k] ? { x: dec.x, y: pos(dec.c[c.k]), n: dec.n, gen: dec.gen * 2 + (pulseLog ? 1 : 0) } : null, fmt: v => fmt.sig3(v) + ' V' })),
       ...(dec.d && dec.d.fit ? [{ key: 'r', label: 'Residual', legend: false, mode: 'points', shape: 'dot', size: 2, color: '#8C96A0', panel: 'res', src: () => ({ x: dec.x, y: dec.r, n: dec.n }) }] : [])
     ];
   }
@@ -4382,9 +4543,11 @@ const RC = (function () {
   let built = false, ov = null, zm = null, pc = null, rows = [], sel = new Set(), focus = null, sortKey = null, sortDir = 1, showShare = false, tab = 'frac', lastKey = '', flManual = null, dataKey = '', userPick = false, showMp = false;
   const mp = { x: new Float64Array(600), y: new Float64Array(600), iy: new Float64Array(600), n: 0, gen: 0 };
   for (let j = 0; j < 600; j++) mp.x[j] = j * 0.2;
-  const ANALYSES = [['sec', 'HPLC-SEC', 'Purity (monomer, HMWS, LMWS)'], ['lun', 'Lunatic', 'A280 concentration'], ['proa', 'Protein A HPLC', 'Titre'], ['none', 'No action', '']];
+  // Pool, the offline analyses, or no action (pool and analyses can combine; No action stands alone)
+  const ANALYSES = [['pool', 'Pool', 'Include in the product pool'], ['sec', 'HPLC-SEC', 'Purity (monomer, HMWS, LMWS)'], ['lun', 'Lunatic', 'A280 concentration'], ['proa', 'Protein A HPLC', 'Titre'], ['none', 'No action', '']];
   const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
-  function dec(id) { return S.decisions[id] || (S.decisions[id] = { sec: false, lun: false, proa: false, none: false, note: '' }); }
+  function dec(id) { return S.decisions[id] || (S.decisions[id] = { pool: false, sec: false, lun: false, proa: false, none: false, note: '' }); }
+  const decided = d => !!(d.pool || d.sec || d.lun || d.proa || d.none);
   function decText(d) { const a = ANALYSES.filter(x => d[x[0]]).map(x => x[1]); return a.length ? a.join(', ') : 'Not decided'; }
   function build() {
     const r = $('#scr-fractions'); r.classList.add('fixed'); r.style.overflow = 'auto';
@@ -4393,8 +4556,8 @@ const RC = (function () {
       '<div id="fEmpty" class="callout" style="display:none"></div>' +
       '<div class="fr-grid" id="frGrid" style="min-height:560px;grid-template-rows:minmax(0,56fr) minmax(0,44fr)">' +
       '<div class="panel" style="grid-column:1;grid-row:1"><div class="pb" style="padding:4px 8px"><div id="frOv" style="height:100%"></div></div></div>' +
-      '<div class="panel fr-side" style="grid-column:2;grid-row:1"><div class="ph"><div class="ptabs" id="frTabs"><button data-v="frac" class="on">Fraction</button><button data-v="samples">Samples to send <span class="cnt" id="sampCnt">0</span></button></div><span class="sp"></span><span id="frNav" class="nowrap"></span></div><div class="pb" style="padding:4px 8px;display:flex;flex-direction:column;gap:6px;overflow:hidden" id="frSide"></div></div>' +
-      '<div class="panel fr-table" style="grid-column:1 / 3;grid-row:2"><div class="ph"><h3>Fractions</h3><span class="note" id="frNote"></span><span class="sp"></span><label class="chk small eng-only" title="Relative signal-area contribution only. Not equivalent to protein mass, yield or recovery."><input type="checkbox" id="frShare"> Fluorescence share</label></div><div class="pb tbl-wrap" style="padding:0" id="frTblWrap"><table class="tbl" id="frTbl"><thead></thead><tbody></tbody></table></div></div>' +
+      '<div class="panel fr-side" style="grid-column:2;grid-row:1"><div class="ph"><div class="ptabs" id="frTabs"><button data-v="frac" class="on">Fraction</button><button data-v="samples" title="The pool and the samples to send for offline analysis">Pool and samples <span class="cnt" id="sampCnt">0</span></button></div><span class="sp"></span><span id="frNav" class="nowrap"></span></div><div class="pb" style="padding:4px 8px;display:flex;flex-direction:column;gap:6px;overflow:hidden" id="frSide"></div></div>' +
+      '<div class="panel fr-table" style="grid-column:1 / 3;grid-row:2"><div class="ph"><h3>Fractions</h3><span class="note" id="frNote"></span><span class="sp"></span><label class="chk small eng-only" title="Relative signal-area contribution only. Not equivalent to protein mass, yield or recovery."><input type="checkbox" id="frShare"> Fluorescence share</label><button class="btn sm" id="frApply" title="Copy each Suggested step into the Decision of fractions not yet decided. Each decision stays yours to change.">Apply suggestions</button></div><div class="pb tbl-wrap" style="padding:0" id="frTblWrap"><table class="tbl" id="frTbl"><thead></thead><tbody></tbody></table></div></div>' +
       '</div>';
     UI.processingButton($('#fTools')).classList.add('eng-only');
     RC.viewMenu($('#fViewSlot'), 'f', { get: () => !!(zm && zm.rulersOn), set: on => { zm.rulersOn = on; if (on) { const [a, b] = zm.xRange(); zm.rulers = [a + (b - a) * 0.4, a + (b - a) * 0.6]; } zm.invalidateOver(); zm.updateReadout(); } });
@@ -4403,11 +4566,13 @@ const RC = (function () {
     $$('#fDrag button').forEach(b => b.onclick = () => { ov.mode = b.dataset.v; $$('#fDrag button').forEach(x => x.classList.toggle('on', x === b)); });
     $('#fReset').onclick = () => ov.resetZoom();
     $('#frShare').onchange = e => { showShare = e.target.checked; lastKey = ''; };
+    $('#frApply').onclick = applySuggestions;
     $$('#frTabs button').forEach(b => b.onclick = () => { tab = b.dataset.v; $$('#frTabs button').forEach(x => x.classList.toggle('on', x === b)); side(true); });
     ov = new CH.Chart($('#frOv'), {
       ariaLabel: 'Run overview; drag to select fractions', dragMode: 'select', rulers: [0, 1], onView: v => $('#fReset').classList.toggle('hidden', !v),
       xDomain: RC.xDomain, xTitle: RC.xTitle, panels: ovPanels(), series: ovSeries(), bands: RC.bands, fractions: RC.fracItems,
       markers: () => RC.markers(false), hatches: RC.hatches, intervals: RC.intervals, info: RC.info, legendExtras: RC.legendExtras(), liveReadout: false,
+      tooltip: true, tipHead: RC.tipHead, tipExtra: RC.tipExtraAt, annotations: () => RC.annotations ? RC.annotations() : [], hoverInfo: () => S.engineer,
       vlines: () => poolLines(false).map(l => ({ ...l, label: null })),
       highlights: () => [...sel].map(id => fr(id)).filter(Boolean).map(f => ({ x0: RC.toX(f.a), x1: RC.toX(f.b) })),
       onSelect: (a, b) => { const va = RC.fromX(a), vb = RC.fromX(b); const hit = (S.run ? S.run.fractions : []).filter(f => (va === vb ? (va >= f.a && va < f.b) : (f.b > va && f.a < vb))).map(f => f.id); if (hit.length) { sel = new Set(hit); focus = hit[0]; selChanged(); } },
@@ -4500,9 +4665,16 @@ const RC = (function () {
     $('#frNote').innerHTML = R ? (rows.length + ' fractions · ' + (al.fractions === 'Uncertain' ? 'assignment uncertain' : 'volume-aligned<span class="eng-only"> (V1 ' + fmt.ml(S.setup.V1) + ' mL, V2 ' + fmt.ml(S.setup.V2) + ' mL)</span>')) : '';
     $('#sampCnt').textContent = Object.entries(S.decisions).filter(([k, d]) => d.sec || d.lun || d.proa).length;
   }
+  // suggestions (Proposed) become decisions only for fractions the scientist has not decided
+  function applySuggestions() {
+    const R = S.run; if (!R || !window.LTUI) return; const done = [];
+    for (const f of M.fractionStats(R)) { const g = LTUI.suggest(f); if (!g || g.k === 'buffer' || decided(dec(f.id))) continue; const d = dec(f.id); d[g.k] = true; done.push(f.id + ' ' + ANALYSES.find(a => a[0] === g.k)[1]); }
+    M.audit('decision', done.length ? 'Suggestions applied (Proposed): ' + done.join(', ') + '.' : 'Suggestions applied: no undecided fraction had a suggestion.');
+    lastKey = ''; side(true); UI.emitDirty();
+  }
   function decisionPopover(anchor, id) {
-    const d = dec(id);
-    const c = el('<div style="width:280px"><div style="font-weight:bold;margin-bottom:4px">Decision for ' + esc(id) + '</div>' + ANALYSES.map(a => '<label class="opt" style="margin:3px 0"><input type="checkbox" data-a="' + a[0] + '"' + (d[a[0]] ? ' checked' : '') + '><span>' + a[1] + (a[2] ? '<span class="note">' + a[2] + '</span>' : '') + '</span></label>').join('') + '<input type="text" id="decNote" placeholder="Note (optional)" style="width:100%;margin-top:4px" value="' + esc(d.note) + '"></div>');
+    const d = dec(id), st = S.run && M.fractionStats(S.run).find(f => f.id === id), g = st && window.LTUI ? LTUI.suggest(st) : null;
+    const c = el('<div style="width:300px"><div style="font-weight:bold;margin-bottom:4px">Decision for ' + esc(id) + '</div>' + (g && g.k !== 'buffer' ? '<div class="small sug-why"><span class="sug sug-' + g.k + '">' + esc(g.label) + '</span> suggested. ' + esc(g.why) + '</div>' : '') + ANALYSES.map(a => '<label class="opt" style="margin:3px 0"><input type="checkbox" data-a="' + a[0] + '"' + (d[a[0]] ? ' checked' : '') + '><span>' + a[1] + (a[2] ? '<span class="note">' + a[2] + '</span>' : '') + '</span></label>').join('') + '<input type="text" id="decNote" placeholder="Note (optional)" style="width:100%;margin-top:4px" value="' + esc(d.note) + '"></div>');
     $$('input[data-a]', c).forEach(i => i.onchange = () => {
       if (i.dataset.a === 'none' && i.checked) $$('input[data-a]', c).forEach(j => { if (j !== i) j.checked = false; });
       else if (i.checked) $('input[data-a=none]', c).checked = false;
@@ -4537,6 +4709,7 @@ const RC = (function () {
     $('#frDet').innerHTML = '<div><b>' + f.id + '</b> · ' + esc(st.phase) + ' · ' + fmt.ml(f.a) + ' to ' + fmt.ml(f.b) + ' mL<span class="eng-only"> · ' + fmt.int(st.nBlocks) + ' blocks</span></div>' +
       (sub.length ? '<div class="muted">' + sub.join(' · ') + '</div>' : '') +
       (st.lt ? '<div title="' + esc(LTUI.LTIP) + '"><b>Species</b> ' + LTUI.compCell(st.lt.comps, 90, 4) + (LTUI.background(st.lt.comps) ? '' : ' <span class="muted small">share of fluorescence</span>') + '</div>' : '') +
+      (() => { const g = st.lt ? LTUI.suggest(st) : null; return g && g.k !== 'buffer' ? '<div><b>Suggested</b> <span class="sug sug-' + g.k + '">' + esc(g.label) + '</span> <span class="muted small">' + esc(g.why) + '</span></div>' : ''; })() +
       '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px">' + (cards.length ? '<span><b>' + (S.engineer ? 'Linked cards' : 'Evidence') + '</b> ' + cards.map(c => '<span class="flag" title="' + esc(c.obs && c.obs.indexOf(c.title) === 0 ? c.obs : c.title + (c.obs ? '. ' + c.obs : '')) + '">' + c.rule + (c.status !== 'open' ? ' ' + c.status : '') + '</span>').join('') + '</span>' : '') +
       '<span><b>Decision</b> <button class="btn sm" id="frDec">' + esc(decText(d)) + '</button></span></div>' + (d.note ? '<div class="small">Note: ' + esc(d.note) + '</div>' : '') +
       (cards.filter(c => c.confirm).map(c => '<div class="small">' + c.rule + ': ' + esc(c.confirm) + '</div>').join('')) +
@@ -4572,21 +4745,21 @@ const RC = (function () {
   function picked(k) { return Object.entries(S.decisions).filter(([id, d]) => d[k]).map(([id]) => id).sort(); }
   function samplesText() {
     const out = [];
-    for (const [k, name] of ANALYSES.slice(0, 3)) { const ids = picked(k); if (ids.length) out.push(name + ': ' + ids.map(id => id + (S.decisions[id].note ? ' [' + S.decisions[id].note + ']' : '')).join(', ')); }
+    for (const [k, name] of ANALYSES.slice(0, 4)) { const ids = picked(k); if (ids.length) out.push(name + ': ' + ids.map(id => id + (S.decisions[id].note ? ' [' + S.decisions[id].note + ']' : '')).join(', ')); }
     const none = picked('none'); if (none.length) out.push('No action: ' + none.join(', '));
     return out.join('\n') || 'No samples selected yet.';
   }
   function samplesHtml() {
-    const R = S.run, total = R ? R.fractions.length : 0, decided = Object.values(S.decisions).filter(d => d.sec || d.lun || d.proa || d.none).length;
+    const R = S.run, total = R ? R.fractions.length : 0, nDecided = Object.values(S.decisions).filter(decided).length;
     let html = '';
-    for (const [k, name, what] of ANALYSES.slice(0, 3)) {
+    for (const [k, name, what] of ANALYSES.slice(0, 4)) {
       const ids = picked(k); if (!ids.length) continue;
       html += '<div style="margin-top:8px"><b>' + name + '</b> <span class="muted small">' + what + '</span><div>' + ids.map(id => { const f = fr(id); return '<div class="small">' + id + (f ? ' · ' + fmt.ml(f.a) + ' to ' + fmt.ml(f.b) + ' mL' : '') + (S.decisions[id].note ? ' · ' + esc(S.decisions[id].note) : '') + '</div>'; }).join('') + '</div></div>';
     }
     const none = picked('none');
     if (none.length) html += '<div style="margin-top:8px"><b>No action</b><div class="small">' + none.join(', ') + '</div></div>';
     if (!html) html = '<div class="small muted">No samples selected yet.</div>';
-    html += '<div style="margin-top:8px" class="small muted">' + decided + ' of ' + total + ' fractions decided.</div><div><button class="btn sm" id="sampCopy" style="margin-top:6px">Copy list</button></div>';
+    html += '<div style="margin-top:8px" class="small muted">' + nDecided + ' of ' + total + ' fractions decided.</div><div><button class="btn sm" id="sampCopy" style="margin-top:6px">Copy list</button></div>';
     return html;
   }
   function update(d) {
@@ -4645,6 +4818,8 @@ const REC = (function () {
   }
   // lifetime analysis: components with their names, and a fraction's leading species
   function ltComps(R) { return LTM.components(R).map(c => c.tau.toFixed(2) + ' ns (' + (c.m >= 0 ? c.short : 'unassigned') + ')').join(', '); }
+  // co-elution found by the detection (Proposed), with the minor species' share range
+  function coText(R) { const c = LTM.features(R).coel, x = R.x.min, p = f => (f * 100).toFixed(f < 0.1 ? 1 : 0); return c.length ? ' Co-eluting: ' + c.map(k => k.label + ', ' + fmt.min1(x[k.i0]) + ' to ' + fmt.min1(x[k.i1 - 1]) + ' min (' + k.minorShort + ' ' + p(k.lo) + ' to ' + p(k.hi) + ' %)').join('; ') + '.' : ''; }
   function ltShares(lt) {
     if (!lt) return ''; if (LTUI.background(lt.comps)) return 'Background only';
     const cs = LTUI.shown(lt.comps), tot = cs.reduce((s, c) => s + Math.max(0, c.a), 0);
@@ -4680,9 +4855,9 @@ const REC = (function () {
       out.resultsTable = st.map(f => [f.id, f.phase, fmt.ml(f.a) + '-' + fmt.ml(f.b)].concat(showUv() ? [fmt.mau(f.uvMean) + ' / ' + fmt.mau(f.uvMax) + (f.uvSat ? ' (sat.)' : '')] : [], [fmt.sig3(f.fMean) + (S.engineer ? ' / ' + fmt.sig3(f.fMax) : '')],showLt ? [ltShares(f.lt)] : [], showAssign ? [f.assign] : [], [f.linked.filter(UI.cardShown).join(' ')]));
       const named = showLt ? LTM.components(R).filter(c => c.key !== 'sc').map(c => c.m >= 0 ? c.short : 'an unassigned species') : [];
       out.results = !S.engineer ? R.id + ': ' + fmt.min1((R.state === 'complete' ? R.endAt : M.runTimeS(R)) / 60) + ' min. Fluorescence is relative (V·ns); no recovery or purity is derived.' +
-        (showLt ? ' Species found by the lifetime analysis' + (lst === 'final' ? '' : ' (not final)') + ': ' + named.join(', ') + '. Shares are shares of fluorescence, not mass or purity.' : '') :
+        (showLt ? ' Species found by the lifetime analysis' + (lst === 'final' ? '' : ' (not final)') + ': ' + named.join(', ') + '.' + coText(R) + ' Shares are shares of fluorescence, not mass or purity.' : '') :
         R.id + ': ' + fmt.int(R.acq.n) + ' blocks over ' + fmt.min1((R.state === 'complete' ? R.endAt : M.runTimeS(R)) / 60) + ' min. Fluorescence is relative (V·ns, ND-corrected); no recovery or purity is derived.' +
-        (showLt ? ' Lifetime analysis' + (lst === 'final' ? '' : ' (not final)') + ': ' + R.lt.fit.taus.length + ' components, ' + ltComps(R) + '; reduced χ² ' + R.lt.fit.chi2r.toFixed(2) + '. Species shares are shares of fluorescence, not mass or purity.' : '') +
+        (showLt ? ' Lifetime analysis' + (lst === 'final' ? '' : ' (not final)') + ': ' + R.lt.fit.taus.length + ' components, ' + ltComps(R) + '; reduced χ² ' + R.lt.fit.chi2r.toFixed(2) + '.' + coText(R) + ' Species shares are shares of fluorescence, not mass or purity.' : '') +
         (st.length ? '\n' + out.resultsHead.map(h => h[0] + (h[1] ? ' (' + h[1] + ')' : '')).join('  ') + '\n' + out.resultsTable.map(r => r.join('  ').trimEnd()).join('\n') : '');
       const A = R.acq, n = R.derivedN; let disc = 0, over = 0, low = 0; for (let i = 0; i < n; i++) { disc += A.disc[i]; over += A.nOver[i]; low += R.low[i]; }
       const cards = R.rules.cards, byRule = {}; cards.forEach(c => { byRule[c.rule] = (byRule[c.rule] || 0) + 1; });
@@ -4710,7 +4885,7 @@ const REC = (function () {
     out.attachments = !S.engineer ? [
       ...(src === 'standalone' ? [] : ['UNICORN result report', 'TRIFLE fraction table: ' + fileBase() + '_fractions.csv']),
       'Chromatogram figure: ' + fileBase() + '_chromatogram.png',
-      'TRIFLE run folder (instrument record: block data, settings and audit trail)',
+      'TRIFLE run folder (instrument record: raw data and settings)',
       ...(src === 'standalone' ? [] : ['HPLC-SEC, Lunatic and Protein A HPLC results for the fractions in section 5'])
     ].join('\n') : [
       ...(src === 'standalone' ? [] : ['UNICORN result report']),
@@ -4784,7 +4959,7 @@ const REC = (function () {
   function exportFractions() {
     const R = S.run, st = M.fractionStats(R), comps = R.lt && R.lt.fit ? LTM.components(R) : [];
     const lines = ['fraction,phase,volume_start_mL,volume_end_mL,collected_start_mL,collected_end_mL,CV_start,CV_end,uv280_mean_mAU,uv280_max_mAU,uv_saturated,fluor_mean_Vns,fluor_max_Vns,processing,sensitivity_changes,waveforms_over_90pct,discarded_blocks,laser_flags,low_precision_share,assignment,share_of_integrated_fluorescence_pct,cards,decision,decision_note' + comps.map(c => ',species_' + (c.m >= 0 ? c.key : 'unassigned_' + (c.k + 1)) + '_pct').join('')];
-    for (const f of st) { const d = S.decisions[f.id] || {}; lines.push([f.id, f.phase, f.a.toFixed(3), f.b.toFixed(3), f.ca.toFixed(3), f.cb.toFixed(3), f.cvA.toFixed(3), f.cvB.toFixed(3), isFinite(f.uvMean) ? f.uvMean.toFixed(1) : '', isFinite(f.uvMax) ? f.uvMax.toFixed(1) : '', f.uvSat, num(f.fMean), num(f.fMax), '"' + M.procLabel() + '"', f.chg, f.over, f.disc, f.laser, f.lowShare.toFixed(3), f.assign, isFinite(f.share) ? (f.share * 100).toFixed(2) : '', '"' + f.linked.join(' ') + '"', '"' + [['sec', 'HPLC-SEC'], ['lun', 'Lunatic'], ['proa', 'Protein A HPLC'], ['none', 'No action']].filter(k => d[k[0]]).map(k => k[1]).join('; ') + '"', '"' + (d.note || '').replace(/"/g, "'") + '"'].concat(comps.map(c => { const q = f.lt && f.lt.comps.find(x => x.k === c.k); return q && isFinite(q.share) ? (q.share * 100).toFixed(2) : ''; })).join(',')); }
+    for (const f of st) { const d = S.decisions[f.id] || {}; lines.push([f.id, f.phase, f.a.toFixed(3), f.b.toFixed(3), f.ca.toFixed(3), f.cb.toFixed(3), f.cvA.toFixed(3), f.cvB.toFixed(3), isFinite(f.uvMean) ? f.uvMean.toFixed(1) : '', isFinite(f.uvMax) ? f.uvMax.toFixed(1) : '', f.uvSat, num(f.fMean), num(f.fMax), '"' + M.procLabel() + '"', f.chg, f.over, f.disc, f.laser, f.lowShare.toFixed(3), f.assign, isFinite(f.share) ? (f.share * 100).toFixed(2) : '', '"' + f.linked.join(' ') + '"', '"' + [['pool', 'Pool'], ['sec', 'HPLC-SEC'], ['lun', 'Lunatic'], ['proa', 'Protein A HPLC'], ['none', 'No action']].filter(k => d[k[0]]).map(k => k[1]).join('; ') + '"', '"' + (d.note || '').replace(/"/g, "'") + '"'].concat(comps.map(c => { const q = f.lt && f.lt.comps.find(x => x.k === c.k); return q && isFinite(q.share) ? (q.share * 100).toFixed(2) : ''; })).join(',')); }
     const name = fileBase() + '_fractions.csv'; saved(name, UI.download(name, lines.join('\n'), 'text/csv'));
   }
   function exportJson() {
@@ -5005,7 +5180,8 @@ const ENG = (function () {
     ['Process rules', ['p2SlopePct', 'p2PlateauPct', 'p3Pct', 'p4Pct', 'p5Pct']],
     ['Precision and baselines', ['lowPrec', 'bufNoise', 'bufDrift', 'bufWander', 'darkRms', 'flPct']],
     ['Calibration', ['calDepPct', 'calExpiryDays']],
-    ['Decay and P7', ['decayThrNs', 'decaySdMult', 'decayWinMl', 'decayUseMin', 'decayUseMax']]
+    ['Decay and P7', ['decayThrNs', 'decaySdMult', 'decayWinMl', 'decayUseMin', 'decayUseMax']],
+    ['Fraction suggestions (Proposed)', ['poolPct', 'exclPct', 'breakPct']]
   ];
   // Rules in level order (I, P, H), then by number
   function ruleRows() {
@@ -5403,7 +5579,7 @@ const Q = (function () {
       if (R && !R.tpl.breakthroughRule) return A('Rule P2 and hypothesis H1 apply to mAb Protein A templates only. This run uses ' + R.tpl.name + '.', 'Rules P2, H1; method template');
       const p2 = R ? R.rules.cards.filter(c => c.rule === 'P2') : [], h1 = R ? R.rules.cards.find(c => c.rule === 'H1') : null;
       if (p2.length) return A('Possibly, but not confirmed. Rule P2: ' + p2[0].obs + ' H1 is a research hypothesis that mAb breakthrough may be starting. Total fluorescence cannot separate mAb from HCP. Confirm with ' + h1.confirm.replace(/\.$/, '') + '.', 'Cards ' + p2[0].id + ', ' + h1.id);
-      return A('No P2 observation in this run' + (R ? ' so far' : '') + '. P2 watches the fluorescence slope over the last 1 CV after the load plateau (limit 2 % per CV). Total fluorescence cannot separate mAb from HCP; the mAb component of the lifetime analysis can (Proposed). Confirm breakthrough with Protein A HPLC on the flowthrough fractions.', 'Rules P2 and H1');
+      return A('No P2 observation in this run' + (R ? ' so far' : '') + '. P2 watches the fluorescence slope over the last 1 CV after the load plateau (limit 2 % per CV). Total fluorescence cannot separate mAb from HCP; the monomer component of the lifetime analysis can (Proposed). Confirm breakthrough with Protein A HPLC on the flowthrough fractions.', 'Rules P2 and H1');
     }
     if (/trust|reliab|confiden/.test(q) && /peak|elution/.test(q) || /can i trust/.test(q)) {
       if (!R) return A('No run yet. After a run, the answer uses the elution fractions\' QC: range overruns, sensitivity changes, discarded blocks, laser flags and alignment.', 'Fraction table QC');
@@ -5625,10 +5801,12 @@ const Q = (function () {
     const vs = entries.filter(e => sel.has(e.key)).map(e => ({ e, v: e.v() })).filter(x => x.v);
     const presets = new Set(vs.map(x => x.v.pmt)), modes = new Set(vs.map(x => x.v.procKey));
     const mustRel = presets.size > 1 || modes.size > 1, rel = mustRel || relForce;
-    const key = JSON.stringify([[...sel], refId, xMode, rel, vs.length, S.run ? S.run.derivedN : 0, M.procLabel(), loading]);
+    const key = JSON.stringify([[...sel], refId, xMode, rel, vs.length, S.run ? S.run.derivedN : 0, M.procLabel(), loading, S.engineer]);
     if (key === cmpKey) return; cmpKey = key;
     // run list
     $('#cmpRuns').innerHTML = !S.run ? '<div class="note">Start a run to compare it with archived runs.</div>' : entries.map((e, k) => {
+      // archived AAV runs are out of scope for the scientist (shown in the Engineer view or beside an AAV run)
+      if (e.def && e.def.tpl === 'aav' && !S.engineer && S.run.tpl.id !== 'aav' && !sel.has(e.key)) return '';
       const c = compat(e), a = e.def ? S2.archive[e.def.id] : null, v = e.v(), ready = !!v, isSel = sel.has(e.key), idx = [...sel].indexOf(e.key);
       const sty = idx >= 0 ? STY[idx % 4] : null;
       return '<div class="opt" style="margin-bottom:8px' + (c.ok ? '' : ';color:var(--text2)') + '"><input type="checkbox" data-k="' + e.key + '"' + (isSel ? ' checked' : '') + (c.ok && ready ? '' : ' disabled') + '><span style="flex:1"><b>' + esc(e.key) + '</b> ' + (sty ? '<span class="ch-sw ' + (sty.d || 'solid') + '" style="border-top-color:' + sty.c + ';vertical-align:middle"></span>' : '') + '<span class="note">' + esc(e.def ? e.def.name + ', ' + e.def.date + '; PMT ' + e.def.pmt + ' mV; ' + e.def.mode : 'This run; PMT ' + S.run.pmt + ' mV; ' + M.procLabel()) + (c.ok ? '' : '. Not comparable: ' + c.why + '.') + (e.def && !ready && c.ok ? ' Loading.' : '') + '</span></span><label class="small" title="Reference for the difference trace"><input type="radio" name="cmpRef" value="' + e.key + '"' + (refId === e.key ? ' checked' : '') + (isSel ? '' : ' disabled') + '> reference</label></div>';
@@ -5664,7 +5842,7 @@ const Q = (function () {
   /* ---------- Integrations (Future) ---------- */
   // Future integrations, listed on the About page
   window.INTEGRATIONS_HTML = () => {
-    const rows = [['Live UNICORN link', 'Phase, flow and fraction events in real time', 'GSK IT approval, UNICORN interface access, validation'], ['IDBS E-WorkBook transfer', 'Push the summary and attachments to an experiment ID', 'IDBS API access, permissions, record structure agreement'], ['Data storage', 'Automatic upload to the agreed GSK repository, replacing the manual SharePoint step', 'Storage location, retention policy'], ['Language-model Questions panel', 'Free-text answers about runs', 'Defined data access, permissions, provenance of every answer, GSK approval'], ['Legacy .pkl conversion', 'Convert v2.0 pickle records to CSV and JSON', 'An isolated, trusted environment, because opening a pickle can execute code embedded in it']];
+    const rows = [['Multivariate readout', 'The final species readout: a multivariate fit of every decay, for a more accurate readout than the mock-up\'s lifetime analysis. The displays, the detection of peaks and co-elution and the suggestions take its amplitudes unchanged', 'The algorithm and its validation data from the TRIFLE team'], ['Live UNICORN link', 'Phase, flow and fraction events in real time', 'GSK IT approval, UNICORN interface access, validation'], ['IDBS E-WorkBook transfer', 'Push the summary and attachments to an experiment ID', 'IDBS API access, permissions, record structure agreement'], ['Data storage', 'Automatic upload to the agreed GSK repository, replacing the manual SharePoint step', 'Storage location, retention policy'], ['Language-model Questions panel', 'Free-text answers about runs', 'Defined data access, permissions, provenance of every answer, GSK approval'], ['Legacy .pkl conversion', 'Convert v2.0 pickle records to CSV and JSON', 'An isolated, trusted environment, because opening a pickle can execute code embedded in it']];
     return '<div class="panel"><div class="ph"><h3>Integrations</h3>' + tag('F', 'always') + '</div><div class="pb"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Integration</th><th>Purpose</th><th>Prerequisites</th></tr></thead><tbody>' + rows.map(r => '<tr><td class="wrap"><b>' + esc(r[0]) + '</b></td><td class="wrap">' + esc(r[1]) + '</td><td class="wrap">' + esc(r[2]) + '</td></tr>').join('') + '</tbody></table></div></div></div>';
   };
 
@@ -5763,12 +5941,29 @@ const Q = (function () {
   const GAP = { vol: 1.0, cv: 0.25, min: 1.0, acq: 1.0 }, MODE = { vol: 1, cv: 2, min: 3, acq: 4 };
   // species amounts in the legend and readout: below 0.001 V·ns reads as such, not as a long run of zeros
   const amt = v => (v < 0.001 ? '< 0.001' : fmt.sig3(v)) + ' V·ns';
+  // Scientist view: the detected species only, flat while buffer passes. Engineer view: every amplitude (linear) or
+  // those above 2 standard errors (log).
   function src(m) {
     return () => {
-      const R = S.run; if (!R || !R.lt || !R.lt.fit) return null; const lt = R.lt, mode = RC.sa() ? 'acq' : RC.view.x, lg = RC.view.log;
-      return { x: R.x[mode], y: m < 0 ? (lg ? lt.otherSig : lt.other) : (lg ? lt.sig[m] : lt.amp[m]), n: lt.n, brk: R.brk, maxGap: GAP[mode], gen: lt.gen * 80 + MODE[mode] * 2 + (lg ? 1 : 0) };
+      const R = S.run; if (!R || !R.lt || !R.lt.fit) return null; const lt = R.lt, mode = RC.sa() ? 'acq' : RC.view.x, lg = RC.view.log, sci = !S.engineer;
+      const y = m < 0 ? (sci ? lt.otherShow : lg ? lt.otherSig : lt.other) : (sci ? lt.show[m] : lg ? lt.sig[m] : lt.amp[m]);
+      return { x: R.x[mode], y, n: lt.n, brk: R.brk, maxGap: GAP[mode], gen: lt.gen * 80 + MODE[mode] * 2 + (lg ? 1 : 0) + (sci ? 0.5 : 0) };
     };
   }
+  function xs(R) { return R.x[RC.sa() ? 'acq' : RC.view.x]; }
+  // detected peaks, labelled at their apex (Run and Fraction review overview)
+  RC.annotations = () => {
+    const R = S.run; if (!R || !R.lt || !R.lt.fit) return [];
+    const x = xs(R), comps = LTM.components(R);
+    return LTM.features(R).peaks.map(p => ({ x: x[p.ia], y: p.h, label: p.short, color: (comps.find(c => c.m === p.m) || {}).color || LTM.COLORS[p.key] }));
+  };
+  // co-elution stretches: a bar and label at the top of the chart
+  RC.coelution = () => {
+    const R = S.run; if (!R || !R.lt || !R.lt.fit) return [];
+    const x = xs(R); return LTM.features(R).coel.map(c => ({ x0: x[c.i0], x1: x[Math.max(c.i0, c.i1 - 1)], label: 'Co-eluting: ' + c.label, color: C.accent }));
+  };
+  // the co-elution, if any, at block i
+  function coAt(R, i) { return R && R.lt && R.lt.fit ? LTM.features(R).coel.find(c => i >= c.i0 && i < c.i1) || null : null; }
   /* ---------- species on Run and Fraction review ---------- */
   RC.extraSeries.push(() => {
     const R = S.run; if (!R || !R.lt) return [];
@@ -5777,15 +5972,17 @@ const Q = (function () {
       const c = comps.find(q => q.m === m); if (!c) continue;
       // Scientist view: species names; the lifetimes and the scatter background are Engineer view detail
       const sc = c.key === 'sc';
-      out.push({ key: 'lt_' + c.key, label: c.short + (S.engineer ? ', ' + c.tau.toFixed(2) + ' ns' : ''), visible: S.engineer || !sc, legend: S.engineer || !sc, tip: c.name + ': decay-associated chromatogram, lifetime ' + c.tau.toFixed(2) + ' ns (template expects about ' + c.exp + ' ns). Mean decay over 15 s. On the log axis only amplitudes above 2 standard errors are drawn. Proposed.', color: c.color, width: c.key === 'sc' ? 1 : 1.6, panel: 'main', src: src(m), fmt: amt });
+      out.push({ key: 'lt_' + c.key, label: c.short + (S.engineer ? ', ' + c.tau.toFixed(2) + ' ns' : ''), tipLabel: c.short, visible: S.engineer || !sc, legend: S.engineer || !sc, tip: c.name + ': decay-associated chromatogram, lifetime ' + c.tau.toFixed(2) + ' ns (template expects about ' + c.exp + ' ns). Mean decay over 15 s. ' + (S.engineer ? 'On the log axis only amplitudes above 2 standard errors are drawn.' : 'Drawn where the species is detected (above 2 standard errors) and flat while only buffer passes.') + ' Proposed.', color: c.color, width: sc ? 1.25 : 2, fill: sc ? 0 : 0.12, panel: 'main', src: src(m), fmt: amt });
     }
     const other = comps.filter(c => c.m < 0);
-    if (other.length) out.push({ key: 'lt_other', label: S.engineer ? 'Unassigned, ' + other.map(c => c.tau.toFixed(2)).join(', ') + ' ns' : 'Unassigned species', tip: 'A component with no expected species of a similar lifetime in the method template. It may be a new species, or may resolve as more of the run is fitted.', color: LTM.COLORS.other, width: 1.4, panel: 'main', src: src(-1), fmt: amt });
+    if (other.length) out.push({ key: 'lt_other', label: S.engineer ? 'Unassigned, ' + other.map(c => c.tau.toFixed(2)).join(', ') + ' ns' : 'Unassigned species', tipLabel: 'Unassigned', tip: 'A component with no expected species of a similar lifetime in the method template. It may be a new species, or may resolve as more of the run is fitted.', color: LTM.COLORS.other, width: 1.75, fill: 0.08, panel: 'main', src: src(-1), fmt: amt });
     return out;
   });
   const baseExtras = RC.legendExtras;
   RC.legendExtras = () => { const R = S.run, st = LTM.state(R); const ex = baseExtras(); if (st === 'none') return ex; const word = { waiting: 'waiting for signal', fitting: 'first fit running', live: 'updating', finalising: 'final fit running', final: 'final' }[st]; return [{ html: '<span class="ch-ll">' + (S.engineer ? 'Species: lifetime analysis, ' + word : 'Species by lifetime analysis' + (st === 'final' ? '' : ', ' + word)) + '</span> ' + tag('P', 'always'), tip: LTIP }, ...ex]; };
-  RC.extraInfo.push((r, i) => { const a = LTM.ampsAt(r, i); if (!a) return ''; const top = a.comps.filter(c => c.share >= 0.01).sort((x, y) => y.share - x.share).slice(0, 3); return top.length ? ' · ' + top.map(c => c.short + ' ' + fmt.pct0(c.share) + ' %').join(', ') : ''; });
+  RC.extraInfo.push((r, i) => { const a = LTM.ampsAt(r, i); if (!a) return ''; if (background(a.comps)) return ' · Buffer only'; const cs = shown(a.comps), t = cs.reduce((s, c) => s + Math.max(0, c.a), 0); const top = cs.map(c => ({ c, f: t > 0 ? Math.max(0, c.a) / t : 0 })).filter(x => x.f >= 0.01).sort((x, y) => y.f - x.f).slice(0, 3); return top.length ? ' · ' + top.map(x => x.c.short + ' ' + fmt.pct0(x.f) + ' %').join(', ') : ''; });
+  // tooltip footer on the Run chart: buffer, or the species co-eluting at the cursor
+  RC.tipExtra = i => { const R = S.run; if (!R || !R.lt || !R.lt.fit || i == null || i >= R.lt.n) return ''; if (R.lt.buf[i]) return 'Buffer only'; const c = coAt(R, i); return c ? 'Co-eluting: ' + c.label : ''; };
 
   /* ---------- composition: stacked bar plus the leading species ---------- */
   function compBar(comps, w) {
@@ -5798,19 +5995,43 @@ const Q = (function () {
   // Scientist view: the sample's species only. Scatter is the buffer's background, not fluorescence; where it gives
   // over half the signal the composition reads as background only
   function shown(comps) { return S.engineer ? comps : comps.filter(c => c.key !== 'sc'); }
-  function background(comps) { const tot = comps.reduce((s, c) => s + Math.max(0, c.a), 0), sc = comps.find(c => c.key === 'sc'); return !S.engineer && !!sc && tot > 0 && sc.a / tot > 0.5; }
-  function compCell(comps, w, n, cls) { return background(comps) ? '<span class="muted">Background only</span>' : '<span class="lt-cell' + (cls ? ' ' + cls : '') + '">' + compBar(shown(comps), w) + '<span>' + esc(compText(shown(comps), n)) + '</span></span>'; }
-  window.LTUI = { compBar, compText, compCell, shown, background, LTIP };
+  function isBuffer(comps) { const tot = comps.reduce((s, c) => s + Math.max(0, c.a), 0), sc = comps.find(c => c.key === 'sc'); return !!sc && tot > 0 && sc.a / tot > LTM.BUFFER; }
+  function background(comps) { return !S.engineer && isBuffer(comps); }
+  function compCell(comps, w, n, cls) { return background(comps) ? '<span class="muted">Buffer only</span>' : '<span class="lt-cell' + (cls ? ' ' + cls : '') + '">' + compBar(shown(comps), w) + '<span>' + esc(compText(shown(comps), n)) + '</span></span>'; }
+  /* ---------- suggested next step for a fraction (Proposed; provisional limits in Engineer view → Rules) ---------- */
+  // From the fraction's species shares of the sample fluorescence (scatter left out). Elution: Pool when the product
+  // gives at least poolPct; HPLC-SEC to confirm the pool edge while the main impurity stays under exclPct; leave out
+  // above that. Load: Protein A HPLC where the product gives at least breakPct (breakthrough). Shares are fluorescence,
+  // not mass, so each suggestion is a candidate for the scientist to confirm.
+  const SUG = { pool: 'Pool', sec: 'HPLC-SEC', proa: 'Protein A HPLC', none: 'No action', buffer: 'Buffer only' };
+  function suggest(f) {
+    const R = S.run; if (!R || !f || !f.lt || !f.complete) return null;
+    const comps = f.lt.comps; if (isBuffer(comps)) return { k: 'buffer', label: SUG.buffer, why: 'Scatter gives over half the signal: no sample in this fraction.' };
+    const cs = comps.filter(c => c.key !== 'sc'), tot = cs.reduce((s, c) => s + Math.max(0, c.a), 0); if (!(tot > 0)) return null;
+    const pc = cs.find(c => c.product), p = pc ? Math.max(0, pc.a) / tot : 0, imp = cs.filter(c => !c.product).map(c => ({ c, f: Math.max(0, c.a) / tot })).sort((a, b) => b.f - a.f)[0];
+    const th = S.th, sh = x => pct(x) + ' %', fx = R.tpl.fractions;
+    if (f.phaseKey === (fx.elPhase || 'el') && pc) {
+      if (p * 100 >= th.poolPct) return { k: 'pool', label: SUG.pool, why: pc.short + ' ' + sh(p) + (imp ? ', ' + imp.c.short + ' ' + sh(imp.f) : '') + ' of the sample fluorescence (Pool at ' + th.poolPct + ' % or more).' };
+      if (imp && imp.f * 100 >= th.exclPct) return { k: 'none', label: SUG.none, why: imp.c.short + ' ' + sh(imp.f) + ' of the sample fluorescence (' + th.exclPct + ' % or more): rich in ' + imp.c.short + ', leave out of the pool.' };
+      return { k: 'sec', label: SUG.sec, why: (imp ? imp.c.short + ' ' + sh(imp.f) : pc.short + ' ' + sh(p)) + ' co-eluting with the product: confirm the pool edge by HPLC-SEC.' };
+    }
+    if (f.phaseKey === fx.loadPhase && pc && p * 100 >= th.breakPct) return { k: 'proa', label: SUG.proa, why: pc.short + ' ' + sh(p) + ' of the flow-through fluorescence (' + th.breakPct + ' % or more): possible breakthrough, confirm the titre.' };
+    return null;
+  }
+  window.LTUI = { compBar, compText, compCell, shown, background, isBuffer, suggest, SUG, LTIP };
   RC.runRows.push((R, i, row) => {
     const st = LTM.state(R); if (st === 'none') return '';
     const a = LTM.ampsAt(R, R.lt.n - 1), muted = t => '<span class="muted" style="font-weight:normal">' + t + '</span>';
     if (!a) return row('Species', '', muted(st === 'waiting' ? 'Lifetime analysis after 150 blocks' : 'Fitting lifetimes…'));
-    if (background(a.comps)) return row('Species', '', muted('Background only'));
-    return row('Species', '', '<span class="lt-cell wrap" title="Latest block, 15 s window">' + compBar(shown(a.comps), 56) + '<span>' + esc(compText(shown(a.comps), 2)) + '</span></span>');
+    if (background(a.comps)) return row('Species', '', muted('Buffer only'));
+    const co = coAt(R, R.lt.n - 1);
+    return row('Species', '', '<span class="lt-cell wrap" title="Latest block, 15 s window">' + compBar(shown(a.comps), 56) + '<span>' + esc(compText(shown(a.comps), 2)) + '</span></span>') +
+      row('Co-eluting', '', co ? esc(co.label) : muted('None'));
   });
   function addFrCol() {
     const fr = UI.screen('fractions'); if (!fr || !fr.addCol) return;
     fr.addCol({ k: 'lt', h: 'Species <span class="unit">(lifetime analysis)</span>', tip: 'Share of the fraction\'s fluorescence in each species, from the mean decay of its blocks. Relative signal only: not mass, purity, yield or recovery. Proposed.', show: () => !!(S.run && S.run.lt && S.run.lt.fit), v: f => f.lt ? (f.lt.comps.find(c => c.product) || { share: -1 }).share : -1, f: f => f.lt ? compCell(f.lt.comps, 64, 2) : '–' }, 'qc');
+    fr.addCol({ k: 'sug', h: 'Suggested ' + tag('P', 'always'), tip: 'A next step from the species shares (Proposed; provisional limits in Engineer view → Rules): Pool, HPLC-SEC to confirm the pool edge, leave out, or Protein A HPLC on the flow-through. Shares are fluorescence, not mass, so confirm before pooling.', show: () => !!(S.run && S.run.lt && S.run.lt.fit), v: f => { const g = suggest(f); return g ? ['pool', 'sec', 'proa', 'none', 'buffer'].indexOf(g.k) : 9; }, f: f => { const g = suggest(f); return g && g.k !== 'buffer' ? '<span class="sug sug-' + g.k + '" title="' + esc(g.why) + '">' + esc(g.label) + '</span>' : ''; } }, 'cards');
   }
 
   /* ---------- Engineer view: Lifetimes ---------- */
@@ -5831,7 +6052,7 @@ const Q = (function () {
         return '<div class="grid2 lt-grid"><div class="stack"><div class="panel"><div class="ph"><h3>Global lifetimes</h3>' + tag('P', 'always') + '<span class="sp"></span><span class="note">' + esc(stTxt) + '</span></div><div class="pb">' + comp +
           (f ? '<div class="small" style="margin-top:6px">Reduced χ² ' + f.chi2r.toFixed(3) + ' over ' + fmt.int(f.nBins) + ' bins of ' + LTM.PER + ' blocks (' + fmt.int(f.n) + ' blocks). SE from the curvature of χ², amplitudes profiled out, scaled by the reduced χ².</div>' : '') + '</div></div>' +
           '<div class="panel"><div class="ph"><h3>Number of components</h3></div><div class="pb">' + (hist || '<div class="note">After the first fit.</div>') + '<div class="small" style="margin-top:6px">A component is added only if χ² drops by more than ' + TR.LT.gain + ' per bin, the number of amplitudes it adds, and lifetimes stay at least a factor ' + TR.LT.sep + ' apart. ' + LTM.PER + '-block bins: the model is linear in the amplitudes, so a bin is itself a mixture of the same decays.</div></div></div></div>' +
-          '<div class="stack"><div class="panel"><div class="ph"><h3>Method</h3></div><div class="pb small"><p>' + esc(LTIP) + '</p><p><b>Decay window.</b> ' + TR.LTN + ' samples (' + (TR.LTN * TR.DX).toFixed(0) + ' ns at ' + TR.DX + ' ns) from 5 ns before the IRF peak. Each block contributes the mean of its 10 waveforms, baseline removed and ND-corrected; clipped and discarded blocks are left out.</p><p><b>Amplitudes.</b> Exact non-negative least squares on the mean decay over ±' + LTM.H + ' blocks (15 s), so the chromatograms have 15 s time resolution and are in V·ns, the same units as total fluorescence. A fraction\'s composition uses the mean decay of all its blocks.</p><p><b>Live.</b> The first fit runs after 150 blocks, then each time the data grow by 30 %, or sooner when the mean reduced χ² of the latest 30 blocks rises above 3 (at most every 120 blocks), a few milliseconds per tick, starting from the previous lifetimes. A final fit runs when acquisition ends.</p><p><b>Reference.</b> Hales, Aoudjane, Aeppli and Dalby, Proof-of-concept analytical instrument for label-free optical deconvolution of protein species in a mixture, J Chromatogr A 1641, 461968 (2021); Uçan, Hales et al., J Chromatogr A 1711, 464463 (2023).</p></div></div>' +
+          '<div class="stack"><div class="panel"><div class="ph"><h3>Method</h3></div><div class="pb small"><p>' + esc(LTIP) + '</p><p><b>Decay window.</b> ' + TR.LTN + ' samples (' + (TR.LTN * TR.DX).toFixed(0) + ' ns at ' + TR.DX + ' ns) from 5 ns before the IRF peak. Each block contributes the mean of its 10 waveforms, baseline removed and ND-corrected; clipped and discarded blocks are left out.</p><p><b>Amplitudes.</b> Exact non-negative least squares on the mean decay over ±' + LTM.H + ' blocks (15 s), so the chromatograms have 15 s time resolution and are in V·ns, the same units as total fluorescence. A fraction\'s composition uses the mean decay of all its blocks.</p><p><b>Live.</b> The first fit runs after 150 blocks, then each time the data grow by 30 %, or sooner when the mean reduced χ² of the latest 30 blocks rises above 3 (at most every 120 blocks), a few milliseconds per tick, starting from the previous lifetimes. A final fit runs when acquisition ends.</p><p><b>Final version.</b> A multivariate fit of the decays will replace this analysis for the readout (Future). The species traces, the peak and co-elution detection and the fraction suggestions take its amplitudes unchanged.</p><p><b>Detection (Proposed).</b> Buffer only where scatter gives over half the signal; there every species is drawn at zero. A species region is where its amplitude stays above ' + Math.round(LTM.DET.rel * 100) + ' % of its run maximum (gaps up to ' + LTM.DET.gap + ' blocks bridged), labelled at its apex when it gives at least ' + Math.round(LTM.DET.apexShare * 100) + ' % of the sample fluorescence somewhere in it. Two species co-elute where both give at least ' + Math.round(LTM.DET.coShare * 100) + ' % for ' + LTM.DET.coMin + ' blocks or more (stretches under ' + LTM.DET.coGap + ' blocks apart count as one).</p><p><b>Reference.</b> Hales, Aoudjane, Aeppli and Dalby, Proof-of-concept analytical instrument for label-free optical deconvolution of protein species in a mixture, J Chromatogr A 1641, 461968 (2021); Uçan, Hales et al., J Chromatogr A 1711, 464463 (2023).</p></div></div>' +
           '<div class="panel"><div class="ph"><h3>Fit quality per block</h3></div><div class="pb" style="height:220px"><div id="ltChi" style="height:100%"></div></div></div></div></div>';
       },
       mount: () => {
@@ -5849,6 +6070,21 @@ const Q = (function () {
   });
 
   /* ---------- Questions panel ---------- */
+  // fraction IDs in run order, consecutive ones as a range: E02 to E05, E07
+  function ranges(ids, all) { const ix = ids.map(id => all.indexOf(id)).sort((a, b) => a - b), out = []; for (let k = 0; k < ix.length; k++) { let j = k; while (j + 1 < ix.length && ix[j + 1] === ix[j] + 1) j++; out.push(j > k ? all[ix[k]] + ' to ' + all[ix[j]] : all[ix[k]]); k = j; } return out.join(', '); }
+  Q.addIntent((q, ctx) => {
+    if (!/\bpool|which fractions (should|to)|suggest|what (should|do) i (test|send)/.test(q)) return null;
+    const R = ctx.run, src = 'Fraction review: Suggested (Proposed; limits in Engineer view → Rules)';
+    if (!R || !R.lt || !R.lt.fit) return { text: 'After the lifetime analysis has fitted the run, Fraction review suggests for each fraction whether to pool it, confirm it by HPLC-SEC, take no action or, on the flow-through, check it by Protein A HPLC.', source: src };
+    const st = M.fractionStats(R), all = st.map(f => f.id), by = {}; st.forEach(f => { const g = suggest(f); if (g) (by[g.k] = by[g.k] || []).push(f.id); });
+    const th = S.th, part = [];
+    if (by.pool) part.push('pool ' + ranges(by.pool, all) + ' (product at least ' + th.poolPct + ' % of the sample fluorescence)');
+    if (by.sec) part.push('confirm ' + ranges(by.sec, all) + ' by HPLC-SEC before deciding the pool edge');
+    if (by.none) part.push('no action on ' + ranges(by.none, all) + ' (an impurity at ' + th.exclPct + ' % or more)');
+    if (by.proa) part.push('check ' + ranges(by.proa, all) + ' by Protein A HPLC for breakthrough');
+    if (!part.length) return { text: 'No fraction has a suggestion yet' + (R.state === 'complete' ? '.' : ': fractions are suggested once fully collected.'), source: src };
+    return { text: 'Suggested from the species shares' + (LTM.state(R) === 'final' ? '' : ' (still updating)') + ': ' + part.join('; ') + '. Shares are fluorescence, not mass, so confirm before pooling. Apply suggestions in Fraction review copies them into the decisions of undecided fractions; each stays yours to change.', source: src };
+  });
   Q.addIntent((q, ctx) => {
     if (!/species|co-?elut|lifetime|decay map|\bcomponents?\b|aggregat|\bhmw\b|composition|deconvol|amplitude/.test(q)) return null;
     const R = ctx.run, src = 'Lifetime analysis (Proposed); Engineer view: Lifetimes';
@@ -5858,11 +6094,12 @@ const Q = (function () {
     const prod = comps.find(c => c.product), imp = comps.filter(c => !c.product && c.key !== 'sc').map(c => ({ c, sh: st.map(f => ({ id: f.id, v: (f.lt.comps.find(x => x.k === c.k) || {}).share })).filter(x => isFinite(x.v)) })).filter(x => x.sh.length).sort((a, b) => Math.max(...b.sh.map(x => x.v)) - Math.max(...a.sh.map(x => x.v)))[0];
     let tail = '';
     if (imp && prod) { const lo = imp.sh.reduce((a, b) => b.v < a.v ? b : a), hi = imp.sh.reduce((a, b) => b.v > a.v ? b : a); tail = ' In the elution fractions where the product gives at least half the fluorescence, ' + imp.c.short + ' goes from ' + (lo.v * 100).toFixed(1) + ' % (' + lo.id + ') to ' + (hi.v * 100).toFixed(1) + ' % (' + hi.id + ') of fluorescence.'; }
-    return { text: 'The lifetime analysis ' + (LTM.state(R) === 'final' ? '' : '(still updating) ') + 'fits every block\'s decay with lifetimes shared by the whole run and finds ' + comps.length + ' components: ' + comps.map(c => c.tau.toFixed(2) + ' ns (' + (c.m >= 0 ? c.name : 'unassigned') + ')').join(', ') + '. Each component\'s amplitude against time is drawn on the Run chart; the Decay panel shows the fit at any time.' + tail + ' Shares are fluorescence, not mass or purity; names come from the template (assumed).' + (R.spKey === 'aav' ? ' Confirm capsid content offline.' : ' Confirm aggregates with HPLC-SEC.'), source: src };
+    const xm = R.x.min, co = LTM.features(R).coel.map(c => c.label + ' from ' + fmt.min1(xm[c.i0]) + ' to ' + fmt.min1(xm[c.i1 - 1]) + ' min (' + c.minorShort + ' ' + pct(c.lo) + ' to ' + pct(c.hi) + ' %)');
+    return { text: 'The lifetime analysis ' + (LTM.state(R) === 'final' ? '' : '(still updating) ') + 'fits every block\'s decay with lifetimes shared by the whole run and finds ' + comps.length + ' components: ' + comps.map(c => c.tau.toFixed(2) + ' ns (' + (c.m >= 0 ? c.name : 'unassigned') + ')').join(', ') + '. Each component\'s amplitude against time is drawn on the Run chart; the Decay panel shows the fit at any time.' + (co.length ? ' Co-eluting: ' + co.join('; ') + '.' : '') + tail + ' Shares are fluorescence, not mass or purity; names come from the template (assumed).' + (R.spKey === 'aav' ? ' Confirm capsid content offline.' : ' Confirm aggregates with HPLC-SEC.'), source: src };
   });
   window.Q_EXTRA_CHIPS = window.Q_EXTRA_CHIPS || {};
   window.Q_EXTRA_CHIPS.run = (window.Q_EXTRA_CHIPS.run || []).concat(['Which species are co-eluting?']);
-  window.Q_EXTRA_CHIPS.fractions = ['Which species are co-eluting?'].concat(window.Q_EXTRA_CHIPS.fractions || []);
+  window.Q_EXTRA_CHIPS.fractions = ['Which fractions should I pool?', 'Which species are co-eluting?'].concat(window.Q_EXTRA_CHIPS.fractions || []);
 
   /* ---------- wiring ---------- */
   // refresh the Lifetimes tab after a refit; other Engineer tabs are left alone (they may hold an input being edited)

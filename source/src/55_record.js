@@ -32,6 +32,8 @@ const REC = (function () {
   }
   // lifetime analysis: components with their names, and a fraction's leading species
   function ltComps(R) { return LTM.components(R).map(c => c.tau.toFixed(2) + ' ns (' + (c.m >= 0 ? c.short : 'unassigned') + ')').join(', '); }
+  // co-elution found by the detection (Proposed), with the minor species' share range
+  function coText(R) { const c = LTM.features(R).coel, x = R.x.min, p = f => (f * 100).toFixed(f < 0.1 ? 1 : 0); return c.length ? ' Co-eluting: ' + c.map(k => k.label + ', ' + fmt.min1(x[k.i0]) + ' to ' + fmt.min1(x[k.i1 - 1]) + ' min (' + k.minorShort + ' ' + p(k.lo) + ' to ' + p(k.hi) + ' %)').join('; ') + '.' : ''; }
   function ltShares(lt) {
     if (!lt) return ''; if (LTUI.background(lt.comps)) return 'Background only';
     const cs = LTUI.shown(lt.comps), tot = cs.reduce((s, c) => s + Math.max(0, c.a), 0);
@@ -67,9 +69,9 @@ const REC = (function () {
       out.resultsTable = st.map(f => [f.id, f.phase, fmt.ml(f.a) + '-' + fmt.ml(f.b)].concat(showUv() ? [fmt.mau(f.uvMean) + ' / ' + fmt.mau(f.uvMax) + (f.uvSat ? ' (sat.)' : '')] : [], [fmt.sig3(f.fMean) + (S.engineer ? ' / ' + fmt.sig3(f.fMax) : '')],showLt ? [ltShares(f.lt)] : [], showAssign ? [f.assign] : [], [f.linked.filter(UI.cardShown).join(' ')]));
       const named = showLt ? LTM.components(R).filter(c => c.key !== 'sc').map(c => c.m >= 0 ? c.short : 'an unassigned species') : [];
       out.results = !S.engineer ? R.id + ': ' + fmt.min1((R.state === 'complete' ? R.endAt : M.runTimeS(R)) / 60) + ' min. Fluorescence is relative (V·ns); no recovery or purity is derived.' +
-        (showLt ? ' Species found by the lifetime analysis' + (lst === 'final' ? '' : ' (not final)') + ': ' + named.join(', ') + '. Shares are shares of fluorescence, not mass or purity.' : '') :
+        (showLt ? ' Species found by the lifetime analysis' + (lst === 'final' ? '' : ' (not final)') + ': ' + named.join(', ') + '.' + coText(R) + ' Shares are shares of fluorescence, not mass or purity.' : '') :
         R.id + ': ' + fmt.int(R.acq.n) + ' blocks over ' + fmt.min1((R.state === 'complete' ? R.endAt : M.runTimeS(R)) / 60) + ' min. Fluorescence is relative (V·ns, ND-corrected); no recovery or purity is derived.' +
-        (showLt ? ' Lifetime analysis' + (lst === 'final' ? '' : ' (not final)') + ': ' + R.lt.fit.taus.length + ' components, ' + ltComps(R) + '; reduced χ² ' + R.lt.fit.chi2r.toFixed(2) + '. Species shares are shares of fluorescence, not mass or purity.' : '') +
+        (showLt ? ' Lifetime analysis' + (lst === 'final' ? '' : ' (not final)') + ': ' + R.lt.fit.taus.length + ' components, ' + ltComps(R) + '; reduced χ² ' + R.lt.fit.chi2r.toFixed(2) + '.' + coText(R) + ' Species shares are shares of fluorescence, not mass or purity.' : '') +
         (st.length ? '\n' + out.resultsHead.map(h => h[0] + (h[1] ? ' (' + h[1] + ')' : '')).join('  ') + '\n' + out.resultsTable.map(r => r.join('  ').trimEnd()).join('\n') : '');
       const A = R.acq, n = R.derivedN; let disc = 0, over = 0, low = 0; for (let i = 0; i < n; i++) { disc += A.disc[i]; over += A.nOver[i]; low += R.low[i]; }
       const cards = R.rules.cards, byRule = {}; cards.forEach(c => { byRule[c.rule] = (byRule[c.rule] || 0) + 1; });
@@ -97,7 +99,7 @@ const REC = (function () {
     out.attachments = !S.engineer ? [
       ...(src === 'standalone' ? [] : ['UNICORN result report', 'TRIFLE fraction table: ' + fileBase() + '_fractions.csv']),
       'Chromatogram figure: ' + fileBase() + '_chromatogram.png',
-      'TRIFLE run folder (instrument record: block data, settings and audit trail)',
+      'TRIFLE run folder (instrument record: raw data and settings)',
       ...(src === 'standalone' ? [] : ['HPLC-SEC, Lunatic and Protein A HPLC results for the fractions in section 5'])
     ].join('\n') : [
       ...(src === 'standalone' ? [] : ['UNICORN result report']),
@@ -171,7 +173,7 @@ const REC = (function () {
   function exportFractions() {
     const R = S.run, st = M.fractionStats(R), comps = R.lt && R.lt.fit ? LTM.components(R) : [];
     const lines = ['fraction,phase,volume_start_mL,volume_end_mL,collected_start_mL,collected_end_mL,CV_start,CV_end,uv280_mean_mAU,uv280_max_mAU,uv_saturated,fluor_mean_Vns,fluor_max_Vns,processing,sensitivity_changes,waveforms_over_90pct,discarded_blocks,laser_flags,low_precision_share,assignment,share_of_integrated_fluorescence_pct,cards,decision,decision_note' + comps.map(c => ',species_' + (c.m >= 0 ? c.key : 'unassigned_' + (c.k + 1)) + '_pct').join('')];
-    for (const f of st) { const d = S.decisions[f.id] || {}; lines.push([f.id, f.phase, f.a.toFixed(3), f.b.toFixed(3), f.ca.toFixed(3), f.cb.toFixed(3), f.cvA.toFixed(3), f.cvB.toFixed(3), isFinite(f.uvMean) ? f.uvMean.toFixed(1) : '', isFinite(f.uvMax) ? f.uvMax.toFixed(1) : '', f.uvSat, num(f.fMean), num(f.fMax), '"' + M.procLabel() + '"', f.chg, f.over, f.disc, f.laser, f.lowShare.toFixed(3), f.assign, isFinite(f.share) ? (f.share * 100).toFixed(2) : '', '"' + f.linked.join(' ') + '"', '"' + [['sec', 'HPLC-SEC'], ['lun', 'Lunatic'], ['proa', 'Protein A HPLC'], ['none', 'No action']].filter(k => d[k[0]]).map(k => k[1]).join('; ') + '"', '"' + (d.note || '').replace(/"/g, "'") + '"'].concat(comps.map(c => { const q = f.lt && f.lt.comps.find(x => x.k === c.k); return q && isFinite(q.share) ? (q.share * 100).toFixed(2) : ''; })).join(',')); }
+    for (const f of st) { const d = S.decisions[f.id] || {}; lines.push([f.id, f.phase, f.a.toFixed(3), f.b.toFixed(3), f.ca.toFixed(3), f.cb.toFixed(3), f.cvA.toFixed(3), f.cvB.toFixed(3), isFinite(f.uvMean) ? f.uvMean.toFixed(1) : '', isFinite(f.uvMax) ? f.uvMax.toFixed(1) : '', f.uvSat, num(f.fMean), num(f.fMax), '"' + M.procLabel() + '"', f.chg, f.over, f.disc, f.laser, f.lowShare.toFixed(3), f.assign, isFinite(f.share) ? (f.share * 100).toFixed(2) : '', '"' + f.linked.join(' ') + '"', '"' + [['pool', 'Pool'], ['sec', 'HPLC-SEC'], ['lun', 'Lunatic'], ['proa', 'Protein A HPLC'], ['none', 'No action']].filter(k => d[k[0]]).map(k => k[1]).join('; ') + '"', '"' + (d.note || '').replace(/"/g, "'") + '"'].concat(comps.map(c => { const q = f.lt && f.lt.comps.find(x => x.k === c.k); return q && isFinite(q.share) ? (q.share * 100).toFixed(2) : ''; })).join(',')); }
     const name = fileBase() + '_fractions.csv'; saved(name, UI.download(name, lines.join('\n'), 'text/csv'));
   }
   function exportJson() {

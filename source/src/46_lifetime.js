@@ -15,12 +15,22 @@ const LTM = (function () {
   // scatter neutral grey (validated categorical slots 1 to 3; see README)
   const COLORS = { sc: '#8C96A0', hcp: '#1BAF7A', mab: '#2A78D6', hmw: '#EB6834', empty: '#EB6834', full: '#2A78D6', other: '#6250D6' };
   const ybuf = new Float64Array(L), abuf = new Float64Array(TR.LT.kMax);
+  // a block (or fraction) is buffer only when scatter gives over half its signal
+  const BUFFER = 0.5;
+  // detection (Proposed; development assumptions): a species region is where its amplitude stays above 5 % of its
+  // own run maximum (gaps up to 20 blocks bridged, at least 10 blocks long) and it gives at least 5 % of the sample
+  // fluorescence somewhere in the region; it is labelled at its apex. Two species co-elute where both give at least
+  // 2 % for 60 blocks (1 min) or more, stretches of the same pair under 2 min apart counting as one
+  const DET = { rel: 0.05, apexShare: 0.05, gap: 20, minLen: 10, coShare: 0.02, coMin: 60, coGap: 120 };
 
   function init(R) {
     const cap = R.acq.cap, sp = TR.SPECIES[R.spKey || 'protA'];
     // amp: amplitudes (V·ns) per expected species; sig: the same, but 0 where an amplitude is under 2 standard
-    // errors (the log display, where noise around zero would otherwise look like signal)
-    R.lt = { lib: sp, fit: null, B: null, assign: [], amp: sp.map(() => new Float64Array(cap).fill(NaN)), sig: sp.map(() => new Float64Array(cap).fill(NaN)), other: new Float64Array(cap).fill(NaN), otherSig: new Float64Array(cap).fill(NaN), chi: new Float32Array(cap), n: 0, gen: 1, job: null, nextFit: FIRST, lastStart: 0, fits: 0, kLogged: 0 };
+    // errors (the log display, where noise around zero would otherwise look like signal); show: sig, and 0 for
+    // every species while only buffer passes (buf: scatter over half the signal), so the traces are flat until
+    // the sample reaches the flow cell
+    const nan = () => new Float64Array(cap).fill(NaN);
+    R.lt = { lib: sp, sc: sp.findIndex(q => q.key === 'sc'), fit: null, B: null, assign: [], amp: sp.map(nan), sig: sp.map(nan), show: sp.map(nan), other: nan(), otherSig: nan(), otherShow: nan(), buf: new Uint8Array(cap), chi: new Float32Array(cap), n: 0, gen: 1, job: null, nextFit: FIRST, lastStart: 0, fits: 0, kLogged: 0, feat: null };
   }
   // Mean decay over blocks j0..j1 (inclusive) that are neither discarded nor clipped; v is the mean noise variance
   function meanDecay(R, j0, j1, out) {
@@ -32,9 +42,9 @@ const LTM = (function () {
   // Amplitudes for blocks i0..i1-1 from the decay window around each block (blocks up to nAvail-1 exist)
   function compute(R, i0, i1, nAvail) {
     const lt = R.lt, A = R.acq, B = lt.B; if (!B) return;
-    const K = B.K, a = abuf.subarray(0, K), sp = lt.amp, sg = lt.sig;
+    const K = B.K, a = abuf.subarray(0, K), sp = lt.amp, sg = lt.sig, sh = lt.show;
     for (let i = i0; i < i1; i++) {
-      for (let s = 0; s < sp.length; s++) sp[s][i] = sg[s][i] = NaN; lt.other[i] = lt.otherSig[i] = NaN;
+      for (let s = 0; s < sp.length; s++) sp[s][i] = sg[s][i] = sh[s][i] = NaN; lt.other[i] = lt.otherSig[i] = lt.otherShow[i] = NaN; lt.buf[i] = 0;
       if (A.disc[i]) continue;
       const m = meanDecay(R, Math.max(0, i - H), Math.min(nAvail - 1, i + H), ybuf); if (!m.c) continue;
       const rss = TR.ltFitDecay(B, ybuf, 0, a);
@@ -44,6 +54,9 @@ const LTM = (function () {
         if (s >= 0) { sp[s][i] += a[k]; if (ok) sg[s][i] += a[k]; } else { lt.other[i] += a[k]; if (ok) lt.otherSig[i] += a[k]; }
       }
       lt.chi[i] = rss / (m.v * (L - K));
+      let tot = lt.other[i]; for (let s = 0; s < sp.length; s++) tot += sp[s][i];
+      const buf = lt.sc >= 0 && tot > 0 && sp[lt.sc][i] > BUFFER * tot; lt.buf[i] = buf ? 1 : 0;
+      for (let s = 0; s < sp.length; s++) sh[s][i] = buf ? 0 : sg[s][i]; lt.otherShow[i] = buf ? 0 : lt.otherSig[i];
     }
   }
   function finalN(R) { return R.state === 'complete' ? R.derivedN : Math.max(0, R.derivedN - H); }
@@ -125,8 +138,36 @@ const LTM = (function () {
     out.fit = fit; out.res = res; out.chi2r = rss / (m.v * (L - K)); out.total = a.reduce((s, v) => s + v, 0);
     return out;
   }
+  // Detected species regions (peaks, each with its apex) and co-elution stretches, from the displayed amplitudes
+  function features(R) {
+    const lt = R && R.lt; if (!lt || !lt.fit) return { peaks: [], coel: [] };
+    const key = lt.gen * 1e7 + lt.n; if (lt.feat && lt.feat.key === key) return lt.feat;
+    const n = lt.n, lib = lt.lib, ms = lib.map((q, m) => m).filter(m => m !== lt.sc && lt.assign.includes(m)), tot = new Float64Array(n);
+    for (let i = 0; i < n; i++) { let t = 0; for (const m of ms) { const v = lt.show[m][i]; if (v > 0) t += v; } tot[i] = t; }
+    const runs = (ok, gap) => { const out = []; let a = -1, last = -1e9; for (let i = 0; i < n; i++) if (ok(i)) { if (a < 0 || i - last > gap) { if (a >= 0) out.push([a, last + 1]); a = i; } last = i; } if (a >= 0) out.push([a, last + 1]); return out; };
+    const peaks = [], coel = [];
+    for (const m of ms) {
+      const y = lt.show[m]; let mx = 0; for (let i = 0; i < n; i++) if (y[i] > mx) mx = y[i]; if (!(mx > 0)) continue;
+      for (const [a, b] of runs(i => y[i] >= DET.rel * mx, DET.gap)) {
+        if (b - a < DET.minLen) continue; let ia = a, share = 0; for (let i = a; i < b; i++) { if (y[i] > y[ia]) ia = i; if (tot[i] > 0 && y[i] / tot[i] > share) share = y[i] / tot[i]; }
+        if (share < DET.apexShare) continue;
+        peaks.push({ m, key: lib[m].key, short: lib[m].short, name: lib[m].name, i0: a, i1: b, ia, h: y[ia], share });
+      }
+    }
+    for (let x = 0; x < ms.length; x++) for (let z = x + 1; z < ms.length; z++) {
+      const a = ms[x], b = ms[z], ya = lt.show[a], yb = lt.show[b];
+      const ok = i => tot[i] > 0 && ya[i] >= DET.coShare * tot[i] && yb[i] >= DET.coShare * tot[i];
+      for (const [i0, i1] of runs(ok, DET.coGap)) {
+        if (i1 - i0 < DET.coMin) continue; let sa = 0, sb = 0; for (let i = i0; i < i1; i++) { sa += ya[i] > 0 ? ya[i] : 0; sb += yb[i] > 0 ? yb[i] : 0; }
+        const minor = sa < sb ? a : b, ym = lt.show[minor]; let lo = 1, hi = 0;
+        for (let i = i0; i < i1; i++) if (ok(i)) { const f = ym[i] / tot[i]; if (f < lo) lo = f; if (f > hi) hi = f; }
+        coel.push({ a, b, i0, i1, minor, lo, hi, label: lib[a].short + ' + ' + lib[b].short, minorShort: lib[minor].short });
+      }
+    }
+    return (lt.feat = { key, peaks, coel, tot });
+  }
   // Composition of every fraction (Fraction review, Record exports)
   M.fracHooks.push((st, R, i0, i1) => { st.lt = composition(R, i0, i1); });
 
-  return { H, PER, COLORS, state, components, ampsAt, composition, decayAt, meanDecay };
+  return { H, PER, COLORS, BUFFER, DET, state, components, ampsAt, composition, decayAt, meanDecay, features };
 })();

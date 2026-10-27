@@ -4,9 +4,11 @@
   let built = false, ov = null, zm = null, pc = null, rows = [], sel = new Set(), focus = null, sortKey = null, sortDir = 1, showShare = false, tab = 'frac', lastKey = '', flManual = null, dataKey = '', userPick = false, showMp = false;
   const mp = { x: new Float64Array(600), y: new Float64Array(600), iy: new Float64Array(600), n: 0, gen: 0 };
   for (let j = 0; j < 600; j++) mp.x[j] = j * 0.2;
-  const ANALYSES = [['sec', 'HPLC-SEC', 'Purity (monomer, HMWS, LMWS)'], ['lun', 'Lunatic', 'A280 concentration'], ['proa', 'Protein A HPLC', 'Titre'], ['none', 'No action', '']];
+  // Pool, the offline analyses, or no action (pool and analyses can combine; No action stands alone)
+  const ANALYSES = [['pool', 'Pool', 'Include in the product pool'], ['sec', 'HPLC-SEC', 'Purity (monomer, HMWS, LMWS)'], ['lun', 'Lunatic', 'A280 concentration'], ['proa', 'Protein A HPLC', 'Titre'], ['none', 'No action', '']];
   const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
-  function dec(id) { return S.decisions[id] || (S.decisions[id] = { sec: false, lun: false, proa: false, none: false, note: '' }); }
+  function dec(id) { return S.decisions[id] || (S.decisions[id] = { pool: false, sec: false, lun: false, proa: false, none: false, note: '' }); }
+  const decided = d => !!(d.pool || d.sec || d.lun || d.proa || d.none);
   function decText(d) { const a = ANALYSES.filter(x => d[x[0]]).map(x => x[1]); return a.length ? a.join(', ') : 'Not decided'; }
   function build() {
     const r = $('#scr-fractions'); r.classList.add('fixed'); r.style.overflow = 'auto';
@@ -15,8 +17,8 @@
       '<div id="fEmpty" class="callout" style="display:none"></div>' +
       '<div class="fr-grid" id="frGrid" style="min-height:560px;grid-template-rows:minmax(0,56fr) minmax(0,44fr)">' +
       '<div class="panel" style="grid-column:1;grid-row:1"><div class="pb" style="padding:4px 8px"><div id="frOv" style="height:100%"></div></div></div>' +
-      '<div class="panel fr-side" style="grid-column:2;grid-row:1"><div class="ph"><div class="ptabs" id="frTabs"><button data-v="frac" class="on">Fraction</button><button data-v="samples">Samples to send <span class="cnt" id="sampCnt">0</span></button></div><span class="sp"></span><span id="frNav" class="nowrap"></span></div><div class="pb" style="padding:4px 8px;display:flex;flex-direction:column;gap:6px;overflow:hidden" id="frSide"></div></div>' +
-      '<div class="panel fr-table" style="grid-column:1 / 3;grid-row:2"><div class="ph"><h3>Fractions</h3><span class="note" id="frNote"></span><span class="sp"></span><label class="chk small eng-only" title="Relative signal-area contribution only. Not equivalent to protein mass, yield or recovery."><input type="checkbox" id="frShare"> Fluorescence share</label></div><div class="pb tbl-wrap" style="padding:0" id="frTblWrap"><table class="tbl" id="frTbl"><thead></thead><tbody></tbody></table></div></div>' +
+      '<div class="panel fr-side" style="grid-column:2;grid-row:1"><div class="ph"><div class="ptabs" id="frTabs"><button data-v="frac" class="on">Fraction</button><button data-v="samples" title="The pool and the samples to send for offline analysis">Pool and samples <span class="cnt" id="sampCnt">0</span></button></div><span class="sp"></span><span id="frNav" class="nowrap"></span></div><div class="pb" style="padding:4px 8px;display:flex;flex-direction:column;gap:6px;overflow:hidden" id="frSide"></div></div>' +
+      '<div class="panel fr-table" style="grid-column:1 / 3;grid-row:2"><div class="ph"><h3>Fractions</h3><span class="note" id="frNote"></span><span class="sp"></span><label class="chk small eng-only" title="Relative signal-area contribution only. Not equivalent to protein mass, yield or recovery."><input type="checkbox" id="frShare"> Fluorescence share</label><button class="btn sm" id="frApply" title="Copy each Suggested step into the Decision of fractions not yet decided. Each decision stays yours to change.">Apply suggestions</button></div><div class="pb tbl-wrap" style="padding:0" id="frTblWrap"><table class="tbl" id="frTbl"><thead></thead><tbody></tbody></table></div></div>' +
       '</div>';
     UI.processingButton($('#fTools')).classList.add('eng-only');
     RC.viewMenu($('#fViewSlot'), 'f', { get: () => !!(zm && zm.rulersOn), set: on => { zm.rulersOn = on; if (on) { const [a, b] = zm.xRange(); zm.rulers = [a + (b - a) * 0.4, a + (b - a) * 0.6]; } zm.invalidateOver(); zm.updateReadout(); } });
@@ -25,11 +27,13 @@
     $$('#fDrag button').forEach(b => b.onclick = () => { ov.mode = b.dataset.v; $$('#fDrag button').forEach(x => x.classList.toggle('on', x === b)); });
     $('#fReset').onclick = () => ov.resetZoom();
     $('#frShare').onchange = e => { showShare = e.target.checked; lastKey = ''; };
+    $('#frApply').onclick = applySuggestions;
     $$('#frTabs button').forEach(b => b.onclick = () => { tab = b.dataset.v; $$('#frTabs button').forEach(x => x.classList.toggle('on', x === b)); side(true); });
     ov = new CH.Chart($('#frOv'), {
       ariaLabel: 'Run overview; drag to select fractions', dragMode: 'select', rulers: [0, 1], onView: v => $('#fReset').classList.toggle('hidden', !v),
       xDomain: RC.xDomain, xTitle: RC.xTitle, panels: ovPanels(), series: ovSeries(), bands: RC.bands, fractions: RC.fracItems,
       markers: () => RC.markers(false), hatches: RC.hatches, intervals: RC.intervals, info: RC.info, legendExtras: RC.legendExtras(), liveReadout: false,
+      tooltip: true, tipHead: RC.tipHead, tipExtra: RC.tipExtraAt, annotations: () => RC.annotations ? RC.annotations() : [], hoverInfo: () => S.engineer,
       vlines: () => poolLines(false).map(l => ({ ...l, label: null })),
       highlights: () => [...sel].map(id => fr(id)).filter(Boolean).map(f => ({ x0: RC.toX(f.a), x1: RC.toX(f.b) })),
       onSelect: (a, b) => { const va = RC.fromX(a), vb = RC.fromX(b); const hit = (S.run ? S.run.fractions : []).filter(f => (va === vb ? (va >= f.a && va < f.b) : (f.b > va && f.a < vb))).map(f => f.id); if (hit.length) { sel = new Set(hit); focus = hit[0]; selChanged(); } },
@@ -122,9 +126,16 @@
     $('#frNote').innerHTML = R ? (rows.length + ' fractions · ' + (al.fractions === 'Uncertain' ? 'assignment uncertain' : 'volume-aligned<span class="eng-only"> (V1 ' + fmt.ml(S.setup.V1) + ' mL, V2 ' + fmt.ml(S.setup.V2) + ' mL)</span>')) : '';
     $('#sampCnt').textContent = Object.entries(S.decisions).filter(([k, d]) => d.sec || d.lun || d.proa).length;
   }
+  // suggestions (Proposed) become decisions only for fractions the scientist has not decided
+  function applySuggestions() {
+    const R = S.run; if (!R || !window.LTUI) return; const done = [];
+    for (const f of M.fractionStats(R)) { const g = LTUI.suggest(f); if (!g || g.k === 'buffer' || decided(dec(f.id))) continue; const d = dec(f.id); d[g.k] = true; done.push(f.id + ' ' + ANALYSES.find(a => a[0] === g.k)[1]); }
+    M.audit('decision', done.length ? 'Suggestions applied (Proposed): ' + done.join(', ') + '.' : 'Suggestions applied: no undecided fraction had a suggestion.');
+    lastKey = ''; side(true); UI.emitDirty();
+  }
   function decisionPopover(anchor, id) {
-    const d = dec(id);
-    const c = el('<div style="width:280px"><div style="font-weight:bold;margin-bottom:4px">Decision for ' + esc(id) + '</div>' + ANALYSES.map(a => '<label class="opt" style="margin:3px 0"><input type="checkbox" data-a="' + a[0] + '"' + (d[a[0]] ? ' checked' : '') + '><span>' + a[1] + (a[2] ? '<span class="note">' + a[2] + '</span>' : '') + '</span></label>').join('') + '<input type="text" id="decNote" placeholder="Note (optional)" style="width:100%;margin-top:4px" value="' + esc(d.note) + '"></div>');
+    const d = dec(id), st = S.run && M.fractionStats(S.run).find(f => f.id === id), g = st && window.LTUI ? LTUI.suggest(st) : null;
+    const c = el('<div style="width:300px"><div style="font-weight:bold;margin-bottom:4px">Decision for ' + esc(id) + '</div>' + (g && g.k !== 'buffer' ? '<div class="small sug-why"><span class="sug sug-' + g.k + '">' + esc(g.label) + '</span> suggested. ' + esc(g.why) + '</div>' : '') + ANALYSES.map(a => '<label class="opt" style="margin:3px 0"><input type="checkbox" data-a="' + a[0] + '"' + (d[a[0]] ? ' checked' : '') + '><span>' + a[1] + (a[2] ? '<span class="note">' + a[2] + '</span>' : '') + '</span></label>').join('') + '<input type="text" id="decNote" placeholder="Note (optional)" style="width:100%;margin-top:4px" value="' + esc(d.note) + '"></div>');
     $$('input[data-a]', c).forEach(i => i.onchange = () => {
       if (i.dataset.a === 'none' && i.checked) $$('input[data-a]', c).forEach(j => { if (j !== i) j.checked = false; });
       else if (i.checked) $('input[data-a=none]', c).checked = false;
@@ -159,6 +170,7 @@
     $('#frDet').innerHTML = '<div><b>' + f.id + '</b> · ' + esc(st.phase) + ' · ' + fmt.ml(f.a) + ' to ' + fmt.ml(f.b) + ' mL<span class="eng-only"> · ' + fmt.int(st.nBlocks) + ' blocks</span></div>' +
       (sub.length ? '<div class="muted">' + sub.join(' · ') + '</div>' : '') +
       (st.lt ? '<div title="' + esc(LTUI.LTIP) + '"><b>Species</b> ' + LTUI.compCell(st.lt.comps, 90, 4) + (LTUI.background(st.lt.comps) ? '' : ' <span class="muted small">share of fluorescence</span>') + '</div>' : '') +
+      (() => { const g = st.lt ? LTUI.suggest(st) : null; return g && g.k !== 'buffer' ? '<div><b>Suggested</b> <span class="sug sug-' + g.k + '">' + esc(g.label) + '</span> <span class="muted small">' + esc(g.why) + '</span></div>' : ''; })() +
       '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px">' + (cards.length ? '<span><b>' + (S.engineer ? 'Linked cards' : 'Evidence') + '</b> ' + cards.map(c => '<span class="flag" title="' + esc(c.obs && c.obs.indexOf(c.title) === 0 ? c.obs : c.title + (c.obs ? '. ' + c.obs : '')) + '">' + c.rule + (c.status !== 'open' ? ' ' + c.status : '') + '</span>').join('') + '</span>' : '') +
       '<span><b>Decision</b> <button class="btn sm" id="frDec">' + esc(decText(d)) + '</button></span></div>' + (d.note ? '<div class="small">Note: ' + esc(d.note) + '</div>' : '') +
       (cards.filter(c => c.confirm).map(c => '<div class="small">' + c.rule + ': ' + esc(c.confirm) + '</div>').join('')) +
@@ -194,21 +206,21 @@
   function picked(k) { return Object.entries(S.decisions).filter(([id, d]) => d[k]).map(([id]) => id).sort(); }
   function samplesText() {
     const out = [];
-    for (const [k, name] of ANALYSES.slice(0, 3)) { const ids = picked(k); if (ids.length) out.push(name + ': ' + ids.map(id => id + (S.decisions[id].note ? ' [' + S.decisions[id].note + ']' : '')).join(', ')); }
+    for (const [k, name] of ANALYSES.slice(0, 4)) { const ids = picked(k); if (ids.length) out.push(name + ': ' + ids.map(id => id + (S.decisions[id].note ? ' [' + S.decisions[id].note + ']' : '')).join(', ')); }
     const none = picked('none'); if (none.length) out.push('No action: ' + none.join(', '));
     return out.join('\n') || 'No samples selected yet.';
   }
   function samplesHtml() {
-    const R = S.run, total = R ? R.fractions.length : 0, decided = Object.values(S.decisions).filter(d => d.sec || d.lun || d.proa || d.none).length;
+    const R = S.run, total = R ? R.fractions.length : 0, nDecided = Object.values(S.decisions).filter(decided).length;
     let html = '';
-    for (const [k, name, what] of ANALYSES.slice(0, 3)) {
+    for (const [k, name, what] of ANALYSES.slice(0, 4)) {
       const ids = picked(k); if (!ids.length) continue;
       html += '<div style="margin-top:8px"><b>' + name + '</b> <span class="muted small">' + what + '</span><div>' + ids.map(id => { const f = fr(id); return '<div class="small">' + id + (f ? ' · ' + fmt.ml(f.a) + ' to ' + fmt.ml(f.b) + ' mL' : '') + (S.decisions[id].note ? ' · ' + esc(S.decisions[id].note) : '') + '</div>'; }).join('') + '</div></div>';
     }
     const none = picked('none');
     if (none.length) html += '<div style="margin-top:8px"><b>No action</b><div class="small">' + none.join(', ') + '</div></div>';
     if (!html) html = '<div class="small muted">No samples selected yet.</div>';
-    html += '<div style="margin-top:8px" class="small muted">' + decided + ' of ' + total + ' fractions decided.</div><div><button class="btn sm" id="sampCopy" style="margin-top:6px">Copy list</button></div>';
+    html += '<div style="margin-top:8px" class="small muted">' + nDecided + ' of ' + total + ' fractions decided.</div><div><button class="btn sm" id="sampCopy" style="margin-top:6px">Copy list</button></div>';
     return html;
   }
   function update(d) {

@@ -157,10 +157,12 @@
     const vs = entries.filter(e => sel.has(e.key)).map(e => ({ e, v: e.v() })).filter(x => x.v);
     const presets = new Set(vs.map(x => x.v.pmt)), modes = new Set(vs.map(x => x.v.procKey));
     const mustRel = presets.size > 1 || modes.size > 1, rel = mustRel || relForce;
-    const key = JSON.stringify([[...sel], refId, xMode, rel, vs.length, S.run ? S.run.derivedN : 0, M.procLabel(), loading]);
+    const key = JSON.stringify([[...sel], refId, xMode, rel, vs.length, S.run ? S.run.derivedN : 0, M.procLabel(), loading, S.engineer]);
     if (key === cmpKey) return; cmpKey = key;
     // run list
     $('#cmpRuns').innerHTML = !S.run ? '<div class="note">Start a run to compare it with archived runs.</div>' : entries.map((e, k) => {
+      // archived AAV runs are out of scope for the scientist (shown in the Engineer view or beside an AAV run)
+      if (e.def && e.def.tpl === 'aav' && !S.engineer && S.run.tpl.id !== 'aav' && !sel.has(e.key)) return '';
       const c = compat(e), a = e.def ? S2.archive[e.def.id] : null, v = e.v(), ready = !!v, isSel = sel.has(e.key), idx = [...sel].indexOf(e.key);
       const sty = idx >= 0 ? STY[idx % 4] : null;
       return '<div class="opt" style="margin-bottom:8px' + (c.ok ? '' : ';color:var(--text2)') + '"><input type="checkbox" data-k="' + e.key + '"' + (isSel ? ' checked' : '') + (c.ok && ready ? '' : ' disabled') + '><span style="flex:1"><b>' + esc(e.key) + '</b> ' + (sty ? '<span class="ch-sw ' + (sty.d || 'solid') + '" style="border-top-color:' + sty.c + ';vertical-align:middle"></span>' : '') + '<span class="note">' + esc(e.def ? e.def.name + ', ' + e.def.date + '; PMT ' + e.def.pmt + ' mV; ' + e.def.mode : 'This run; PMT ' + S.run.pmt + ' mV; ' + M.procLabel()) + (c.ok ? '' : '. Not comparable: ' + c.why + '.') + (e.def && !ready && c.ok ? ' Loading.' : '') + '</span></span><label class="small" title="Reference for the difference trace"><input type="radio" name="cmpRef" value="' + e.key + '"' + (refId === e.key ? ' checked' : '') + (isSel ? '' : ' disabled') + '> reference</label></div>';
@@ -196,7 +198,7 @@
   /* ---------- Integrations (Future) ---------- */
   // Future integrations, listed on the About page
   window.INTEGRATIONS_HTML = () => {
-    const rows = [['Live UNICORN link', 'Phase, flow and fraction events in real time', 'GSK IT approval, UNICORN interface access, validation'], ['IDBS E-WorkBook transfer', 'Push the summary and attachments to an experiment ID', 'IDBS API access, permissions, record structure agreement'], ['Data storage', 'Automatic upload to the agreed GSK repository, replacing the manual SharePoint step', 'Storage location, retention policy'], ['Language-model Questions panel', 'Free-text answers about runs', 'Defined data access, permissions, provenance of every answer, GSK approval'], ['Legacy .pkl conversion', 'Convert v2.0 pickle records to CSV and JSON', 'An isolated, trusted environment, because opening a pickle can execute code embedded in it']];
+    const rows = [['Multivariate readout', 'The final species readout: a multivariate fit of every decay, for a more accurate readout than the mock-up\'s lifetime analysis. The displays, the detection of peaks and co-elution and the suggestions take its amplitudes unchanged', 'The algorithm and its validation data from the TRIFLE team'], ['Live UNICORN link', 'Phase, flow and fraction events in real time', 'GSK IT approval, UNICORN interface access, validation'], ['IDBS E-WorkBook transfer', 'Push the summary and attachments to an experiment ID', 'IDBS API access, permissions, record structure agreement'], ['Data storage', 'Automatic upload to the agreed GSK repository, replacing the manual SharePoint step', 'Storage location, retention policy'], ['Language-model Questions panel', 'Free-text answers about runs', 'Defined data access, permissions, provenance of every answer, GSK approval'], ['Legacy .pkl conversion', 'Convert v2.0 pickle records to CSV and JSON', 'An isolated, trusted environment, because opening a pickle can execute code embedded in it']];
     return '<div class="panel"><div class="ph"><h3>Integrations</h3>' + tag('F', 'always') + '</div><div class="pb"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Integration</th><th>Purpose</th><th>Prerequisites</th></tr></thead><tbody>' + rows.map(r => '<tr><td class="wrap"><b>' + esc(r[0]) + '</b></td><td class="wrap">' + esc(r[1]) + '</td><td class="wrap">' + esc(r[2]) + '</td></tr>').join('') + '</tbody></table></div></div></div>';
   };
 

@@ -38,3 +38,10 @@ body:not(.eng) .run-bottom { grid-template-columns: minmax(250px, 28fr) minmax(3
 
 /* Readiness: checks and laser at a readable width */
 body:not(.eng) #scr-readiness > * { max-width: 920px; }
+
+/* Suggested next step for a fraction (Proposed): a quiet pill; Pool carries the accent */
+.sug { display: inline-block; padding: 0 7px; border-radius: 9px; font-size: 12.5px; line-height: 18px; border: 1px solid var(--border2); color: var(--text); background: #fff; white-space: nowrap; }
+.sug.sug-pool { background: var(--accent-bg); border-color: #B9C6D8; color: var(--accent); font-weight: bold; }
+.sug.sug-none, .sug.sug-buffer { color: var(--text2); border-style: dashed; }
+.sug-why { margin-bottom: 6px; color: var(--text2); }
+.sug-why .sug { margin-right: 2px; }

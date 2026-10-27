@@ -19,14 +19,15 @@ const CH = (function () {
   function logTicks(a, b, h) { const out = [], k = h ? Math.max(1, Math.ceil(14 / (h / Math.max(1e-9, b - a)))) : 1; for (let e = Math.floor(a); e <= Math.ceil(b); e++) if (e >= a - 1e-9 && e <= b + 1e-9 && ((e % k) + k) % k === 0) out.push(e); return out; }
   function supExp(e) { const v = Math.pow(10, e); return Math.abs(e) <= 3 ? (e < 0 ? v.toFixed(-e) : String(v)) : '1e' + e; }
   function lb(arr, n, x) { let lo = 0, hi = n; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] < x) lo = m + 1; else hi = m; } return lo; }
+  function rgba(hex, a) { const n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; }
   function dashFor(s, w) { if (s === 'dash') return [5, 3]; if (s === 'dot') return [1.5, 2.5]; if (s === 'dashdot') return [6, 2.5, 1.5, 2.5]; return []; }
 
   class Chart {
     constructor(host, cfg) {
       this.host = host; this.cfg = cfg;
       host.classList.add('chart');
-      host.innerHTML = '<div class="ch-legend" role="list"></div><div class="ch-info"></div><div class="ch-plot"><canvas class="ch-base"></canvas><canvas class="ch-data"></canvas><canvas class="ch-over" tabindex="0" aria-label="' + (cfg.ariaLabel || 'Chart') + '"></canvas></div>';
-      this.legendEl = host.querySelector('.ch-legend'); this.infoEl = host.querySelector('.ch-info'); this.plotEl = host.querySelector('.ch-plot');
+      host.innerHTML = '<div class="ch-legend" role="list"></div><div class="ch-info"></div><div class="ch-plot"><canvas class="ch-base"></canvas><canvas class="ch-data"></canvas><canvas class="ch-over" tabindex="0" aria-label="' + (cfg.ariaLabel || 'Chart') + '"></canvas><div class="ch-tip" role="status" hidden></div></div>';
+      this.legendEl = host.querySelector('.ch-legend'); this.infoEl = host.querySelector('.ch-info'); this.plotEl = host.querySelector('.ch-plot'); this.tipEl = host.querySelector('.ch-tip');
       [this.cBase, this.cData, this.cOver] = host.querySelectorAll('canvas');
       this.xBase = cfg.xBase || null; this.view = null; this.zoomStack = []; this.cursorX = null; this.dragging = null;
       this.rulers = cfg.rulers ? cfg.rulers.slice() : null; this.rulersOn = !!cfg.rulersOn;
@@ -149,6 +150,7 @@ const CH = (function () {
       if (!(hi >= lo)) { lo = ax.def ? ax.def[0] : 0; hi = ax.def ? ax.def[1] : 1; }
       if (ax.zero !== false) { lo = Math.min(0, lo); }
       if (ax.sym) { const m = Math.max(Math.abs(lo), Math.abs(hi), ax.symMin || 0); lo = -m; hi = m; }
+      const mt = typeof ax.minTop === 'function' ? ax.minTop() : ax.minTop; if (mt != null && hi < mt) hi = mt;
       if (hi - lo < (ax.minSpan || 1e-9)) { const m = (hi + lo) / 2, h = (ax.minSpan || 1e-6) / 2; lo = m - h; hi = m + h; }
       const span = hi - lo, st = nice(span * 1.08, 5); let a = Math.floor((lo - (ax.zero !== false && lo >= 0 ? 0 : span * 0.04)) / st) * st, b2 = Math.ceil((hi + span * 0.06) / st) * st;
       if (ax.zero !== false && lo >= 0) a = 0;
@@ -251,11 +253,8 @@ const CH = (function () {
       }
       // hatched intervals (alignment uncertain) and interval bars (laser change)
       for (const h of (cfg.hatches ? cfg.hatches() : [])) { const x0 = Math.max(main.x, this.xToPx(h.x0)), x1 = Math.min(main.x + main.w, this.xToPx(h.x1)); if (x1 > x0) for (const p of this.panels) this.hatch(ctx, x0, p.y, x1 - x0, p.h, 'rgba(91,102,112,0.28)'); }
-      let ivRow = 0;
-      for (const iv of (cfg.intervals ? cfg.intervals() : [])) {
-        const x0 = Math.max(main.x, this.xToPx(iv.x0)), x1 = Math.min(main.x + main.w, Math.max(this.xToPx(iv.x1), this.xToPx(iv.x0) + 2)); if (x1 <= main.x || x0 >= main.x + main.w) continue;
-        ctx.fillStyle = iv.color || C.warn; ctx.fillRect(x0, main.y + 1 + ivRow * 16, x1 - x0, 3); ivRow = (ivRow + 1) % 3;
-      }
+      this.ivLay = this.ivLayout(ctx);
+      for (const v of this.ivLay) { ctx.fillStyle = v.iv.color || C.warn; ctx.fillRect(v.x0, main.y + 1 + v.row * 16, v.x1 - v.x0, 3); }
       // x axis
       const yAx = this.bottomY; ctx.strokeStyle = C.axis; ctx.beginPath(); ctx.moveTo(this.px0, yAx + 0.5); ctx.lineTo(this.px0 + this.pw, yAx + 0.5); ctx.stroke();
       ctx.fillStyle = C.text2; ctx.textAlign = 'center'; ctx.font = FONT_S; ctx.textBaseline = 'top';
@@ -269,6 +268,20 @@ const CH = (function () {
         else { ctx.font = FONT_S; const tw = ctx.measureText(m.label || '').width; mRow = x - tw / 2 < mEnd ? mRow + 1 : 0; mEnd = x + tw / 2 + 3; const ly = yAx - 10 - mRow * 13; ctx.fillStyle = m.color || C.text; ctx.beginPath(); ctx.moveTo(x, yAx - 9); ctx.lineTo(x - 4, yAx - 1); ctx.lineTo(x + 4, yAx - 1); ctx.closePath(); ctx.fill(); this.markerLabels.push({ x, y: ly, label: m.label || '', color: m.color || C.text }); this.markerHits.push({ x, y0: ly - 12, y1: yAx + 2, text: m.text }); }
       }
       ctx.textBaseline = 'alphabetic';
+    }
+    // intervals (laser change, co-elution): a bar and a label at the top of the main panel, in up to three rows; a label
+    // that fits no row is left to the tooltip
+    ivLayout(ctx) {
+      const main = this.panels[0], rows = [[], [], []], out = []; if (!main) return out;
+      ctx.save(); ctx.font = FONT_S;
+      for (const iv of (this.cfg.intervals ? this.cfg.intervals() : [])) {
+        const x0 = Math.max(main.x, this.xToPx(iv.x0)), x1 = Math.min(main.x + main.w, Math.max(this.xToPx(iv.x1), this.xToPx(iv.x0) + 2)); if (x1 <= main.x || x0 >= main.x + main.w) continue;
+        const tw = ctx.measureText(iv.label).width, lx = Math.min(x0 + 1, main.x + main.w - tw - 5), r0 = Math.min(lx, x0), r1 = Math.max(x1, lx + tw + 6);
+        let row = rows.findIndex(r => !r.some(([a, b]) => r0 < b + 6 && r1 > a - 6)), label = true;
+        if (row < 0) { row = rows.findIndex(r => !r.some(([a, b]) => x0 < b && x1 > a)); label = false; if (row < 0) row = 0; }
+        rows[row].push(label ? [r0, r1] : [x0, x1]); out.push({ iv, x0, x1, row, label, lx, tw });
+      }
+      ctx.restore(); return out;
     }
     hatch(ctx, x, y, w, h, color) {
       ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip(); ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.beginPath();
@@ -295,13 +308,30 @@ const CH = (function () {
           for (const s of ordered) {
             if (s.mode === 'points') { this.drawPoints(ctx, p, sc, s); continue; }
             const b = s.b; if (!b) continue;
-            const hover = this.hoverKey === s.key;
-            ctx.strokeStyle = s.color; ctx.lineWidth = (s.width || 1.25) * (hover ? 2 : 1); ctx.setLineDash(dashFor(s.dash)); ctx.lineJoin = 'round';
-            ctx.beginPath();
-            let started = false, start = c0;
+            // a hovered legend entry lifts its trace and fades the others
+            const hover = this.hoverKey === s.key, faded = this.hoverKey != null && !hover;
+            let start = c0;
             // walk back to the previous filled column to connect the line
             for (let c = c0 - 1; c >= 0 && c >= c0 - 4000; c--) if (b.cnt[c]) { start = c; break; }
             const Y = v => this.yToPx(p, sc, sc.lin ? v : v);
+            ctx.globalAlpha = faded ? 0.3 : 1;
+            // area wash under a trace (species chromatograms): the series hue at low opacity, down to zero or the panel floor
+            if (s.fill) {
+              const base = sc.lin ? Math.min(p.y + p.h, Math.max(p.y, Y(0))) : p.y + p.h; let open = false, lastX = 0;
+              ctx.fillStyle = rgba(s.color, s.fill); ctx.beginPath();
+              for (let c = start; c <= c1; c++) {
+                if (!b.cnt[c]) continue;
+                const top = sc.lin ? b.max[c] : b.maxPos[c]; if (!sc.lin && !(top > 0)) { if (open) { ctx.lineTo(lastX, base); open = false; } continue; }
+                const x = p.x + c + 0.5, y = Math.max(p.y, Y(top));
+                if (!open || b.brk[c]) { if (open) ctx.lineTo(lastX, base); ctx.moveTo(x, base); ctx.lineTo(x, y); open = true; } else ctx.lineTo(x, y);
+                lastX = x;
+              }
+              if (open) ctx.lineTo(lastX, base);
+              ctx.fill();
+            }
+            ctx.strokeStyle = s.color; ctx.lineWidth = (s.width || 1.25) + (hover ? 1 : 0); ctx.setLineDash(dashFor(s.dash)); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+            ctx.beginPath();
+            let started = false;
             for (let c = start; c <= c1; c++) {
               if (!b.cnt[c]) continue;
               let mn = b.min[c], mx = b.max[c], fi = b.first[c], la = b.last[c];
@@ -310,7 +340,7 @@ const CH = (function () {
               if (!started || b.brk[c]) { ctx.moveTo(x, yf); started = true; } else ctx.lineTo(x, yf);
               if (b.cnt[c] > 1) { ctx.lineTo(x, ymn); ctx.lineTo(x, ymx); ctx.lineTo(x, yl); }
             }
-            ctx.stroke(); ctx.setLineDash([]);
+            ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.lineCap = 'butt';
             // off-scale indicators
             ctx.fillStyle = s.color;
             for (let c = c0; c <= c1; c++) { if (!b.cnt[c]) continue; const hi = sc.lin ? b.max[c] : Math.log10(b.maxPos[c]), lo = sc.lin ? b.min[c] : (b.minPos[c] < Infinity ? Math.log10(b.minPos[c]) : sc.a); if (hi > sc.b) ctx.fillRect(p.x + c, p.y, 1, 3); if (sc.lin && lo < sc.a) ctx.fillRect(p.x + c, p.y + p.h - 3, 1, 3); }
@@ -348,20 +378,78 @@ const CH = (function () {
         if (g.label) { ctx.font = FONT_S; ctx.textBaseline = 'top'; const tw = ctx.measureText(g.label).width, flip = (g.flip && x - 6 - tw >= main.x) || x + 6 + tw > main.x + main.w, lx = flip ? x - 6 - tw : x + 6, ly = top + 1 + (g.row || 0) * 11; ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(lx - 1, ly - 1, tw + 2, 13); ctx.fillStyle = g.color; ctx.textAlign = 'left'; ctx.fillText(g.label, lx, ly); }
       }
       if (this.cursorX != null && !this.dragging) { const x = Math.round(this.xToPx(this.cursorX)) + 0.5; ctx.strokeStyle = 'rgba(31,41,51,0.45)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bot); ctx.stroke(); }
+      this.drawHover(ctx);
+      if (this.dragging) this.tipEl.hidden = true;
       if (this.dragging && (this.dragging.kind === 'zoom' || this.dragging.kind === 'select')) {
         const d = this.dragging, x0 = Math.min(d.x0, d.x1), x1 = Math.max(d.x0, d.x1), y0 = d.kind === 'zoom' ? Math.min(d.y0, d.y1) : top, y1 = d.kind === 'zoom' ? Math.max(d.y0, d.y1) : bot;
         ctx.fillStyle = 'rgba(27,54,93,0.08)'; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); ctx.strokeStyle = C.accent; ctx.lineWidth = 1; ctx.strokeRect(x0 + 0.5, y0 + 0.5, x1 - x0, y1 - y0);
       }
       ctx.textBaseline = 'alphabetic';
     }
+    // hover layer (cfg.tooltip): a dot with a white ring on each trace at the cursor, and one tooltip for every series
+    hoverRows() {
+      if (this.cursorX == null || this.dragging || !this.scales) return [];
+      const rows = [];
+      this.panels.forEach((p, pi) => {
+        for (const s of this.series) {
+          if (!s.visible || s.panel !== p.key || s.mode === 'points' || s.inTip === false) continue;
+          const sc = this.scales[pi][s.side || 'l']; if (!sc) continue;
+          const v = this.valueAt(s, this.cursorX); if (!v || !(v.y === v.y)) continue;
+          const y = this.yToPx(p, sc, v.y);
+          rows.push({ s, v, y: isFinite(y) && y >= p.y - 1 && y <= p.y + p.h + 1 ? y : null });
+        }
+      });
+      return rows;
+    }
+    drawHover(ctx) {
+      const tip = this.tipEl; if (!this.cfg.tooltip) return;
+      const rows = this.hoverRows(); if (!rows.length) { tip.hidden = true; return; }
+      const x = this.xToPx(this.cursorX);
+      for (const r of rows) { if (r.y == null || r.s.dot === false) continue; ctx.beginPath(); ctx.arc(x, r.y, 4, 0, 2 * Math.PI); ctx.fillStyle = r.s.color; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#FFFFFF'; ctx.stroke(); }
+      // values lead, labels follow; each row keyed by a short stroke of the series colour
+      tip.textContent = '';
+      const head = this.cfg.tipHead ? this.cfg.tipHead(this.cursorX) : ''; if (head) { const h = document.createElement('div'); h.className = 'tt-h'; h.textContent = head; tip.append(h); }
+      for (const r of rows) {
+        const row = document.createElement('div'); row.className = 'tt-r';
+        const k = document.createElement('span'); k.className = 'tt-k'; k.style.borderTopColor = r.s.color; if (r.s.dash) k.style.borderTopStyle = 'dashed';
+        const val = document.createElement('b'); val.textContent = r.s.fmt ? r.s.fmt(r.v.y, r.v.i) : String(r.v.y);
+        const lab = document.createElement('span'); lab.className = 'tt-l'; lab.textContent = r.s.tipLabel || r.s.label;
+        row.append(k, val, lab); tip.append(row);
+      }
+      const extra = this.cfg.tipExtra ? this.cfg.tipExtra(this.cursorX) : ''; if (extra) { const e = document.createElement('div'); e.className = 'tt-x'; e.textContent = extra; tip.append(e); }
+      tip.hidden = false;
+      const tw = tip.offsetWidth, th = tip.offsetHeight, main = this.panels[0], ys = rows.map(r => r.y).filter(y => y != null);
+      let lx = x + 16; if (lx + tw > this.px0 + this.pw) lx = x - 16 - tw; lx = Math.max(2, lx);
+      const yc = ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : main.y + main.h / 2;
+      tip.style.left = Math.round(lx) + 'px'; tip.style.top = Math.round(Math.max(main.y, Math.min(this.H - th - 2, yc - th / 2))) + 'px';
+    }
+    // direct labels on the main panel (detected peaks): a ringed dot at the point and its name above, never overlapping
+    drawAnnotations(ctx, placed) {
+      const main = this.panels[0], sc = this.scales && this.scales[0] && this.scales[0].l; if (!main || !sc || !this.cfg.annotations) return;
+      ctx.save(); ctx.font = 'bold ' + FONT_S; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      const list = this.cfg.annotations().map(a => ({ ...a, px: this.xToPx(a.x), py: this.yToPx(main, sc, a.y) })).filter(a => a.px >= main.x + 2 && a.px <= main.x + main.w - 2 && isFinite(a.py)).sort((a, b) => a.py - b.py);
+      for (const a of list) {
+        const py = Math.max(main.y + 4, Math.min(main.y + main.h, a.py)), tw = ctx.measureText(a.label).width, lx = Math.min(main.x + main.w - tw / 2 - 3, Math.max(main.x + tw / 2 + 3, a.px));
+        let y = py - 8; const box = yy => [lx - tw / 2 - 3, yy - 14, lx + tw / 2 + 3, yy + 1];
+        for (let k = 0; k < 6 && placed.find(t => box(y)[0] < t[2] && box(y)[2] > t[0] && box(y)[1] < t[3] && box(y)[3] > t[1]); k++) y -= 15;
+        if (y - 14 < main.y + 2) y = Math.max(main.y + 16, py + 22);
+        const b = box(y); if (placed.find(t => b[0] < t[2] && b[2] > t[0] && b[1] < t[3] && b[3] > t[1])) continue; placed.push(b);
+        if (y < py - 9) { ctx.strokeStyle = 'rgba(91,102,112,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(a.px + 0.5, y + 1); ctx.lineTo(a.px + 0.5, py - 5); ctx.stroke(); }
+        ctx.beginPath(); ctx.arc(a.px, py, 4, 0, 2 * Math.PI); ctx.fillStyle = a.color; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.fillRect(b[0], b[1], b[2] - b[0], b[3] - b[1]); ctx.fillStyle = C.text; ctx.fillText(a.label, lx, y);
+      }
+      ctx.restore();
+    }
     // labels drawn above the traces with a backing: interval labels, strip titles, marker and reference-line labels (also on the PNG, without drag lines)
     drawLabels(ctx, noDrag) {
       const main = this.panels[0]; if (!main) return;
-      let ivRow = 0; ctx.font = FONT_S; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-      for (const iv of (this.cfg.intervals ? this.cfg.intervals() : [])) { const x0 = Math.max(main.x, this.xToPx(iv.x0)); if (this.xToPx(iv.x1) < main.x || x0 >= main.x + main.w) continue; const y = main.y + 11 + ivRow * 16, tw = ctx.measureText(iv.label).width; ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.fillRect(x0 + 1, y - 7, tw + 4, 14); ctx.fillStyle = iv.color || C.warn; ctx.fillText(iv.label, x0 + 3, y); ivRow = (ivRow + 1) % 3; }
-      const tbox = [], hit = (b, list) => list.find(t => b[0] < t[2] && b[2] > t[0] && b[1] < t[3] && b[3] > t[1]);
+      ctx.font = FONT_S; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      const tbox = [];
+      for (const v of (this.ivLay || this.ivLayout(ctx))) { if (!v.label) continue; const y = main.y + 11 + v.row * 16; ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.fillRect(v.lx, y - 7, v.tw + 4, 14); ctx.fillStyle = v.iv.color || C.warn; ctx.fillText(v.iv.label, v.lx + 2, y); tbox.push([v.lx, y - 7, v.lx + v.tw + 4, y + 7]); }
+      const hit = (b, list) => list.find(t => b[0] < t[2] && b[2] > t[0] && b[1] < t[3] && b[3] > t[1]);
       for (const p of this.panels) { const ax = p.cfg.yl; if (!p.cfg.px || !ax) continue; const t = (ax.short || ax.title) + (ax.unit ? ' (' + ax.unit + ')' : ''); ctx.font = FONT_S; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; const tw = ctx.measureText(t).width; ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(p.x + 2, p.y + 2, tw + 8, 16); ctx.fillStyle = C.text2; ctx.fillText(t, p.x + 6, p.y + 4); tbox.push([p.x + 2, p.y + 2, p.x + tw + 10, p.y + 18]); }
       const placed = [];
+      this.drawAnnotations(ctx, placed.concat(tbox));
       for (const m of (this.markerLabels || [])) {
         ctx.font = FONT_S; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; const tw = ctx.measureText(m.label).width, box = y => [m.x - tw / 2 - 2, y - 13, m.x + tw / 2 + 2, y]; let y = m.y;
         for (let k = 0; k < 4; k++) { const t = hit(box(y), tbox), q = !t && hit(box(y), placed); if (!t && !q) break; y = t ? t[1] - 1 : q[1]; }
@@ -385,18 +473,18 @@ const CH = (function () {
       return { i, y: d.y[i] };
     }
     updateReadout() {
-      const live = this.cursorX == null;
+      const live = this.cursorX == null || !!this.cfg.tooltip;
       for (const s of this.series) {
         if (!s._valEl) continue;
         if (!s.visible) { s._valEl.textContent = ''; continue; }
         let v = null;
-        if (live) { if (this.cfg.liveReadout === false) { s._valEl.textContent = ''; continue; } const d = s.src(); if (d && d.n && s.mode !== 'points') { let i = d.n - 1; while (i > 0 && !(d.y[i] === d.y[i])) i--; v = { i, y: d.y[i] }; } }
+        if (live) { if (this.cfg.liveReadout === false) { s._valEl.textContent = ''; continue; } const d = s.src(); if (d && d.n && s.mode !== 'points') { const li = this.cfg.liveIndex ? this.cfg.liveIndex() : null; let i = li != null && li < d.n ? li : d.n - 1; while (i > 0 && !(d.y[i] === d.y[i])) i--; v = { i, y: d.y[i] }; } }
         else v = this.valueAt(s, this.cursorX);
         s._valEl.textContent = v && v.y === v.y ? (s.fmt ? s.fmt(v.y, v.i) : String(v.y)) : (s.mode === 'points' ? '' : '–');
       }
       let info = '';
       if (this.hoverMarker) info = this.hoverMarker;
-      else if (this.cfg.info) info = this.cfg.info(this.cursorX, this);
+      else if (this.cfg.info && !(this.cfg.tooltip && this.cursorX != null && this.cfg.hoverInfo && !this.cfg.hoverInfo())) info = this.cfg.info(this.cursorX, this);
       if (this.rulers && this.rulersOn && this.cfg.rulerInfo) info = this.cfg.rulerInfo(this.rulers[0], this.rulers[1]) + (info ? '   |   ' + info : '');
       this.infoEl.textContent = info || ' ';
     }
@@ -421,7 +509,7 @@ const CH = (function () {
         this.drawOver(); this.updateReadout();
         if (this.cfg.onHover) this.cfg.onHover(this.cursorX);
       });
-      el.addEventListener('mouseleave', () => { if (!this.dragging) { this.cursorX = null; this.hoverMarker = null; this.drawOver(); this.updateReadout(); if (this.cfg.onHover) this.cfg.onHover(null); } });
+      el.addEventListener('mouseleave', () => { this.tipEl.hidden = true; if (!this.dragging) { this.cursorX = null; this.hoverMarker = null; this.drawOver(); this.updateReadout(); if (this.cfg.onHover) this.cfg.onHover(null); } });
       el.addEventListener('mousedown', e => {
         if (e.button !== 0) return; const [x, y] = pos(e); el.focus();
         const near = this.dragLines().find(g => Math.abs(this.xToPx(g.x) - x) <= 4);

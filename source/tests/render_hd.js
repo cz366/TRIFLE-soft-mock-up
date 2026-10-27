@@ -72,6 +72,12 @@ async function confirmReady(page, until) {
     await shot('07_run_complete');
     await until('() => LTM.state(M.S.run) === "final"', 60000); await page.waitForTimeout(800);
     await shot('07b_run_species_final');
+    { // hover in the elution: a dot on every trace and one tooltip
+      const box = await page.$eval('#runChart .ch-over', c => { const r = c.getBoundingClientRect(); return { x: r.left, y: r.top }; });
+      const px = await page.evaluate(() => { const ch = UI.screen('run').chart(), el = M.S.run.ph.list.find(p => p.key === 'el'); return ch.xToPx(el.t0 + 3.2); });
+      await page.mouse.move(box.x + px, box.y + 230); await page.waitForTimeout(600);
+      await page.screenshot({ path: path.join(out, '07c_run_hover_tooltip.png') }); console.log('shot 07c_run_hover_tooltip');
+    }
     await page.click('#rExp'); await page.waitForTimeout(800);
     await shot('08_run_chart_expanded');
     await page.click('#rExp'); await page.waitForTimeout(500);
@@ -83,7 +89,7 @@ async function confirmReady(page, until) {
       await shot('08b_run_elution_decay_pinned');
       await page.click('#rPLog button[data-v="0"]'); await page.click('#decLatest'); await page.click('#rReset'); await page.waitForTimeout(300);
       const viewOpt = async id => { await page.click('#rView'); await page.click(id); await page.mouse.click(700, 40); await page.waitForTimeout(400); };
-      await viewOpt('#rAk'); await viewOpt('#rMap'); await shot('08c_run_akta_traces_and_decay_map'); await viewOpt('#rAk'); await viewOpt('#rMap');
+      await viewOpt('#rAk'); await shot('08c_run_with_akta_traces'); await viewOpt('#rAk');
     }
 
     await page.click('.nav[data-go=fractions]'); await page.waitForTimeout(1500);
@@ -91,11 +97,12 @@ async function confirmReady(page, until) {
     await shot('09_fraction_review_load_FT09');
     await page.click('#frTbl tbody tr[data-id="E05"]'); await page.waitForTimeout(800);
     await shot('10_fraction_review_elution_E05');
-    await page.click('.decb[data-id="FT09"]'); await page.waitForTimeout(400);
-    await shot('11_fraction_decision');
-    await page.click('.popover input[data-a=proa]'); await page.mouse.click(5, 5); await page.waitForTimeout(400);
+    await page.click('.decb[data-id="E06"]'); await page.waitForTimeout(400);
+    await shot('11_fraction_decision_suggested');
+    await page.mouse.click(5, 5); await page.waitForTimeout(300);
+    await page.click('#frApply'); await page.waitForTimeout(500);
     await page.click('#frTabs button[data-v=samples]'); await page.waitForTimeout(500);
-    await shot('12_samples_to_send');
+    await shot('12_pool_and_samples');
     await page.click('#frTabs button[data-v=frac]'); await page.waitForTimeout(300);
 
     await page.click('[data-go=record]'); await page.waitForTimeout(1500);

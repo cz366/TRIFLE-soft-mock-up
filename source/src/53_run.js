@@ -1,9 +1,9 @@
 /* ---------- shared chromatogram configuration (Run and Fraction review) ---------- */
 const RC = (function () {
   const S = M.S, fmt = M.fmt, C = CH.C, { esc } = UI;
-  // TRIFLE view by default: time axis, species chromatogram only. The decay map and the AKTA traces (which
-  // belong to UNICORN) are one click away in the View menu.
-  const view = { x: 'min', log: false, akta: false, map: false };
+  // TRIFLE view by default: time axis, the species chromatogram and the decay map of the whole run. The AKTA traces
+  // (which belong to UNICORN) are one click away in the View menu.
+  const view = { x: 'min', log: false, akta: false, map: true };
   const extraSeries = [], extraPanels = [], extraInfo = [], runRows = [];
   const XT = { vol: 'Volume (mL)', cv: 'Column volumes (CV)', min: 'Time (min)' };
   function R() { return S.run; }
@@ -39,8 +39,8 @@ const RC = (function () {
     const ff = v => fmt.sig3(v) + ' V·ns', tot = 'Total fluorescence';
     // total fluorescence in primary ink, like the species it is the sum of; UV 280 has its own strip (one y axis per panel)
     const list = [
-      { key: 'v20', label: tot + (p === 'v20' && !cmp ? '' : ', v2.0 reference'), tip: 'Total fluorescence, ND-corrected: the integral of each pulse (v2.0 reference processing)', color: C.text, width: 1.25, z: 2, panel: 'main', src: trifle('v20'), fmt: ff, visible: p === 'v20' || cmp, shade: S.engineer },
-      { key: 'prop', label: tot + ', Proposed' + (lc ? ' (corrected)' : ''), color: C.text, dash: 'dash', width: 1.25, z: 2, panel: 'main', src: trifle('prop'), fmt: ff, visible: p === 'prop', legend: p === 'prop' },
+      { key: 'v20', label: tot + (p === 'v20' && !cmp ? '' : ', v2.0 reference'), tip: 'Total fluorescence, ND-corrected: the integral of each pulse (v2.0 reference processing)', color: C.text, width: 2, z: 2, panel: 'main', src: trifle('v20'), fmt: ff, visible: p === 'v20' || cmp, shade: S.engineer },
+      { key: 'prop', label: tot + ', Proposed' + (lc ? ' (corrected)' : ''), color: C.text, dash: 'dash', width: 2, z: 2, panel: 'main', src: trifle('prop'), fmt: ff, visible: p === 'prop', legend: p === 'prop' },
       { key: 'propU', label: tot + ', Proposed, uncorrected', color: C.cond, width: 0.9, panel: 'main', src: trifle('propU'), fmt: ff, visible: p === 'prop' && lc, legend: p === 'prop' && lc },
       { key: 'uv', label: 'UV 280', color: C.uv, width: 1.25, panel: 'uv', src: akta('uv'), fmt: v => fmt.mau(v) + ' mAU', visible: ak, legend: ak },
       { key: 'cond', label: 'Conductivity', color: C.cond, width: 1, panel: 'cond', src: akta('cond'), fmt: v => fmt.cond(v) + ' mS/cm', visible: ak, legend: ak },
@@ -57,7 +57,8 @@ const RC = (function () {
     const bmOn = () => (r() ? r().setupSnap.beamPerBlock : S.setup.beamPerBlock);
     const imp = () => (r() ? r().setupSnap.source : S.setup.source) === 'import', ak = () => imp() && view.akta;
     const out = [
-      { key: 'main', yl: { title: 'Fluorescence', unit: S.engineer ? 'V·ns, ND-corrected' : 'V·ns', log: () => view.log, minLog: -3 } },
+      // scientist view: the axis spans at least 0.2 V·ns, so buffer reads as a flat line near zero, not as magnified noise
+      { key: 'main', yl: { title: 'Fluorescence', unit: S.engineer ? 'V·ns, ND-corrected' : 'V·ns', log: () => view.log, minLog: -3, minTop: () => S.engineer ? null : 0.2 } },
       { key: 'map', px: 64, hidden: () => !view.map || !(r() && r().acq.dw), yl: { title: 'Decay map', short: 'Decay map', unit: 'ns', fixed: [0, 30], zero: false, tickFmt: v => v.toFixed(0) }, draw: mapDraw },
       { key: 'uv', px: 46, hidden: () => !ak(), yl: { title: 'UV 280', short: 'UV 280', unit: 'mAU', fixed: [0, 4000], tickFmt: v => v.toFixed(0) } },
       { key: 'cond', px: 46, hidden: () => !ak(), yl: { title: 'Conductivity', short: 'Cond.', unit: 'mS/cm', fixed: [0, 100], tickFmt: v => v.toFixed(0) } },
@@ -80,8 +81,17 @@ const RC = (function () {
   function hatches() { const r = R(), al = M.alignmentState(); if (!r || al.detector !== 'Uncertain') return []; const d = xDomain(); return [{ x0: d[0], x1: d[1] }]; }
   function intervals() {
     const r = R(); if (!r) return [];
-    return r.rules.cards.filter(c => c.rule === 'I6' || (c.rule === 'I1' && c.x1 > c.x0)).map(c => ({ x0: toX(c.x0), x1: toX(c.x1), label: c.rule === 'I6' ? 'I6 laser change' : 'I1 warm-up', color: C.warn }));
+    return r.rules.cards.filter(c => c.rule === 'I6' || (c.rule === 'I1' && c.x1 > c.x0)).map(c => ({ x0: toX(c.x0), x1: toX(c.x1), label: c.rule === 'I6' ? 'I6 laser change' : 'I1 warm-up', color: C.warn }))
+      .concat(api.coelution ? api.coelution() : []);
   }
+  // nearest block to a chart x; the tooltip heading names the time, volume and fraction there
+  function idxAt(x) { const r = R(); if (!r || !r.derivedN || x == null) return null; const xs = r.x[sa() ? 'acq' : view.x], n = r.derivedN; let i = Math.min(n - 1, TR.lowerBound(xs, n, x)); if (i > 0 && Math.abs(xs[i - 1] - x) <= Math.abs(xs[i] - x)) i--; return i; }
+  function tipHead(x) {
+    const r = R(); if (!r || x == null) return ''; if (sa()) return fmt.min1(x) + ' min from TRIFLE start';
+    const v = fromX(x), t = view.x === 'min' ? x : TR.timeAtVol(r.ph, v), f = r.fractions.find(q => v >= q.a && v < q.b);
+    return fmt.min1(t) + ' min · ' + fmt.ml(v) + ' mL' + (f ? ' · ' + f.id : '');
+  }
+  function tipExtraAt(x) { return api.tipExtra ? api.tipExtra(idxAt(x)) : ''; }
   function info(x) {
     const r = R(); if (x == null || !r) return '';
     if (sa()) return fmt.min1(x) + ' min from TRIFLE start';
@@ -149,7 +159,9 @@ const RC = (function () {
     host.append(b); count(); M.on(ev => { if (ev === 'series') count(); });
     return b;
   }
-  return { extraSeries, extraPanels, extraInfo, runRows, view, XT, xTitle, sa, toX, fromX, xDomain, bands, fracItems, trifle, akta, seriesFor, panels, markers, hatches, intervals, info, rulerInfo, legendExtras, mapDraw, viewMenu };
+  // annotations (detected peaks), coelution and tipExtra (by block) are supplied by the lifetime analysis UI
+  const api = { extraSeries, extraPanels, extraInfo, runRows, view, XT, xTitle, sa, toX, fromX, xDomain, bands, fracItems, trifle, akta, seriesFor, panels, markers, hatches, intervals, info, rulerInfo, legendExtras, mapDraw, viewMenu, idxAt, tipHead, tipExtraAt, annotations: null, coelution: null, tipExtra: null };
+  return api;
 })();
 
 /* ---------- Run (Acquire and Validate) ---------- */
@@ -192,6 +204,8 @@ const RC = (function () {
       ariaLabel: 'Chromatogram with TRIFLE fluorescence and AKTA traces', rulers: [0, 1], rulerColor: C.v20,
       xDomain: RC.xDomain, xTitle: RC.xTitle, panels: RC.panels(), series: RC.seriesFor(), bands: RC.bands, fractions: RC.fracItems,
       markers: () => RC.markers(true), hatches: RC.hatches, intervals: RC.intervals, info: RC.info, rulerInfo: RC.rulerInfo, legendExtras: RC.legendExtras(),
+      tooltip: true, tipHead: RC.tipHead, tipExtra: RC.tipExtraAt, annotations: () => RC.annotations ? RC.annotations() : [], hoverInfo: () => S.engineer,
+      liveIndex: () => { const R = S.run; return R && R.lt && R.lt.fit ? R.lt.n - 1 : null; },
       highlights: () => highlight ? [{ x0: RC.toX(highlight[0]), x1: RC.toX(highlight[1]) }] : [],
       // fraction cuts come from UNICORN: shown with the AKTA traces; Fraction review always shows them
       fractions: () => RC.view.akta ? RC.fracItems() : null,
@@ -264,8 +278,8 @@ const RC = (function () {
     const pos = a => pulseLog ? Float64Array.from(a, v => v > 0 ? v : NaN) : a;
     return [
       { key: 'd', label: 'Data', tip: 'Mean decay of the blocks in the 15 s window, ND-corrected', mode: 'points', shape: 'dot', size: 3, color: '#8C96A0', panel: 'main', src: () => dec.n ? { x: dec.x, y: pos(dec.y), n: dec.n } : null },
-      ...(dec.d && dec.d.fit ? [{ key: 'f', label: 'Fit', tip: 'Sum of the components', color: C.text, width: 1.5, panel: 'main', src: () => ({ x: dec.x, y: pos(dec.f), n: dec.n, gen: dec.gen * 2 + (pulseLog ? 1 : 0) }), fmt: v => fmt.sig3(v) + ' V' }] : []),
-      ...comps.map(c => ({ key: 'c' + c.key, label: c.short + sh(c), tip: c.name + (S.engineer ? ', τ ' + c.tau.toFixed(2) + ' ns' : '') + ': ' + fmt.sig3(c.a) + ' V·ns', color: c.color, width: 1.25, panel: 'main', src: () => dec.c[c.k] ? { x: dec.x, y: pos(dec.c[c.k]), n: dec.n, gen: dec.gen * 2 + (pulseLog ? 1 : 0) } : null, fmt: v => fmt.sig3(v) + ' V' })),
+      ...(dec.d && dec.d.fit ? [{ key: 'f', label: 'Fit', tip: 'Sum of the components', color: C.text, width: 2, panel: 'main', src: () => ({ x: dec.x, y: pos(dec.f), n: dec.n, gen: dec.gen * 2 + (pulseLog ? 1 : 0) }), fmt: v => fmt.sig3(v) + ' V' }] : []),
+      ...comps.map(c => ({ key: 'c' + c.key, label: c.short + sh(c), tip: c.name + (S.engineer ? ', τ ' + c.tau.toFixed(2) + ' ns' : '') + ': ' + fmt.sig3(c.a) + ' V·ns', color: c.color, width: 2, panel: 'main', src: () => dec.c[c.k] ? { x: dec.x, y: pos(dec.c[c.k]), n: dec.n, gen: dec.gen * 2 + (pulseLog ? 1 : 0) } : null, fmt: v => fmt.sig3(v) + ' V' })),
       ...(dec.d && dec.d.fit ? [{ key: 'r', label: 'Residual', legend: false, mode: 'points', shape: 'dot', size: 2, color: '#8C96A0', panel: 'res', src: () => ({ x: dec.x, y: dec.r, n: dec.n }) }] : [])
     ];
   }

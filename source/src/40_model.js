@@ -46,13 +46,15 @@ const M = (function () {
     th: {
       laserFallPct: 20, laserHoldPct: 2, laserHoldMin: 5, laserNoStepMin: 60,
       i2Count: 2, i3Count: 3, i4V: 0.005, i5Tol: 0.05, i6Pct: 2, p2SlopePct: 2, p2PlateauPct: 1, p3Pct: 10, p4Pct: 10, p5Pct: 5,
-      lowPrec: 0.20, clearS: 60, bufNoise: 0.0015, bufDrift: 0.0002, bufWander: 0.0015, darkRms: 0.0005, flPct: 5
+      lowPrec: 0.20, clearS: 60, bufNoise: 0.0015, bufDrift: 0.0002, bufWander: 0.0015, darkRms: 0.0005, flPct: 5,
+      poolPct: 95, exclPct: 20, breakPct: 2
     },
     demo: { laserEarly: false, delayNotUpdated: false },
     audit: [], laserLog: [], laser: null, readiness: null, run: null, decisions: {}, responses: {}, notes: [], exports: [],
     alignChecked: '2026-09-28', listeners: []
   };
   const TH_INFO = {
+    poolPct: ['Suggest Pool: product share of the sample fluorescence at least', '%'], exclPct: ['Suggest leaving out: an impurity share at least', '%'], breakPct: ['Suggest Protein A HPLC on a flow-through fraction: product share at least', '%'],
     laserFallPct: ['Laser step-down: controller reading falls by more than', '%'], laserHoldPct: ['Laser stable: reading held within', '±%'], laserHoldMin: ['Laser stable: held for at least', 'min'], laserNoStepMin: ['Laser stable with no step-down after', 'min'],
     i2Count: ['I2: waveforms above 90 % of range, more than this many of the last 10', 'count'], i3Count: ['I3: discarded blocks in 1 min, more than', 'count'], i4V: ['I4: beam monitor minimum', 'V'], i5Tol: ['I5: fraction delay tolerance', 'mL'],
     i6Pct: ['I6: laser change, more than', '%'], p2SlopePct: ['P2: fluorescence slope over the last 1 CV, more than', '% per CV'], p2PlateauPct: ['P2: plateau when the slope is below', '% per CV'], p3Pct: ['P3: buffer baseline difference from pre-run, more than', '%'], p4Pct: ['P4: Wash 2 difference from equilibration, more than', '%'], p5Pct: ['P5: beam monitor change from run start, more than', '%'],
@@ -482,7 +484,7 @@ const M = (function () {
       const c = this.cond('P2', slope > th.p2SlopePct, i, () => {
         const x0 = R.acq.u[dq[0]], fr = this.fracsIn(x0, u);
         const p = this.card({ rule: 'P2', phaseIdx: ph, title: 'Fluorescence rising after the load plateau', obs: '', x0, x1: u, fractions: fr, maxSlope: slope, plateau: this.plateau.level });
-        this.card({ rule: 'H1', phaseIdx: ph, linkedTo: p.id, title: 'Possible onset of mAb breakthrough', obs: 'Total fluorescence cannot separate mAb from HCP; the mAb component of the lifetime analysis can. Check it over the same interval.', x0, x1: u, fractions: fr, features: [{ name: 'Lifetime analysis', label: 'P' }], confirm: 'Protein A HPLC on ' + (fr.length ? rangeIds(fr) : 'the linked flowthrough fractions') + '.' });
+        this.card({ rule: 'H1', phaseIdx: ph, linkedTo: p.id, title: 'Possible onset of mAb breakthrough', obs: 'Total fluorescence cannot separate mAb from HCP; the monomer component of the lifetime analysis can. Check it over the same interval.', x0, x1: u, fractions: fr, features: [{ name: 'Lifetime analysis', label: 'P' }], confirm: 'Protein A HPLC on ' + (fr.length ? rangeIds(fr) : 'the linked flowthrough fractions') + '.' });
         return p;
       });
       if (c) { if (slope > c.maxSlope) c.maxSlope = slope; c.x1 = u; c.fractions = this.fracsIn(c.x0, c.x1); c.obs = 'Fluorescence slope ' + c.maxSlope.toFixed(1) + ' % per CV over the last 1 CV of the load (' + fmt.ml(c.x0) + ' to ' + fmt.ml(c.x1) + ' mL), after a plateau at ' + fmt.sig3(c.plateau) + ' V·ns. Limit ' + th.p2SlopePct + ' % per CV.'; const h = this.cards.find(k => k.linkedTo === c.id); if (h) { h.fractions = c.fractions; h.x1 = c.x1; h.confirm = 'Protein A HPLC on ' + rangeIds(c.fractions) + '.'; } }

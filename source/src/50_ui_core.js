@@ -208,7 +208,7 @@ const UI = (function () {
     foot.append(sw);
     const demo = el('<div class="demo-box" aria-label="Demo controls"><div class="demo-h">Demo controls</div>' +
       '<div class="seg sm" id="speedSeg" role="group" aria-label="Playback speed"><button data-v="1">1×</button><button data-v="10">10×</button><button data-v="60">60×</button></div>' +
-      '<label class="demo-sel" title="In use, the AKTA run comes from the UNICORN export">AKTA run<select id="demoAkta">' + Object.keys(window.AKTA_RUNS || {}).map(k => '<option value="' + k + '">' + esc(window.AKTA_RUNS[k]) + '</option>').join('') + '</select></label>' +
+      '<label class="demo-sel" title="In use, the AKTA run comes from the UNICORN export">AKTA run<select id="demoAkta">' + Object.keys(window.AKTA_RUNS || {}).map(k => '<option value="' + k + '"' + (/^aav/.test(k) ? ' class="eng-only"' : '') + '>' + esc(window.AKTA_RUNS[k]) + '</option>').join('') + '</select></label>' +
       '<label title="Allows Start before the laser is stable (rule I1)"><input type="checkbox" id="demoEarly"> Start before laser stable</label>' +
       '<label title="Uses the UNICORN fraction delay from before TRIFLE was fitted (rule I5)"><input type="checkbox" id="demoDelay"> Old fraction delay</label>' +
       '<div class="demo-btns"><button class="btn sm" id="demoFF" title="Simulates the rest of the run immediately">Fast-forward</button>' +

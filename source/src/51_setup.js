@@ -17,7 +17,8 @@
   // The AKTA run TRIFLE watches comes from the UNICORN export, not from Setup.
   // In the mock-up a demo control picks which simulated AKTA run is used.
   const AKTA_RUNS = { 'protA|import': 'Protein A platform', 'free|import': 'Free run', 'protA|manual': 'Manual event marks', 'protA|standalone': 'No AKTA data' };
-  if (window.STAGE2) AKTA_RUNS['aav|import'] = 'AAV capture';
+  // AAV is out of scope for GSK downstream for now: offered in the Engineer view only
+  if (window.STAGE2) AKTA_RUNS['aav|import'] = 'AAV capture (Engineer view)';
   window.AKTA_RUNS = AKTA_RUNS;
   window.aktaRunKey = () => { const k = S.setup.template + '|' + S.setup.source; return AKTA_RUNS[k] ? k : 'protA|import'; };
   window.setAktaRun = function (v) {

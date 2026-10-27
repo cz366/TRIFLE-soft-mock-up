@@ -178,6 +178,14 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 .ch-plot canvas { position: absolute; left: 0; top: 0; }
 .ch-plot canvas.ch-over { cursor: crosshair; }
 .ch-plot canvas.ch-over:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* hover tooltip: values lead, labels follow, each row keyed by a short stroke of the series colour */
+.ch-tip { position: absolute; z-index: 3; pointer-events: none; background: rgba(255,255,255,0.97); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 2px 8px rgba(31,41,51,0.12); padding: 6px 9px 7px; font-size: 12.5px; line-height: 1.5; white-space: nowrap; }
+.ch-tip .tt-h { color: var(--text2); margin-bottom: 2px; }
+.ch-tip .tt-r { display: flex; align-items: center; gap: 6px; }
+.ch-tip .tt-k { width: 12px; border-top: 2px solid; flex: none; }
+.ch-tip .tt-r b { color: var(--text); font-variant-numeric: tabular-nums; }
+.ch-tip .tt-l { color: var(--text2); }
+.ch-tip .tt-x { color: var(--text2); margin-top: 3px; padding-top: 3px; border-top: 1px solid var(--border); }
 .toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .toolbar .sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
 .toolbar .lab { font-size: 13.5px; color: var(--text2); }
@@ -189,7 +197,7 @@ table.tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size
 .chips span:last-child { border-right: 0; }
 .run-chart { flex: 1 1 58%; min-height: 0; display: flex; flex-direction: column; }
 .run-chart > .pb { flex: 1; min-height: 0; padding: 4px 8px 4px; display: flex; flex-direction: column; }
-.run-bottom { flex: 0 0 clamp(180px, 27%, 248px); display: grid; grid-template-columns: minmax(230px, 24fr) minmax(280px, 30fr) minmax(200px, 23fr) minmax(200px, 23fr); gap: 8px; min-height: 0; }
+.run-bottom { flex: 0 0 clamp(168px, 24%, 228px); display: grid; grid-template-columns: minmax(230px, 24fr) minmax(280px, 30fr) minmax(200px, 23fr) minmax(200px, 23fr); gap: 8px; min-height: 0; }
 .run-bottom > .panel { display: flex; flex-direction: column; min-height: 0; }
 .run-bottom > .panel > .pb { flex: 1; min-height: 0; overflow: auto; padding: 4px 8px; }
 .run-bottom > .panel > .ph { height: 28px; }

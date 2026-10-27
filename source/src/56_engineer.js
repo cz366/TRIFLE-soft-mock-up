@@ -182,7 +182,8 @@ const ENG = (function () {
     ['Process rules', ['p2SlopePct', 'p2PlateauPct', 'p3Pct', 'p4Pct', 'p5Pct']],
     ['Precision and baselines', ['lowPrec', 'bufNoise', 'bufDrift', 'bufWander', 'darkRms', 'flPct']],
     ['Calibration', ['calDepPct', 'calExpiryDays']],
-    ['Decay and P7', ['decayThrNs', 'decaySdMult', 'decayWinMl', 'decayUseMin', 'decayUseMax']]
+    ['Decay and P7', ['decayThrNs', 'decaySdMult', 'decayWinMl', 'decayUseMin', 'decayUseMax']],
+    ['Fraction suggestions (Proposed)', ['poolPct', 'exclPct', 'breakPct']]
   ];
   // Rules in level order (I, P, H), then by number
   function ruleRows() {
