@@ -157,8 +157,10 @@ const LTM = (function () {
     for (let x = 0; x < ms.length; x++) for (let z = x + 1; z < ms.length; z++) {
       const a = ms[x], b = ms[z], ya = lt.show[a], yb = lt.show[b];
       const ok = i => tot[i] > 0 && ya[i] >= DET.coShare * tot[i] && yb[i] >= DET.coShare * tot[i];
-      for (const [i0, i1] of runs(ok, DET.coGap)) {
-        if (i1 - i0 < DET.coMin) continue; let sa = 0, sb = 0; for (let i = i0; i < i1; i++) { sa += ya[i] > 0 ? ya[i] : 0; sb += yb[i] > 0 ? yb[i] : 0; }
+      // stretches that qualify on their own (gaps up to 20 blocks bridged, at least 1 min), then those of the pair
+      // under 2 min apart joined, so one co-elution reads as one
+      const segs = []; for (const g of runs(ok, DET.gap)) { if (g[1] - g[0] < DET.coMin) continue; const last = segs[segs.length - 1]; if (last && g[0] - last[1] < DET.coGap) last[1] = g[1]; else segs.push(g); }
+      for (const [i0, i1] of segs) { let sa = 0, sb = 0; for (let i = i0; i < i1; i++) { sa += ya[i] > 0 ? ya[i] : 0; sb += yb[i] > 0 ? yb[i] : 0; }
         const minor = sa < sb ? a : b, ym = lt.show[minor]; let lo = 1, hi = 0;
         for (let i = i0; i < i1; i++) if (ok(i)) { const f = ym[i] / tot[i]; if (f < lo) lo = f; if (f > hi) hi = f; }
         coel.push({ a, b, i0, i1, minor, lo, hi, label: lib[a].short + ' + ' + lib[b].short, minorShort: lib[minor].short });
