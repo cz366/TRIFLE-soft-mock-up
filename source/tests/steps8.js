@@ -23,7 +23,11 @@ module.exports = async (page, shot) => {
   const ft = await ev(() => { const R = M.S.run, f = LTM.features(R); return { peaks: f.peaks.map(p => p.key), coel: f.coel.map(c => c.label), buf: R.lt.buf[100] === 1 && R.lt.show[2][100] === 0 && R.lt.show[1][100] === 0, labels: RC.annotations().map(a => a.label) }; });
   console.log('peaks ' + ft.peaks.join(', ') + '; co-eluting ' + ft.coel.join(', '));
   check(ft.buf, 'buffer only at the start: species drawn flat at zero');
-  check(['hcp', 'mab', 'hmw'].every(k => ft.peaks.includes(k)) && ft.labels.includes('Monomer'), 'peaks detected and labelled: HCP, Monomer, HMW');
+  check(['hcp', 'mab', 'hmw'].every(k => ft.peaks.includes(k)) && ft.labels.includes('Monomer'), 'peaks detected: HCP, Monomer, HMW');
+  check(await ev(() => { const c = UI.screen('run').chart(), hid = id => getComputedStyle(document.getElementById(id)).display === 'none'; return !c.cfg.annotations().length && !c.cfg.intervals().some(v => /Co-eluting/.test(v.label)) && hid('cardPanel') && hid('rvPanel') && !hid('decPanel'); }), 'scientist Run screen: chart and Decay panel only, no peak or co-elution labels');
+  await page.click('#stWarn'); await page.waitForTimeout(400);
+  check(await ev(() => document.querySelectorAll('.popover .ev-pop .ecard').length > 0 && !!document.querySelector('.popover .ecard [data-r=accepted]')), 'status line warning opens the open observations, with Accept and Dismiss');
+  await page.keyboard.press('Escape'); await page.waitForTimeout(200);
   check(ft.coel.includes('Monomer + HMW'), 'co-elution detected: Monomer + HMW');
   const dec = await ev(() => ({ keys: UI.screen('run').chart() && [...document.querySelectorAll('#runDecay .ch-ll')].map(e => e.textContent), when: document.querySelector('#decWhen').textContent, info: document.querySelector('#runDecay .ch-info').textContent }));
   check(dec.when === 'Fluorescence maximum' && dec.keys.includes('Fit') && dec.keys.some(k => /^Monomer \d/.test(k)), 'Decay panel at the fluorescence maximum with fit and components');
@@ -66,6 +70,9 @@ module.exports = async (page, shot) => {
   const eng = await ev(() => ({ legend: [...document.querySelectorAll('#runChart .ch-ll')].map(e => e.textContent).join(' | '), info: document.querySelector('#runDecay .ch-info').textContent }));
   check(/Monomer, 3\.\d\d ns/.test(eng.legend) && /HMW, 5\.\d\d ns/.test(eng.legend) && /Scatter, 0\.\d\d ns/.test(eng.legend), 'Run legend (Engineer view): species with lifetimes, and scatter');
   check(/χ²ᵣ/.test(eng.info), 'Decay panel (Engineer view) reports the fit quality');
+  const engRun = await ev(() => { const c = UI.screen('run').chart(), shown = id => getComputedStyle(document.getElementById(id)).display !== 'none'; return { labels: c.cfg.annotations().some(a => a.label === 'Monomer'), bars: c.cfg.intervals().some(v => /Co-eluting: Monomer \+ HMW/.test(v.label)), values: shown('rvPanel'), evidence: shown('cardPanel') || !!document.querySelector('#logPanel .ptabs button[data-v=cards]') }; });
+  console.log('engineer run ' + JSON.stringify(engRun));
+  check(engRun.labels && engRun.bars && engRun.values && engRun.evidence, 'Engineer view keeps the peak labels, co-elution bars, Run values and Evidence (tabbed with the Run log when narrow)');
   await page.click('#engSwitch');
   await page.click('[data-go=run]'); await page.waitForTimeout(500);
   await page.click('#qOpen'); await page.fill('#qIn', 'Which species are co-eluting?'); await page.press('#qIn', 'Enter'); await page.waitForTimeout(300);

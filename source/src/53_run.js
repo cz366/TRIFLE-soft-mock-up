@@ -82,7 +82,7 @@ const RC = (function () {
   function intervals() {
     const r = R(); if (!r) return [];
     return r.rules.cards.filter(c => c.rule === 'I6' || (c.rule === 'I1' && c.x1 > c.x0)).map(c => ({ x0: toX(c.x0), x1: toX(c.x1), label: c.rule === 'I6' ? 'I6 laser change' : 'I1 warm-up', color: C.warn }))
-      .concat(api.coelution ? api.coelution() : []);
+      .concat(api.coelution && S.engineer ? api.coelution() : []);
   }
   // nearest block to a chart x; the tooltip heading names the time, volume and fraction there
   function idxAt(x) { const r = R(); if (!r || !r.derivedN || x == null) return null; const xs = r.x[sa() ? 'acq' : view.x], n = r.derivedN; let i = Math.min(n - 1, TR.lowerBound(xs, n, x)); if (i > 0 && Math.abs(xs[i - 1] - x) <= Math.abs(xs[i] - x)) i--; return i; }
@@ -182,10 +182,10 @@ const RC = (function () {
       '<div class="toolbar" id="rTools"><div class="seg sm" id="rX" role="group" aria-label="X-axis units"><button data-v="min">min</button><button data-v="vol">mL</button><button data-v="cv">CV</button></div><div class="seg sm" id="rLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div><span id="rViewSlot"></span><button class="btn sm hidden" id="rReset" title="Right-click the chart to undo one zoom step">Reset zoom</button><button class="btn sm" id="rExp" title="Esc exits the expanded view">Expand chart</button></div><span class="note" id="rCtlNote"></span></div>' +
       '<div class="panel run-chart expand-target"><div class="pb"><div id="runChart" style="flex:1;min-height:0"></div></div></div>' +
       '<div class="run-bottom" id="runBottom">' +
-      '<div class="panel"><div class="ph"><h3>Run values</h3></div><div class="pb" id="runValues"></div></div>' +
+      '<div class="panel eng-only" id="rvPanel"><div class="ph"><h3>Run values</h3></div><div class="pb" id="runValues"></div></div>' +
       '<div class="panel" id="decPanel"><div class="ph"><h3>Decay</h3><span class="note" id="decWhen"></span><span class="sp"></span><button class="btn sm" id="decLatest" style="display:none" title="Follow the latest block again">Latest</button><div class="seg sm eng-only" id="rDecV" title="Species decay or the raw pulse"><button data-v="decay" class="on">Decay</button><button data-v="pulse">Pulse</button></div><div class="seg sm" id="rPLog"><button data-v="0" class="on">Linear</button><button data-v="1">Log</button></div></div><div class="pb" style="padding:2px 4px;overflow:hidden"><div id="runDecay" style="height:100%"></div><div id="runPulse" style="height:100%;display:none"></div></div></div>' +
       '<div class="panel eng-only" id="logPanel"><div class="ph"><h3>Run log</h3><span class="sp"></span><select id="rLogF" class="small" style="height:22px" aria-label="Filter run log"><option value="all">All entries</option><option value="sensitivity">Sensitivity</option><option value="laser">Laser</option><option value="alignment">Alignment</option><option value="note">Notes and events</option><option value="card">Cards</option><option value="system">System</option></select></div><div class="pb log" id="runLog"></div></div>' +
-      '<div class="panel" id="cardPanel"><div class="ph"><h3>Evidence</h3><span class="cnt" id="cardCnt">0</span></div><div class="pb" id="runCards"><div class="cards"></div></div></div>' +
+      '<div class="panel eng-only" id="cardPanel"><div class="ph"><h3>Evidence</h3><span class="cnt" id="cardCnt">0</span></div><div class="pb" id="runCards"><div class="cards"></div></div></div>' +
       '</div>';
     UI.processingButton($('#rTools')).classList.add('eng-only');
     RC.viewMenu($('#rViewSlot'), 'r', { get: () => !!(chart && chart.rulersOn), set: setRulers });
@@ -204,7 +204,7 @@ const RC = (function () {
       ariaLabel: 'Chromatogram with TRIFLE fluorescence and AKTA traces', rulers: [0, 1], rulerColor: C.v20,
       xDomain: RC.xDomain, xTitle: RC.xTitle, panels: RC.panels(), series: RC.seriesFor(), bands: RC.bands, fractions: RC.fracItems,
       markers: () => RC.markers(true), hatches: RC.hatches, intervals: RC.intervals, info: RC.info, rulerInfo: RC.rulerInfo, legendExtras: RC.legendExtras(),
-      tooltip: true, tipHead: RC.tipHead, tipExtra: RC.tipExtraAt, annotations: () => RC.annotations ? RC.annotations() : [], hoverInfo: () => S.engineer,
+      tooltip: true, tipHead: RC.tipHead, tipExtra: RC.tipExtraAt, annotations: () => S.engineer && RC.annotations ? RC.annotations() : [], hoverInfo: () => S.engineer,
       liveIndex: () => { const R = S.run; return R && R.lt && R.lt.fit ? R.lt.n - 1 : null; },
       highlights: () => highlight ? [{ x0: RC.toX(highlight[0]), x1: RC.toX(highlight[1]) }] : [],
       // fraction cuts come from UNICORN: shown with the AKTA traces; Fraction review always shows them
@@ -236,7 +236,8 @@ const RC = (function () {
     M.on(ev => { if (ev === 'proc' || ev === 'run' || ev === 'series' || ev === 'setup' || ev === 'lt') { chart.cfg.panels = RC.panels(); chart.setSeries(RC.seriesFor()); chart.cfg.legendExtras = RC.legendExtras(); chart.buildLegend(); chart.relayout(); pulse.blk = -1; decKey = ''; syncSeg(); } if (ev === 'run' && S.run && S.run.state === 'acquiring' && S.run.derivedN === 0) { pin = null; hov = null; } if (ev === 'cards') cardsKey = ''; if (ev === 'notes') chart.invalidateBase(); if (ev === 'setup') syncSeg(); });
   }
   function setRulers(on) { chart.rulersOn = on; if (on) { const R = S.run, xs = R && R.derivedN ? R.x[RC.sa() ? 'acq' : RC.view.x] : null, [a, b0] = chart.xRange(), b = xs ? Math.min(b0, xs[R.derivedN - 1]) : b0, h = Math.max((b - a) * 0.1, 20 * (b0 - a) / chart.pw), r0 = Math.max(a, (a + b) / 2 - h); chart.rulers = [r0, r0 + 2 * h]; } chart.invalidateOver(); chart.updateReadout(); }
-  // Scientist view: Run values, Decay and Evidence. Engineer view adds the Run log, tabbed with Evidence when narrow.
+  // Scientist view: the chart and the Decay panel beside it (open observations are in the status line). Engineer view:
+  // Run values, Decay, Run log and Evidence under the chart, the log tabbed with Evidence when narrow.
   function layoutBottom() { const rb = $('#runBottom'); if (!rb) return; const w = rb.getBoundingClientRect().width; if (!w) return; const narrow = S.engineer && w < 1200; rb.classList.toggle('narrow', narrow); $('#cardPanel').style.display = narrow && narrowTab === 'log' ? 'none' : ''; $('#logPanel').style.display = narrow && narrowTab === 'cards' ? 'none' : ''; ensureTabs(narrow); }
   function ensureTabs(narrow) {
     for (const id of ['logPanel', 'cardPanel']) {
@@ -460,5 +461,5 @@ const RC = (function () {
     if (S.run) { if (S.run.acq.changes.length !== chart._nch || S.run.rules.cards.length !== chart._ncards) { chart._nch = S.run.acq.changes.length; chart._ncards = S.run.rules.cards.length; chart.invalidateBase(); } }
     chart.requestDraw();
   }
-  UI.register('run', { show() { if (!built) build(); setTimeout(() => { chart.resize(); pulseChart.resize(); decChart.resize(); layoutBottom(); }, 0); logN = -1; cardsKey = ''; decKey = ''; syncSeg(); }, update, hide() { if (expanded) toggleExpand(); }, cardsHtml, wireCards, chart: () => chart, decayBlock: () => dec.d ? dec.d.i : null });
+  UI.register('run', { show() { if (!built) build(); setTimeout(() => { chart.resize(); pulseChart.resize(); decChart.resize(); layoutBottom(); }, 0); logN = -1; cardsKey = ''; decKey = ''; syncSeg(); }, update, hide() { if (expanded) toggleExpand(); }, cardsHtml, wireCards, showOnChart, chart: () => chart, decayBlock: () => dec.d ? dec.d.i : null });
 })();

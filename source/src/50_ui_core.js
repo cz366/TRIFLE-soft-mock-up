@@ -94,19 +94,30 @@ const UI = (function () {
     if (!open.length) return '';
     const c = open[open.length - 1]; return c.rule + ' ' + c.title;
   }
+  // open evidence for the status line: observations, hypotheses and the instrument cards the scientist sees
+  function openCards() { const R = S.run; return R ? R.rules.cards.filter(c => c.status === 'open' && cardShown(c.rule)) : []; }
+  // the status line warning opens the open cards, with Accept, Dismiss and a note, as on the Engineer view Evidence panel
+  function evidencePopover(anchor) {
+    const rs = screen('run'), list = openCards(); if (!rs || !rs.cardsHtml || !list.length) return;
+    const c = el('<div class="ev-pop"><div class="ev-h"><b>Open observations</b> <span class="cnt">' + list.length + '</span><span class="sp"></span><span class="note">Respond here or leave for later</span></div><div class="cards">' + rs.cardsHtml(list) + '</div></div>');
+    rs.wireCards(c, { show: (a, b) => { go('run'); setTimeout(() => rs.showOnChart(a, b), 60); } });
+    $$('[data-r], [data-show]', c).forEach(b => b.addEventListener('click', () => setTimeout(() => { closePopover(); stCache = ''; emitDirty(); }, 0)));
+    popover(anchor, c);
+  }
   function renderStatus() {
     const R = S.run, al = M.alignmentState();
     const step = R && R.acq.n && R.state !== 'complete' ? R.acq.cur : null, nst = TR.LADDERS[S.setup.pmt].length;
     const save = R && R.lastSave != null ? M.wall(R.simStart + R.lastSave).time + (R.save && R.save.mode === 'p2s' ? ' (every 2 s)' : '') : '–';
     const w = latestWarning();
-    const key = [M.procLabel(), al.detector, al.fractions, step, save, w, S.engineer].join('|');
+    const nOpen = w ? openCards().length : 0, key = [M.procLabel(), al.detector, al.fractions, step, save, w, nOpen, S.engineer].join('|');
     if (key === stCache) return; stCache = key;
     // processing, alignment and sensitivity are Engineer view detail; an alignment problem reaches the scientist as a warning
     $('#status').innerHTML = '<span class="eng-only">Processing: <b>' + esc(M.procLabel()) + '</b></span>' +
       (al.detector === 'n/a' ? '' : '<span class="eng-only">Alignment: <b>' + esc(al.detector) + '</b>' + (al.fractions === 'Uncertain' && al.detector !== 'Uncertain' ? '; fractions <b>uncertain</b>' : '') + '</span>') +
       (step ? '<span class="eng-only">Sensitivity: <b>step ' + step + ' of ' + nst + '</b></span>' : '') +
       (R ? '<span>Last save: <b>' + esc(save) + '</b></span>' : '') +
-      (w ? '<span class="st-warn" title="' + esc(w) + '">Warning: ' + esc(w) + '</span>' : '<span class="muted">No open warnings</span>');
+      (w ? '<span class="st-warn">' + (nOpen ? '<button class="st-link" id="stWarn" title="' + esc(w) + '. Click to see the open observations.">Warning: ' + esc(w) + (nOpen > 1 ? ' · ' + (nOpen - 1) + ' more' : '') + '</button>' : '<span title="' + esc(w) + '">Warning: ' + esc(w) + '</span>') + '</span>' : '<span class="muted">No open warnings</span>');
+    const b = $('#stWarn'); if (b) b.onclick = () => evidencePopover(b);
   }
 
   /* ---------- acquisition chips (read-only, 14.3) ---------- */

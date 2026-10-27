@@ -62,7 +62,7 @@ async function confirmReady(page, until) {
     await until('() => { const R = M.S.run; return R && R.state === "acquiring" && TR.pumpVolAt(R.ph, Math.max(0, M.aktaMin(R, M.runTimeS(R)))) > 46; }');
     await shot('04_run_acquiring_load');
     await until('() => { const R = M.S.run; return R && R.state === "acquiring" && TR.pumpVolAt(R.ph, Math.max(0, M.aktaMin(R, M.runTimeS(R)))) > 100.6; }');
-    await shot('05_run_elution_evidence_cards');
+    await shot('05_run_elution');
     await page.click('#rView'); await page.waitForTimeout(400);
     await shot('06_run_view_menu');
     await page.keyboard.press('Escape'); await page.mouse.click(700, 40); await page.waitForTimeout(300);
@@ -78,6 +78,9 @@ async function confirmReady(page, until) {
       await page.mouse.move(box.x + px, box.y + 230); await page.waitForTimeout(600);
       await page.screenshot({ path: path.join(out, '07c_run_hover_tooltip.png') }); console.log('shot 07c_run_hover_tooltip');
     }
+    await page.mouse.move(5, 880); await page.click('#stWarn'); await page.waitForTimeout(400);
+    await page.screenshot({ path: path.join(out, '07d_run_open_observations.png') }); console.log('shot 07d_run_open_observations');
+    await page.keyboard.press('Escape'); await page.waitForTimeout(300);
     await page.click('#rExp'); await page.waitForTimeout(800);
     await shot('08_run_chart_expanded');
     await page.click('#rExp'); await page.waitForTimeout(500);

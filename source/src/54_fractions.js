@@ -33,7 +33,7 @@
       ariaLabel: 'Run overview; drag to select fractions', dragMode: 'select', rulers: [0, 1], onView: v => $('#fReset').classList.toggle('hidden', !v),
       xDomain: RC.xDomain, xTitle: RC.xTitle, panels: ovPanels(), series: ovSeries(), bands: RC.bands, fractions: RC.fracItems,
       markers: () => RC.markers(false), hatches: RC.hatches, intervals: RC.intervals, info: RC.info, legendExtras: RC.legendExtras(), liveReadout: false,
-      tooltip: true, tipHead: RC.tipHead, tipExtra: RC.tipExtraAt, annotations: () => RC.annotations ? RC.annotations() : [], hoverInfo: () => S.engineer,
+      tooltip: true, tipHead: RC.tipHead, tipExtra: RC.tipExtraAt, annotations: () => S.engineer && RC.annotations ? RC.annotations() : [], hoverInfo: () => S.engineer,
       vlines: () => poolLines(false).map(l => ({ ...l, label: null })),
       highlights: () => [...sel].map(id => fr(id)).filter(Boolean).map(f => ({ x0: RC.toX(f.a), x1: RC.toX(f.b) })),
       onSelect: (a, b) => { const va = RC.fromX(a), vb = RC.fromX(b); const hit = (S.run ? S.run.fractions : []).filter(f => (va === vb ? (va >= f.a && va < f.b) : (f.b > va && f.a < vb))).map(f => f.id); if (hit.length) { sel = new Set(hit); focus = hit[0]; selChanged(); } },
