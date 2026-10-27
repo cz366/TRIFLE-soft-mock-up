@@ -10,6 +10,8 @@ const UI = (function () {
   // Display rule (section 0): engineer-scope tags only in the Engineer view; 'always' tags where a Proposed
   // setting affects displayed data or a card, and on Future controls.
   function tag(k, scope) { return '<span class="tag' + (k === 'F' ? ' fut' : '') + '" data-scope="' + (scope || 'engineer') + '">' + TAGS[k] + '</span>'; }
+  // Input range overruns (I2) and discarded blocks (I3) are instrument housekeeping: Engineer view only
+  function cardShown(rule) { return M.S.engineer || (rule !== 'I2' && rule !== 'I3'); }
   function sgn(d, dp) { return (d > 0 ? '+' : d < 0 ? '−' : '') + Math.abs(d).toFixed(dp == null ? 1 : dp); }
   function stateHtml(kind, text) { return '<span class="state ' + kind + '"><span class="dot ' + kind + '"></span>' + esc(text) + '</span>'; }
 
@@ -71,7 +73,11 @@ const UI = (function () {
     const key = JSON.stringify([ind, st, el2, S.engineer, S.setup.operator, window.innerWidth < 1240]);
     if (key === hdrCache) return; hdrCache = key;
     const compact = window.innerWidth < 1240, SHORT = { 'Beam monitor': 'Beam mon.', 'Filter wheel': 'Wheel', Chromatography: 'AKTA', 'Start and end': 'Start/end', 'UNICORN import': 'Import' };
-    $('#hConn').innerHTML = ind.map(([lab, [k, t]]) => '<span class="ind" title="' + esc(lab + ': ' + t) + '"><span class="dot ' + k + '"></span><span class="lab">' + esc(compact && SHORT[lab] ? SHORT[lab] : lab) + '</span> ' + esc(compact ? (SHORT[t] || t.replace(/, position \d/, '')) : t) + '</span>').join('');
+    // Scientist view: one instrument status; Engineer view: every connection
+    const bad = ind.find(([, [k]]) => k === 'fault'), warm = ind.find(([lab, [k]]) => lab === 'Laser' && k === 'warn'), off = ind.find(([lab, [k]]) => lab === 'Laser' && k === 'off');
+    const agg = bad ? ['fault', bad[0] + ' ' + bad[1][1].toLowerCase()] : warm ? ['warn', 'Laser warming up'] : off ? ['off', 'Laser off'] : ['ok', R ? 'Instrument OK' : 'Instrument ready'];
+    $('#hConn').innerHTML = '<span class="ind sci-only" title="' + esc(ind.map(([lab, [, t]]) => lab + ': ' + t).join('; ')) + '"><span class="dot ' + agg[0] + '"></span>' + esc(agg[1]) + '</span>' +
+      ind.map(([lab, [k, t]]) => '<span class="ind eng-only" title="' + esc(lab + ': ' + t) + '"><span class="dot ' + k + '"></span><span class="lab">' + esc(compact && SHORT[lab] ? SHORT[lab] : lab) + '</span> ' + esc(compact ? (SHORT[t] || t.replace(/, position \d/, '')) : t) + '</span>').join('');
     $('#hState').innerHTML = '<span class="muted">Run</span> <span class="h-state">' + st + '</span>';
     $('#hElapsed').innerHTML = '<span class="muted" title="Elapsed acquisition time">Elapsed</span> ' + el2;
     $('#hUser').textContent = S.setup.operator;
@@ -83,7 +89,8 @@ const UI = (function () {
     const R = S.run; if (S.fault !== 'none') return { digitiser: 'Digitiser not found.', wheel: 'Filter wheel not responding.', laser: 'Laser not detected.' }[S.fault];
     const pc = M.presetCheck(); if (!pc.ok) return pc.msg;
     if (!R) { const al = M.alignmentState(); return al.i5 ? al.issues[0] : ''; }
-    const open = R.rules.cards.filter(c => c.status === 'open' && (c.level === 'I' || c.level === 'P'));
+    // range overruns and discarded blocks (I2, I3) are handled by the instrument: Engineer view only
+    const open = R.rules.cards.filter(c => c.status === 'open' && (c.level === 'I' || c.level === 'P') && cardShown(c.rule));
     if (!open.length) return '';
     const c = open[open.length - 1]; return c.rule + ' ' + c.title;
   }
@@ -92,11 +99,12 @@ const UI = (function () {
     const step = R && R.acq.n && R.state !== 'complete' ? R.acq.cur : null, nst = TR.LADDERS[S.setup.pmt].length;
     const save = R && R.lastSave != null ? M.wall(R.simStart + R.lastSave).time + (R.save && R.save.mode === 'p2s' ? ' (every 2 s)' : '') : '–';
     const w = latestWarning();
-    const key = [M.procLabel(), al.detector, al.fractions, step, save, w].join('|');
+    const key = [M.procLabel(), al.detector, al.fractions, step, save, w, S.engineer].join('|');
     if (key === stCache) return; stCache = key;
-    $('#status').innerHTML = '<span>Processing: <b>' + esc(M.procLabel()) + '</b></span>' +
-      (al.detector === 'n/a' ? '' : '<span>Alignment: <b>' + esc(al.detector) + '</b>' + (al.fractions === 'Uncertain' && al.detector !== 'Uncertain' ? '; fractions <b>uncertain</b>' : '') + '</span>') +
-      (step ? '<span>Sensitivity: <b>step ' + step + ' of ' + nst + '</b></span>' : '') +
+    // processing, alignment and sensitivity are Engineer view detail; an alignment problem reaches the scientist as a warning
+    $('#status').innerHTML = '<span class="eng-only">Processing: <b>' + esc(M.procLabel()) + '</b></span>' +
+      (al.detector === 'n/a' ? '' : '<span class="eng-only">Alignment: <b>' + esc(al.detector) + '</b>' + (al.fractions === 'Uncertain' && al.detector !== 'Uncertain' ? '; fractions <b>uncertain</b>' : '') + '</span>') +
+      (step ? '<span class="eng-only">Sensitivity: <b>step ' + step + ' of ' + nst + '</b></span>' : '') +
       (R ? '<span>Last save: <b>' + esc(save) + '</b></span>' : '') +
       (w ? '<span class="st-warn" title="' + esc(w) + '">Warning: ' + esc(w) + '</span>' : '<span class="muted">No open warnings</span>');
   }
@@ -206,7 +214,7 @@ const UI = (function () {
       '<div class="demo-btns"><button class="btn sm" id="demoFF" title="Simulates the rest of the run immediately">Fast-forward</button>' +
       '<button class="btn sm" id="demoReset" title="Restarts the mock-up from the beginning">Restart</button></div></div>');
     foot.append(demo); rail.append(foot);
-    $('#engSwitch').onchange = e => { S.engineer = e.target.checked; document.body.classList.toggle('eng', S.engineer); M.audit('role', 'Simulated role switched to ' + (S.engineer ? 'Engineer' : 'Scientist') + ' view.'); if (!S.engineer && current === 'engineer') go('run'); emitDirty(); };
+    $('#engSwitch').onchange = e => { S.engineer = e.target.checked; document.body.classList.toggle('eng', S.engineer); M.audit('role', 'Simulated role switched to ' + (S.engineer ? 'Engineer' : 'Scientist') + ' view.'); if (!S.engineer && (current === 'engineer' || current === 'calibration')) go('run'); M.emit('series'); M.emit('cards'); emitDirty(); };
     $$('#speedSeg button').forEach(b => b.onclick = () => { S.speed = +b.dataset.v; $$('#speedSeg button').forEach(x => x.classList.toggle('on', x === b)); M.audit('demo', 'Playback speed ' + S.speed + '×.'); });
     $$('#speedSeg button').forEach(x => x.classList.toggle('on', +x.dataset.v === S.speed));
     $('#demoEarly').onchange = e => { S.demo.laserEarly = e.target.checked; M.audit('demo', 'Demo control: start before laser stable ' + (e.target.checked ? 'on' : 'off') + '.'); emitDirty(); };
@@ -250,5 +258,5 @@ const UI = (function () {
     table.tHead && [...table.tHead.querySelectorAll('th')].forEach(th => { if (!th.classList.contains('nosort')) { th.classList.add('sortable'); th.title = th.title || 'Click to sort'; } });
   }
   function sortAll(root) { (root || document).querySelectorAll('table.tbl').forEach(t => { if (t.id !== 'frTbl') sortable(t); }); }
-  return { procExtras, sortable, sortAll, $, $$, esc, el, tag, TAGS, sgn, stateHtml, register, go, cur, screen, emitDirty, frame, modal, popover, closePopover, download, downloadDataUrl, copyText, processingButton, setProc, buildRail, renderChips, setDelayDemo, settingChangedDuringRun, isFF, indicators };
+  return { cardShown, procExtras, sortable, sortAll, $, $$, esc, el, tag, TAGS, sgn, stateHtml, register, go, cur, screen, emitDirty, frame, modal, popover, closePopover, download, downloadDataUrl, copyText, processingButton, setProc, buildRail, renderChips, setDelayDemo, settingChangedDuringRun, isFF, indicators };
 })();

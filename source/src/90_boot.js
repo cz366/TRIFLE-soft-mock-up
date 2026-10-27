@@ -3,7 +3,8 @@
   const S = M.S;
   UI.buildRail([
     { group: '' }, { key: 'setup', label: 'Setup' }, { key: 'readiness', label: 'Readiness' }, { key: 'run', label: 'Run' }, { key: 'fractions', label: 'Fraction review' }, { key: 'record', label: 'Record' },
-    ...(window.STAGE2 ? [{ group: 'Analysis' }, { key: 'calibration', label: 'Calibration' }, { key: 'comparison', label: 'Run comparison' }] : []),
+    // Calibration is an occasional specialist task: Engineer view (its concentrations still reach the fraction table)
+    ...(window.STAGE2 ? [{ group: 'Analysis' }, { key: 'comparison', label: 'Run comparison' }, { key: 'calibration', label: 'Calibration', eng: true }] : []),
     { group: 'Engineer', eng: true }, { key: 'engineer', label: 'Diagnostics', eng: true }
   ]);
   Q.init();

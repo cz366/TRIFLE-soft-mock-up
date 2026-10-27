@@ -95,7 +95,7 @@ const LTM = (function () {
   // Components with their names, colours and lifetimes, in lifetime order
   function components(R) {
     const lt = R && R.lt; if (!lt || !lt.fit) return [];
-    return lt.fit.taus.map((t, k) => { const m = lt.assign[k], sp = m >= 0 ? lt.lib[m] : null; return { k, m, key: sp ? sp.key : 'other', name: sp ? sp.name : 'Unassigned component', short: sp ? sp.short : 'Other', tau: t, se: lt.fit.se[k], exp: sp ? sp.exp : NaN, color: COLORS[sp ? sp.key : 'other'], product: !!(sp && sp.product) }; });
+    return lt.fit.taus.map((t, k) => { const m = lt.assign[k], sp = m >= 0 ? lt.lib[m] : null; return { k, m, key: sp ? sp.key : 'other', name: sp ? sp.name : 'Unassigned component', short: sp ? sp.short : 'Unassigned', tau: t, se: lt.fit.se[k], exp: sp ? sp.exp : NaN, color: COLORS[sp ? sp.key : 'other'], product: !!(sp && sp.product) }; });
   }
   // Species amplitudes at block i (V·ns), for the species the analysis has found
   function ampsAt(R, i) {

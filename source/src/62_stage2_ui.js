@@ -201,13 +201,14 @@
   };
 
   /* ---------- Record: export packaging ---------- */
-  window.REC_STAGE2 = slot => {
-    slot.innerHTML = '';
+  // slot: before the scientist's exports; eng: with the Engineer view data files
+  window.REC_STAGE2 = (slot, eng) => {
+    slot.innerHTML = ''; eng.innerHTML = '';
     const pdf = el('<button class="btn offline-only" title="Opens the print dialog. Choose Save as PDF (A4).">Summary (PDF)</button>'), pdfTag = el(tag('P')), h5 = el('<button class="btn"' + (S.run ? '' : ' disabled') + '>Raw waveforms (HDF5)…</button>');
     pdfTag.classList.add('offline-only');
     pdf.onclick = () => { REC.logExport(REC.fileBase() + '_summary.pdf (print)'); setTimeout(() => window.print(), 50); };
     h5.onclick = () => hdf5Dialog();
-    slot.append(pdf, pdfTag, h5, el(tag('P')));
+    slot.append(pdf, pdfTag); eng.append(h5, el(tag('P')));
   };
   function hdf5Dialog() {
     const R = S.run, n = R.acq.n, disc = R.acq.disc.subarray(0, n).reduce((a, b) => a + b, 0), wf = (n - disc) * 10, bytes = wf * 600 * 2 + wf * 96 + (n - disc) * 64 + 64 * 1024;

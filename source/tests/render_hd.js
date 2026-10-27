@@ -63,8 +63,8 @@ async function confirmReady(page, until) {
     await shot('04_run_acquiring_load');
     await until('() => { const R = M.S.run; return R && R.state === "acquiring" && TR.pumpVolAt(R.ph, Math.max(0, M.aktaMin(R, M.runTimeS(R)))) > 100.6; }');
     await shot('05_run_elution_evidence_cards');
-    await page.click('#rTools .btn.sm >> text=Processing'); await page.waitForTimeout(400);
-    await shot('06_run_processing_options');
+    await page.click('#rView'); await page.waitForTimeout(400);
+    await shot('06_run_view_menu');
     await page.keyboard.press('Escape'); await page.mouse.click(700, 40); await page.waitForTimeout(300);
     await page.click('#demoFF');
     await until('() => M.S.run && M.S.run.state === "complete" && !UI.isFF()');
@@ -82,7 +82,8 @@ async function confirmReady(page, until) {
       await page.mouse.click(box.x + xs[2], box.y + 200); await page.click('#rPLog button[data-v="1"]'); await page.waitForTimeout(600);
       await shot('08b_run_elution_decay_pinned');
       await page.click('#rPLog button[data-v="0"]'); await page.click('#decLatest'); await page.click('#rReset'); await page.waitForTimeout(300);
-      await page.click('#rAk'); await page.waitForTimeout(600); await shot('08c_run_with_akta_traces'); await page.click('#rAk'); await page.waitForTimeout(300);
+      const viewOpt = async id => { await page.click('#rView'); await page.click(id); await page.mouse.click(700, 40); await page.waitForTimeout(400); };
+      await viewOpt('#rAk'); await viewOpt('#rMap'); await shot('08c_run_akta_traces_and_decay_map'); await viewOpt('#rAk'); await viewOpt('#rMap');
     }
 
     await page.click('.nav[data-go=fractions]'); await page.waitForTimeout(1500);
@@ -99,12 +100,6 @@ async function confirmReady(page, until) {
 
     await page.click('[data-go=record]'); await page.waitForTimeout(1500);
     await shot('13_record_full_page', true);
-    await page.click('text=Raw waveforms (HDF5)…'); await page.waitForTimeout(400);
-    await shot('14_record_hdf5_estimate');
-    await page.keyboard.press('Escape'); await page.waitForTimeout(300);
-
-    await page.click('[data-go=calibration]'); await page.waitForTimeout(1500);
-    await shot('15_calibration', true);
     await page.click('[data-go=comparison]'); await page.waitForTimeout(9000);
     await shot('16_run_comparison', true);
     await page.click('#hMock'); await page.waitForTimeout(500);
@@ -116,7 +111,14 @@ async function confirmReady(page, until) {
     await shot('18_questions_panel');
     await page.click('#qCollapse'); await page.waitForTimeout(300);
 
+    // Engineer view: the HDF5 estimate, Calibration, the run with the pulse and the Engineer tabs
     await page.click('#engSwitch'); await page.waitForTimeout(400);
+    await page.click('[data-go=record]'); await page.waitForTimeout(1200);
+    await page.click('text=Raw waveforms (HDF5)…'); await page.waitForTimeout(400);
+    await shot('14_record_hdf5_estimate');
+    await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+    await page.click('[data-go=calibration]'); await page.waitForTimeout(1500);
+    await shot('15_calibration', true);
     await page.click('[data-go=run]'); await page.waitForTimeout(1200);
     await shot('19_engineer_run_with_pulse');
     await page.click('.nav[data-go=engineer]'); await page.waitForTimeout(800);

@@ -458,6 +458,8 @@ code, pre, kbd, samp { font-family: inherit; }
 .lt-bar { display: inline-flex; gap: 1px; height: 10px; border-radius: 2px; overflow: hidden; background: #FFFFFF; flex: none; }
 .lt-bar > span { min-width: 1px; height: 100%; }
 .lt-grid { align-items: start; }
+/* the Decay panel's "showing" note stays on one line when the panel is narrow */
+#decWhen { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 /* Setup: the method phases table fits a half-width panel at 1280 px */
 .tbl.phases th { white-space: normal; vertical-align: bottom; line-height: 1.25; padding-top: 3px; padding-bottom: 3px; }
 .tbl.phases th, .tbl.phases td { padding-left: 6px; padding-right: 6px; }
@@ -482,6 +484,46 @@ code, pre, kbd, samp { font-family: inherit; }
 .proc-cmp { margin-top: 8px; }
 .demo-box .seg { align-self: flex-start; }
 .lbl-tbl td:first-child { width: 1%; white-space: nowrap; }
+/* =====================================================================
+   Scientist view: only what is needed to run, watch and decide.
+   Instrument, processing and fit detail is in the Engineer view.
+   ===================================================================== */
+body.eng .sci-only { display: none !important; }
+
+/* Run: three panels under the chart (Run values, Decay, Evidence); the Engineer view adds the Run log */
+body:not(.eng) .run-bottom { grid-template-columns: minmax(250px, 28fr) minmax(300px, 38fr) minmax(260px, 34fr); }
+@media (max-width: 820px) { body:not(.eng) .run-bottom { grid-template-columns: minmax(0, 1fr); } }
+
+/* View menu: optional layers and tools kept off the toolbar */
+.view-menu { display: flex; flex-direction: column; gap: 2px; width: 290px; padding: 2px 0; }
+.view-menu .opt { display: flex; gap: 8px; align-items: flex-start; padding: 6px 6px; border-radius: var(--r); cursor: pointer; }
+.view-menu .opt:hover { background: var(--accent-bg2); }
+.view-menu .opt input { margin: 2px 0 0; flex: none; }
+.view-menu .opt > span { display: flex; flex-direction: column; font-size: 14px; }
+.view-menu .note { color: var(--text2); font-size: 13px; line-height: 1.35; }
+.vm-n { color: var(--accent); font-weight: bold; }
+
+/* Instrument notes: I-level cards collapsed under the product cards for the scientist */
+.inst-notes { margin-top: 8px; border: 1px solid var(--border); border-radius: var(--r); background: var(--band2); }
+.inst-notes > summary { list-style: none; display: flex; align-items: center; gap: 6px; padding: 5px 8px; cursor: pointer; font-size: 13.5px; color: var(--text2); }
+.inst-notes > summary::-webkit-details-marker { display: none; }
+.inst-notes > summary::before { content: ""; width: 0; height: 0; border-left: 5px solid var(--text2); border-top: 4px solid transparent; border-bottom: 4px solid transparent; flex: none; transition: transform 80ms; }
+.inst-notes[open] > summary::before { transform: rotate(90deg); }
+.inst-notes > summary .note { margin-left: auto; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.inst-notes > .cards { padding: 0 6px 6px; }
+.empty-ok { color: var(--text2); font-size: 13.5px; padding: 6px 2px; display: flex; gap: 6px; align-items: center; }
+
+/* Record: the scientist's exports first; data files and the instrument record in the Engineer view */
+.ex-eng, #exStage2b { display: contents; }
+.ex-eng .sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+.rec-audit > summary { list-style: none; cursor: pointer; }
+.rec-audit > summary::-webkit-details-marker { display: none; }
+.rec-audit > summary::before { content: ""; border-left: 5px solid var(--text2); border-top: 4px solid transparent; border-bottom: 4px solid transparent; transition: transform 80ms; }
+.rec-audit[open] > summary::before { transform: rotate(90deg); }
+.rec-audit:not([open]) > summary { border-bottom: 0; }
+
+/* Readiness: checks and laser at a readable width */
+body:not(.eng) #scr-readiness > * { max-width: 920px; }
 </style>
 </head>
 <body>
@@ -3367,7 +3409,7 @@ const LTM = (function () {
   // Components with their names, colours and lifetimes, in lifetime order
   function components(R) {
     const lt = R && R.lt; if (!lt || !lt.fit) return [];
-    return lt.fit.taus.map((t, k) => { const m = lt.assign[k], sp = m >= 0 ? lt.lib[m] : null; return { k, m, key: sp ? sp.key : 'other', name: sp ? sp.name : 'Unassigned component', short: sp ? sp.short : 'Other', tau: t, se: lt.fit.se[k], exp: sp ? sp.exp : NaN, color: COLORS[sp ? sp.key : 'other'], product: !!(sp && sp.product) }; });
+    return lt.fit.taus.map((t, k) => { const m = lt.assign[k], sp = m >= 0 ? lt.lib[m] : null; return { k, m, key: sp ? sp.key : 'other', name: sp ? sp.name : 'Unassigned component', short: sp ? sp.short : 'Unassigned', tau: t, se: lt.fit.se[k], exp: sp ? sp.exp : NaN, color: COLORS[sp ? sp.key : 'other'], product: !!(sp && sp.product) }; });
   }
   // Species amplitudes at block i (V·ns), for the species the analysis has found
   function ampsAt(R, i) {
@@ -3415,6 +3457,8 @@ const UI = (function () {
   // Display rule (section 0): engineer-scope tags only in the Engineer view; 'always' tags where a Proposed
   // setting affects displayed data or a card, and on Future controls.
   function tag(k, scope) { return '<span class="tag' + (k === 'F' ? ' fut' : '') + '" data-scope="' + (scope || 'engineer') + '">' + TAGS[k] + '</span>'; }
+  // Input range overruns (I2) and discarded blocks (I3) are instrument housekeeping: Engineer view only
+  function cardShown(rule) { return M.S.engineer || (rule !== 'I2' && rule !== 'I3'); }
   function sgn(d, dp) { return (d > 0 ? '+' : d < 0 ? '−' : '') + Math.abs(d).toFixed(dp == null ? 1 : dp); }
   function stateHtml(kind, text) { return '<span class="state ' + kind + '"><span class="dot ' + kind + '"></span>' + esc(text) + '</span>'; }
 
@@ -3476,7 +3520,11 @@ const UI = (function () {
     const key = JSON.stringify([ind, st, el2, S.engineer, S.setup.operator, window.innerWidth < 1240]);
     if (key === hdrCache) return; hdrCache = key;
     const compact = window.innerWidth < 1240, SHORT = { 'Beam monitor': 'Beam mon.', 'Filter wheel': 'Wheel', Chromatography: 'AKTA', 'Start and end': 'Start/end', 'UNICORN import': 'Import' };
-    $('#hConn').innerHTML = ind.map(([lab, [k, t]]) => '<span class="ind" title="' + esc(lab + ': ' + t) + '"><span class="dot ' + k + '"></span><span class="lab">' + esc(compact && SHORT[lab] ? SHORT[lab] : lab) + '</span> ' + esc(compact ? (SHORT[t] || t.replace(/, position \d/, '')) : t) + '</span>').join('');
+    // Scientist view: one instrument status; Engineer view: every connection
+    const bad = ind.find(([, [k]]) => k === 'fault'), warm = ind.find(([lab, [k]]) => lab === 'Laser' && k === 'warn'), off = ind.find(([lab, [k]]) => lab === 'Laser' && k === 'off');
+    const agg = bad ? ['fault', bad[0] + ' ' + bad[1][1].toLowerCase()] : warm ? ['warn', 'Laser warming up'] : off ? ['off', 'Laser off'] : ['ok', R ? 'Instrument OK' : 'Instrument ready'];
+    $('#hConn').innerHTML = '<span class="ind sci-only" title="' + esc(ind.map(([lab, [, t]]) => lab + ': ' + t).join('; ')) + '"><span class="dot ' + agg[0] + '"></span>' + esc(agg[1]) + '</span>' +
+      ind.map(([lab, [k, t]]) => '<span class="ind eng-only" title="' + esc(lab + ': ' + t) + '"><span class="dot ' + k + '"></span><span class="lab">' + esc(compact && SHORT[lab] ? SHORT[lab] : lab) + '</span> ' + esc(compact ? (SHORT[t] || t.replace(/, position \d/, '')) : t) + '</span>').join('');
     $('#hState').innerHTML = '<span class="muted">Run</span> <span class="h-state">' + st + '</span>';
     $('#hElapsed').innerHTML = '<span class="muted" title="Elapsed acquisition time">Elapsed</span> ' + el2;
     $('#hUser').textContent = S.setup.operator;
@@ -3488,7 +3536,8 @@ const UI = (function () {
     const R = S.run; if (S.fault !== 'none') return { digitiser: 'Digitiser not found.', wheel: 'Filter wheel not responding.', laser: 'Laser not detected.' }[S.fault];
     const pc = M.presetCheck(); if (!pc.ok) return pc.msg;
     if (!R) { const al = M.alignmentState(); return al.i5 ? al.issues[0] : ''; }
-    const open = R.rules.cards.filter(c => c.status === 'open' && (c.level === 'I' || c.level === 'P'));
+    // range overruns and discarded blocks (I2, I3) are handled by the instrument: Engineer view only
+    const open = R.rules.cards.filter(c => c.status === 'open' && (c.level === 'I' || c.level === 'P') && cardShown(c.rule));
     if (!open.length) return '';
     const c = open[open.length - 1]; return c.rule + ' ' + c.title;
   }
@@ -3497,11 +3546,12 @@ const UI = (function () {
     const step = R && R.acq.n && R.state !== 'complete' ? R.acq.cur : null, nst = TR.LADDERS[S.setup.pmt].length;
     const save = R && R.lastSave != null ? M.wall(R.simStart + R.lastSave).time + (R.save && R.save.mode === 'p2s' ? ' (every 2 s)' : '') : '–';
     const w = latestWarning();
-    const key = [M.procLabel(), al.detector, al.fractions, step, save, w].join('|');
+    const key = [M.procLabel(), al.detector, al.fractions, step, save, w, S.engineer].join('|');
     if (key === stCache) return; stCache = key;
-    $('#status').innerHTML = '<span>Processing: <b>' + esc(M.procLabel()) + '</b></span>' +
-      (al.detector === 'n/a' ? '' : '<span>Alignment: <b>' + esc(al.detector) + '</b>' + (al.fractions === 'Uncertain' && al.detector !== 'Uncertain' ? '; fractions <b>uncertain</b>' : '') + '</span>') +
-      (step ? '<span>Sensitivity: <b>step ' + step + ' of ' + nst + '</b></span>' : '') +
+    // processing, alignment and sensitivity are Engineer view detail; an alignment problem reaches the scientist as a warning
+    $('#status').innerHTML = '<span class="eng-only">Processing: <b>' + esc(M.procLabel()) + '</b></span>' +
+      (al.detector === 'n/a' ? '' : '<span class="eng-only">Alignment: <b>' + esc(al.detector) + '</b>' + (al.fractions === 'Uncertain' && al.detector !== 'Uncertain' ? '; fractions <b>uncertain</b>' : '') + '</span>') +
+      (step ? '<span class="eng-only">Sensitivity: <b>step ' + step + ' of ' + nst + '</b></span>' : '') +
       (R ? '<span>Last save: <b>' + esc(save) + '</b></span>' : '') +
       (w ? '<span class="st-warn" title="' + esc(w) + '">Warning: ' + esc(w) + '</span>' : '<span class="muted">No open warnings</span>');
   }
@@ -3611,7 +3661,7 @@ const UI = (function () {
       '<div class="demo-btns"><button class="btn sm" id="demoFF" title="Simulates the rest of the run immediately">Fast-forward</button>' +
       '<button class="btn sm" id="demoReset" title="Restarts the mock-up from the beginning">Restart</button></div></div>');
     foot.append(demo); rail.append(foot);
-    $('#engSwitch').onchange = e => { S.engineer = e.target.checked; document.body.classList.toggle('eng', S.engineer); M.audit('role', 'Simulated role switched to ' + (S.engineer ? 'Engineer' : 'Scientist') + ' view.'); if (!S.engineer && current === 'engineer') go('run'); emitDirty(); };
+    $('#engSwitch').onchange = e => { S.engineer = e.target.checked; document.body.classList.toggle('eng', S.engineer); M.audit('role', 'Simulated role switched to ' + (S.engineer ? 'Engineer' : 'Scientist') + ' view.'); if (!S.engineer && (current === 'engineer' || current === 'calibration')) go('run'); M.emit('series'); M.emit('cards'); emitDirty(); };
     $$('#speedSeg button').forEach(b => b.onclick = () => { S.speed = +b.dataset.v; $$('#speedSeg button').forEach(x => x.classList.toggle('on', x === b)); M.audit('demo', 'Playback speed ' + S.speed + '×.'); });
     $$('#speedSeg button').forEach(x => x.classList.toggle('on', +x.dataset.v === S.speed));
     $('#demoEarly').onchange = e => { S.demo.laserEarly = e.target.checked; M.audit('demo', 'Demo control: start before laser stable ' + (e.target.checked ? 'on' : 'off') + '.'); emitDirty(); };
@@ -3655,7 +3705,7 @@ const UI = (function () {
     table.tHead && [...table.tHead.querySelectorAll('th')].forEach(th => { if (!th.classList.contains('nosort')) { th.classList.add('sortable'); th.title = th.title || 'Click to sort'; } });
   }
   function sortAll(root) { (root || document).querySelectorAll('table.tbl').forEach(t => { if (t.id !== 'frTbl') sortable(t); }); }
-  return { procExtras, sortable, sortAll, $, $$, esc, el, tag, TAGS, sgn, stateHtml, register, go, cur, screen, emitDirty, frame, modal, popover, closePopover, download, downloadDataUrl, copyText, processingButton, setProc, buildRail, renderChips, setDelayDemo, settingChangedDuringRun, isFF, indicators };
+  return { cardShown, procExtras, sortable, sortAll, $, $$, esc, el, tag, TAGS, sgn, stateHtml, register, go, cur, screen, emitDirty, frame, modal, popover, closePopover, download, downloadDataUrl, copyText, processingButton, setProc, buildRail, renderChips, setDelayDemo, settingChangedDuringRun, isFF, indicators };
 })();
 
 /* ---------- Setup: TRIFLE's own settings only ---------- */
@@ -3713,10 +3763,18 @@ const UI = (function () {
       '<div class="panel"><div class="ph"><h3>Sign-in</h3></div><div class="pb stack" style="gap:8px">' +
       '<label class="chk" title="I am a trained user of this instrument"><input type="checkbox" id="sTrained"' + (s.trained ? ' checked' : '') + dis + '> Trained user</label>' +
       '<label class="chk" title="IP arrangements are in place for collaborative work"><input type="checkbox" id="sIp"' + (s.ip ? ' checked' : '') + dis + '> IP agreement</label>' +
-      '</div></div>' +
-      (s.template === 'aav' ? '<div class="callout">Empty and full capsid assessment is not a TRIFLE output in this version.</div>' : '');
+      '</div></div>';
+    // Scientist view: what TRIFLE will watch, read-only. The acquisition settings are in the Engineer view.
+    const tplName = s.source === 'standalone' ? 'No AKTA data (TRIFLE only, time axis)' : M.template().name + (s.source === 'manual' ? ', manual event marks' : '');
     Rt.innerHTML =
-      '<div class="panel"><div class="ph"><h3>Acquisition</h3><span class="sp"></span>' + tag('P') + '</div><div class="pb form">' +
+      '<div class="panel sci-only"><div class="ph"><h3>Method</h3><span class="sp"></span><span class="note">From the UNICORN export</span></div><div class="pb form">' +
+      '<label class="l">AKTA method</label><div>' + esc(tplName) + '</div>' +
+      (s.source === 'standalone' ? '' : '<label class="l">Column</label><div>' + esc(s.column) + '</div>') +
+      '<label class="l">Sample</label><div>' + esc(s.sample) + '</div>' +
+      '<label class="l">Run time</label><div>' + (s.timerMin || Math.ceil(ph.totalMin + 2)) + ' min</div>' +
+      '<label class="l">Detector</label><div>PMT ' + s.pmt + ' mV <span class="note">set on the PMT supply</span></div>' +
+      '</div></div>' +
+      '<div class="panel eng-only"><div class="ph"><h3>Acquisition</h3><span class="sp"></span>' + tag('P') + '</div><div class="pb form">' +
       '<label class="l">PMT voltage</label><div class="inl"><div class="seg" id="sPmt">' + [400, 800].map(v => '<button data-v="' + v + '" class="' + (s.pmt === v ? 'on' : '') + '"' + dis + '>' + v + ' mV</button>').join('') + '</div><span class="note">Set on the PMT supply ' + tag('E') + '</span></div>' +
       '<label class="l">Preset</label><div><b>' + pi.id + '</b> <span class="muted small eng-only">checksum ' + pi.checksum + '</span></div>' +
       '<label class="l eng-only">Loads</label><div class="small eng-only">IRF ' + esc('impulse_' + s.irfFile + '_mV.txt') + '<br>Ladder ' + esc('od_filters_and_ranges_' + s.ladderFile + '_mV.txt') + ', ' + lad.length + ' steps</div>' +
@@ -3765,11 +3823,11 @@ const UI = (function () {
     const r = $('#scr-readiness');
     r.innerHTML = '<div class="scr-h"><h1>Readiness</h1><span class="sp"></span><button class="btn" id="rdRun">Run checks</button><button class="btn primary" id="rdGo">Go to Run</button></div>' +
       '<div class="ready-banner" id="rdBanner"></div>' +
-      '<div class="panel" style="margin-top:12px"><div class="ph"><h3>Instrument checks</h3></div><div class="pb" style="padding:0"><div class="tbl-wrap"><table class="tbl" id="rdTbl"><thead><tr><th style="width:18%">Check</th><th style="width:14%">Status</th><th>Measured</th><th style="width:32%">Limit</th><th class="eng-only">Label</th></tr></thead><tbody></tbody></table></div></div></div>' +
+      '<div class="panel" style="margin-top:12px"><div class="ph"><h3>Instrument checks</h3></div><div class="pb" style="padding:0"><div class="tbl-wrap"><table class="tbl" id="rdTbl"><thead><tr><th style="width:22%">Check</th><th>Status</th><th class="eng-only">Measured</th><th class="eng-only" style="width:30%">Limit</th><th class="eng-only">Label</th></tr></thead><tbody></tbody></table></div></div></div>' +
       '<div class="grid2 rd-lower" style="margin-top:12px"><div class="stack eng-only">' +
       
       '<div class="panel"><div class="ph"><h3>Live pulse preview</h3><span class="sp"></span><div class="seg sm" id="rdPLog"><button data-v="0" class="on">Linear</button><button data-v="1">Log</button></div></div><div class="pb"><div style="height:220px" id="rdPulse"></div></div></div>' +
-      '</div><div class="stack"><div class="panel"><div class="ph"><h3>Laser readiness</h3><span class="sp"></span>' + tag('P') + '</div><div class="pb"><div id="lzState" class="small" style="margin-bottom:6px;min-height:22px"></div><div style="height:270px" id="lzChart"></div><div class="note" style="margin-top:4px">A stable controller reading does not confirm stable UV output.</div></div></div>' +
+      '</div><div class="stack"><div class="panel"><div class="ph"><h3>Laser</h3><span class="sp"></span>' + tag('P') + '</div><div class="pb"><div id="lzState" class="small" style="min-height:22px"></div><div class="eng-only" style="margin-top:6px"><div style="height:270px" id="lzChart"></div><div class="note" style="margin-top:4px">A stable controller reading does not confirm stable UV output.</div></div></div></div>' +
       '</div></div>';
     $('#rdRun').onclick = () => { M.readinessStart(); UI.emitDirty(); };
     $('#rdGo').onclick = () => UI.go('run');
@@ -3825,11 +3883,13 @@ const UI = (function () {
     const key = JSON.stringify([R && R.checks, S.setup.laserCheck, S.engineer, !!S.run]); if (key === lastKey) return; lastKey = key;
     tb.innerHTML = M.RD_CHECKS.map(c => {
       const st = R ? R.checks[c.key] : { status: 'pending', value: '' }; const [k, t] = STATUS[st.status];
-      let val = esc(st.value || '');
-      if (c.key === 'pmt' && R && st.status === 'manual') val = '<label class="chk"><input type="checkbox" id="pmtChk"> ' + esc(st.value) + '</label>';
+      // the status cell carries what the scientist acts on: the PMT confirmation and, on a failure, the fix
+      let val = esc(st.value || ''), stc = UI.stateHtml(k, t);
+      if (c.key === 'pmt' && R && st.status === 'manual') stc = '<label class="chk"><input type="checkbox" id="pmtChk"> ' + esc(st.value) + '</label>';
       if (c.key === 'emit' && !S.setup.laserCheck && st.status !== 'blocked') val = S.run ? 'Not checked' : 'Not checked <button class="link small" id="enEmit">Turn on</button>';
-      if (st.status === 'fail') val += '<div class="small rd-fix">' + esc(c.ifFail) + '</div>';
-      return '<tr><td class="wrap" title="' + esc(c.meaning) + '"><b>' + esc(c.name) + '</b></td><td>' + UI.stateHtml(k, t) + '</td><td class="wrap">' + val + '</td><td class="wrap">' + esc(c.limit) + '</td><td class="eng-only">' + tag(c.label, 'engineer') + '</td></tr>';
+      if (st.status === 'fail') stc += '<div class="small rd-fix">' + esc(c.ifFail) + '</div>';
+      const engRow = c.key === 'emit' && st.status === 'disabled';
+      return '<tr' + (engRow ? ' class="eng-only"' : '') + '><td class="wrap" title="' + esc(c.meaning) + '"><b>' + esc(c.name) + '</b></td><td class="wrap">' + stc + '</td><td class="wrap eng-only">' + val + '</td><td class="wrap eng-only">' + esc(c.limit) + '</td><td class="eng-only">' + tag(c.label, 'engineer') + '</td></tr>';
     }).join('');
     const pc = $('#pmtChk'); if (pc) pc.onchange = () => { if (pc.checked) { S._pmtConfirmed = true; if (S.readiness) S.readiness.pmtConfirmed = true; M.audit('readiness', 'PMT voltage ' + S.setup.pmt + ' mV confirmed on the supply.'); lastKey = ''; } };
     const ee = $('#enEmit'); if (ee) ee.onclick = () => { S.setup.laserCheck = true; M.audit('setting', 'Laser emission check enabled (Proposed).'); lastKey = ''; };
@@ -3868,8 +3928,9 @@ const UI = (function () {
 /* ---------- shared chromatogram configuration (Run and Fraction review) ---------- */
 const RC = (function () {
   const S = M.S, fmt = M.fmt, C = CH.C, { esc } = UI;
-  // TRIFLE view by default: time axis, decay map on, AKTA traces off (they belong to UNICORN; one click away)
-  const view = { x: 'min', log: false, akta: false, map: true };
+  // TRIFLE view by default: time axis, species chromatogram only. The decay map and the AKTA traces (which
+  // belong to UNICORN) are one click away in the View menu.
+  const view = { x: 'min', log: false, akta: false, map: false };
   const extraSeries = [], extraPanels = [], extraInfo = [], runRows = [];
   const XT = { vol: 'Volume (mL)', cv: 'Column volumes (CV)', min: 'Time (min)' };
   function R() { return S.run; }
@@ -3905,7 +3966,7 @@ const RC = (function () {
     const ff = v => fmt.sig3(v) + ' V·ns', tot = 'Total fluorescence';
     // total fluorescence in primary ink, like the species it is the sum of; UV 280 has its own strip (one y axis per panel)
     const list = [
-      { key: 'v20', label: tot + (p === 'v20' && !cmp ? '' : ', v2.0 reference'), tip: 'Total fluorescence, ND-corrected: the integral of each pulse (v2.0 reference processing)', color: C.text, width: 1.25, z: 2, panel: 'main', src: trifle('v20'), fmt: ff, visible: p === 'v20' || cmp, shade: true },
+      { key: 'v20', label: tot + (p === 'v20' && !cmp ? '' : ', v2.0 reference'), tip: 'Total fluorescence, ND-corrected: the integral of each pulse (v2.0 reference processing)', color: C.text, width: 1.25, z: 2, panel: 'main', src: trifle('v20'), fmt: ff, visible: p === 'v20' || cmp, shade: S.engineer },
       { key: 'prop', label: tot + ', Proposed' + (lc ? ' (corrected)' : ''), color: C.text, dash: 'dash', width: 1.25, z: 2, panel: 'main', src: trifle('prop'), fmt: ff, visible: p === 'prop', legend: p === 'prop' },
       { key: 'propU', label: tot + ', Proposed, uncorrected', color: C.cond, width: 0.9, panel: 'main', src: trifle('propU'), fmt: ff, visible: p === 'prop' && lc, legend: p === 'prop' && lc },
       { key: 'uv', label: 'UV 280', color: C.uv, width: 1.25, panel: 'uv', src: akta('uv'), fmt: v => fmt.mau(v) + ' mAU', visible: ak, legend: ak },
@@ -3923,7 +3984,7 @@ const RC = (function () {
     const bmOn = () => (r() ? r().setupSnap.beamPerBlock : S.setup.beamPerBlock);
     const imp = () => (r() ? r().setupSnap.source : S.setup.source) === 'import', ak = () => imp() && view.akta;
     const out = [
-      { key: 'main', yl: { title: 'Fluorescence', unit: 'V·ns, ND-corrected', log: () => view.log, minLog: -3 } },
+      { key: 'main', yl: { title: 'Fluorescence', unit: S.engineer ? 'V·ns, ND-corrected' : 'V·ns', log: () => view.log, minLog: -3 } },
       { key: 'map', px: 64, hidden: () => !view.map || !(r() && r().acq.dw), yl: { title: 'Decay map', short: 'Decay map', unit: 'ns', fixed: [0, 30], zero: false, tickFmt: v => v.toFixed(0) }, draw: mapDraw },
       { key: 'uv', px: 46, hidden: () => !ak(), yl: { title: 'UV 280', short: 'UV 280', unit: 'mAU', fixed: [0, 4000], tickFmt: v => v.toFixed(0) } },
       { key: 'cond', px: 46, hidden: () => !ak(), yl: { title: 'Conductivity', short: 'Cond.', unit: 'mS/cm', fixed: [0, 100], tickFmt: v => v.toFixed(0) } },
@@ -3997,13 +4058,25 @@ const RC = (function () {
     m.octx.putImageData(m.img, 0, 0, c0, 0, c1 - c0 + 1, h);
     ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(m.off, c0, 0, c1 - c0 + 1, h, p.x + c0, p.y, c1 - c0 + 1, h); ctx.restore();
   }
-  function legendExtras() { return [{ html: '<span class="ch-sw box" style="background:rgba(183,121,31,0.12);border:1px solid rgba(183,121,31,0.5)"></span><span class="ch-ll">Low precision</span>', tip: 'Pulse fills under ' + Math.round(S.th.lowPrec * 100) + ' % of the input range (provisional). Not used for the y-axis autoscale; values beyond the axis are marked at its edge.' }]; }
+  function legendExtras() { if (!S.engineer) return []; return [{ html: '<span class="ch-sw box" style="background:rgba(183,121,31,0.12);border:1px solid rgba(183,121,31,0.5)"></span><span class="ch-ll">Low precision</span>', tip: 'Pulse fills under ' + Math.round(S.th.lowPrec * 100) + ' % of the input range (provisional). Not used for the y-axis autoscale; values beyond the axis are marked at its edge.' }]; }
   function xTitle() { return sa() ? 'Time from TRIFLE start (min)' : XT[view.x]; }
-  // view toggles shared by Run and Fraction review
-  function viewToggles(id) { return '<label class="chk small" title="Every block\'s decay against time, normalised per column (log intensity)"><input type="checkbox" id="' + id + 'Map" data-vk="map"> Decay map</label><label class="chk small" title="UV 280, conductivity and pH from the UNICORN result export, each in its own strip"><input type="checkbox" id="' + id + 'Ak" data-vk="akta"> AKTA traces</label>'; }
-  function wireToggles(host) { UI.$$('input[data-vk]', host).forEach(cb => { cb.checked = !!view[cb.dataset.vk]; cb.onchange = () => { view[cb.dataset.vk] = cb.checked; M.emit('series'); UI.emitDirty(); }; }); }
-  function syncToggles() { UI.$$('input[data-vk]').forEach(cb => { cb.checked = !!view[cb.dataset.vk]; }); }
-  return { extraSeries, extraPanels, extraInfo, runRows, view, XT, xTitle, sa, toX, fromX, xDomain, bands, fracItems, trifle, akta, seriesFor, panels, markers, hatches, intervals, info, rulerInfo, legendExtras, mapDraw, viewToggles, wireToggles, syncToggles };
+  // View menu shared by Run and Fraction review: optional layers and tools, kept off the toolbar.
+  // rul: { get, set } for the screen's rulers. The button shows how many options are on.
+  function viewMenu(host, id, rul) {
+    const b = UI.el('<button class="btn sm" id="' + id + 'View" title="Decay map, AKTA traces and rulers">View <span class="vm-n"></span>▾</button>');
+    const count = () => { const n = (view.map ? 1 : 0) + (view.akta ? 1 : 0) + (rul.get() ? 1 : 0); UI.$('.vm-n', b).textContent = n ? '(' + n + ') ' : ''; };
+    b.onclick = () => {
+      const c = UI.el('<div class="view-menu"><label class="opt"><input type="checkbox" id="' + id + 'Map" data-vk="map"><span>Decay map<span class="note">Every decay against time, normalised per column</span></span></label>' +
+        '<label class="opt"><input type="checkbox" id="' + id + 'Ak" data-vk="akta"><span>AKTA traces<span class="note">UV 280, conductivity, pH and fraction cuts from UNICORN</span></span></label>' +
+        '<label class="opt"><input type="checkbox" id="' + id + 'Rul"><span>Rulers<span class="note">Two draggable lines with the interval between them</span></span></label></div>');
+      UI.$$('input[data-vk]', c).forEach(cb => { cb.checked = !!view[cb.dataset.vk]; cb.onchange = () => { view[cb.dataset.vk] = cb.checked; count(); M.emit('series'); UI.emitDirty(); }; });
+      const r = UI.$('#' + id + 'Rul', c); r.checked = !!rul.get(); r.onchange = () => { rul.set(r.checked); count(); };
+      UI.popover(b, c);
+    };
+    host.append(b); count(); M.on(ev => { if (ev === 'series') count(); });
+    return b;
+  }
+  return { extraSeries, extraPanels, extraInfo, runRows, view, XT, xTitle, sa, toX, fromX, xDomain, bands, fracItems, trifle, akta, seriesFor, panels, markers, hatches, intervals, info, rulerInfo, legendExtras, mapDraw, viewMenu };
 })();
 
 /* ---------- Run (Acquire and Validate) ---------- */
@@ -4018,18 +4091,19 @@ const RC = (function () {
   for (let j = 0; j < 600; j++) pulse.x[j] = j * 0.2;
   function build() {
     const r = $('#scr-run'); r.classList.add('fixed');
-    r.innerHTML = '<div class="scr-h"><h1>Run</h1><div class="chips acq-chips"></div><span class="sp"></span>' +
+    r.innerHTML = '<div class="scr-h"><h1>Run</h1><div class="chips acq-chips eng-only"></div><span class="sp"></span>' +
       '<button class="btn primary" id="rStart">Start</button><button class="btn" id="rPause">Pause</button><button class="btn" id="rCont">Continue</button><button class="btn" id="rEnd">End</button><span class="sep"></span><button class="btn" id="rMark">Mark event</button><button class="btn" id="rNote">Add note</button></div>' +
       '<div class="run-top">' +
-      '<div class="toolbar" id="rTools"><div class="seg sm" id="rX" role="group" aria-label="X-axis units"><button data-v="min">min</button><button data-v="vol">mL</button><button data-v="cv">CV</button></div><div class="seg sm" id="rLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div>' + RC.viewToggles('r') + '<label class="chk small"><input type="checkbox" id="rRul"> Rulers</label><button class="btn sm" id="rReset" title="Right-click the chart to undo one zoom step">Reset zoom</button><button class="btn sm" id="rExp" title="Esc exits the expanded view">Expand chart</button></div><span class="note" id="rCtlNote"></span></div>' +
+      '<div class="toolbar" id="rTools"><div class="seg sm" id="rX" role="group" aria-label="X-axis units"><button data-v="min">min</button><button data-v="vol">mL</button><button data-v="cv">CV</button></div><div class="seg sm" id="rLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div><span id="rViewSlot"></span><button class="btn sm hidden" id="rReset" title="Right-click the chart to undo one zoom step">Reset zoom</button><button class="btn sm" id="rExp" title="Esc exits the expanded view">Expand chart</button></div><span class="note" id="rCtlNote"></span></div>' +
       '<div class="panel run-chart expand-target"><div class="pb"><div id="runChart" style="flex:1;min-height:0"></div></div></div>' +
       '<div class="run-bottom" id="runBottom">' +
       '<div class="panel"><div class="ph"><h3>Run values</h3></div><div class="pb" id="runValues"></div></div>' +
       '<div class="panel" id="decPanel"><div class="ph"><h3>Decay</h3><span class="note" id="decWhen"></span><span class="sp"></span><button class="btn sm" id="decLatest" style="display:none" title="Follow the latest block again">Latest</button><div class="seg sm eng-only" id="rDecV" title="Species decay or the raw pulse"><button data-v="decay" class="on">Decay</button><button data-v="pulse">Pulse</button></div><div class="seg sm" id="rPLog"><button data-v="0" class="on">Linear</button><button data-v="1">Log</button></div></div><div class="pb" style="padding:2px 4px;overflow:hidden"><div id="runDecay" style="height:100%"></div><div id="runPulse" style="height:100%;display:none"></div></div></div>' +
-      '<div class="panel" id="logPanel"><div class="ph"><h3>Run log</h3><span class="sp"></span><select id="rLogF" class="small" style="height:22px" aria-label="Filter run log"><option value="all">All entries</option><option value="sensitivity">Sensitivity</option><option value="laser">Laser</option><option value="alignment">Alignment</option><option value="note">Notes and events</option><option value="card">Cards</option><option value="system">System</option></select></div><div class="pb log" id="runLog"></div></div>' +
+      '<div class="panel eng-only" id="logPanel"><div class="ph"><h3>Run log</h3><span class="sp"></span><select id="rLogF" class="small" style="height:22px" aria-label="Filter run log"><option value="all">All entries</option><option value="sensitivity">Sensitivity</option><option value="laser">Laser</option><option value="alignment">Alignment</option><option value="note">Notes and events</option><option value="card">Cards</option><option value="system">System</option></select></div><div class="pb log" id="runLog"></div></div>' +
       '<div class="panel" id="cardPanel"><div class="ph"><h3>Evidence</h3><span class="cnt" id="cardCnt">0</span></div><div class="pb" id="runCards"><div class="cards"></div></div></div>' +
       '</div>';
-    UI.processingButton($('#rTools'));
+    UI.processingButton($('#rTools')).classList.add('eng-only');
+    RC.viewMenu($('#rViewSlot'), 'r', { get: () => !!(chart && chart.rulersOn), set: setRulers });
     $('#rStart').onclick = start; $('#rPause').onclick = () => { M.pauseRun(S.run); UI.emitDirty(); };
     $('#rCont').onclick = () => { M.continueRun(S.run); UI.emitDirty(); };
     $('#rEnd').onclick = endRun; $('#rMark').onclick = () => noteDlg('event'); $('#rNote').onclick = () => noteDlg('note');
@@ -4038,8 +4112,6 @@ const RC = (function () {
     $$('#rPLog button').forEach(b => b.onclick = () => { pulseLog = b.dataset.v === '1'; $$('#rPLog button').forEach(x => x.classList.toggle('on', x === b)); pulseChart.invalidate(); decKey = ''; });
     $$('#rDecV button').forEach(b => b.onclick = () => { decPane = b.dataset.v; showPane(); });
     $('#decLatest').onclick = () => { pin = null; chart.invalidateBase(); decKey = ''; };
-    RC.wireToggles($('#rTools'));
-    $('#rRul').onchange = e => { chart.rulersOn = e.target.checked; if (chart.rulersOn) { const R = S.run, xs = R && R.derivedN ? R.x[RC.sa() ? 'acq' : RC.view.x] : null, [a, b0] = chart.xRange(), b = xs ? Math.min(b0, xs[R.derivedN - 1]) : b0, h = Math.max((b - a) * 0.1, 20 * (b0 - a) / chart.pw), r0 = Math.max(a, (a + b) / 2 - h); chart.rulers = [r0, r0 + 2 * h]; } chart.invalidateOver(); chart.updateReadout(); };
     $('#rReset').onclick = () => chart.resetZoom();
     $('#rExp').onclick = toggleExpand;
     $('#rLogF').onchange = e => { logFilter = e.target.value; logN = -1; };
@@ -4051,13 +4123,14 @@ const RC = (function () {
       // fraction cuts come from UNICORN: shown with the AKTA traces; Fraction review always shows them
       fractions: () => RC.view.akta ? RC.fracItems() : null,
       vlines: () => { const R = S.run; return R && pin != null && pin < R.derivedN ? [{ x: R.x[RC.sa() ? 'acq' : RC.view.x][pin], color: C.accent, dash: 'solid', label: 'Decay', align: 'left' }] : []; },
+      onView: v => $('#rReset').classList.toggle('hidden', !v),
       onHover: x => { const i = x == null ? null : blockAt(x); if (i !== hov) { hov = i; decKey = ''; } },
       onClick: x => { const i = blockAt(x); if (i != null) { pin = i; chart.invalidateBase(); decKey = ''; } }
     });
     decChart = new CH.Chart($('#runDecay'), {
       ariaLabel: 'Fluorescence decay with its species components', topBand: 8, marginRight: 8, marginLeft: 58, bottom: 32, liveReadout: false,
       xDomain: () => [0, 32], xTitle: () => 'Time (ns)',
-      panels: [{ key: 'main', yl: { title: 'Decay', unit: 'V', log: () => pulseLog, zero: true, minLog: -5 } }, { key: 'res', px: 34, yl: { title: 'Weighted residual', short: 'Residual', unit: 'σ', sym: true, symMin: 3, zero: false } }],
+      panels: [{ key: 'main', yl: { title: 'Decay', unit: 'V', log: () => pulseLog, zero: true, minLog: -5 } }, { key: 'res', px: 34, hidden: () => !S.engineer, yl: { title: 'Weighted residual', short: 'Residual', unit: 'σ', sym: true, symMin: 3, zero: false } }],
       series: decSeries(), info: () => decInfo()
     });
     pulseChart = new CH.Chart($('#runPulse'), {
@@ -4075,7 +4148,9 @@ const RC = (function () {
     built = true; syncSeg(); layoutBottom();
     M.on(ev => { if (ev === 'proc' || ev === 'run' || ev === 'series' || ev === 'setup' || ev === 'lt') { chart.cfg.panels = RC.panels(); chart.setSeries(RC.seriesFor()); chart.cfg.legendExtras = RC.legendExtras(); chart.buildLegend(); chart.relayout(); pulse.blk = -1; decKey = ''; syncSeg(); } if (ev === 'run' && S.run && S.run.state === 'acquiring' && S.run.derivedN === 0) { pin = null; hov = null; } if (ev === 'cards') cardsKey = ''; if (ev === 'notes') chart.invalidateBase(); if (ev === 'setup') syncSeg(); });
   }
-  function layoutBottom() { const rb = $('#runBottom'); if (!rb) return; const w = rb.getBoundingClientRect().width; if (!w) return; const narrow = w < 1200; rb.classList.toggle('narrow', narrow); $('#cardPanel').style.display = narrow && narrowTab === 'log' ? 'none' : ''; $('#logPanel').style.display = narrow && narrowTab === 'cards' ? 'none' : ''; ensureTabs(narrow); }
+  function setRulers(on) { chart.rulersOn = on; if (on) { const R = S.run, xs = R && R.derivedN ? R.x[RC.sa() ? 'acq' : RC.view.x] : null, [a, b0] = chart.xRange(), b = xs ? Math.min(b0, xs[R.derivedN - 1]) : b0, h = Math.max((b - a) * 0.1, 20 * (b0 - a) / chart.pw), r0 = Math.max(a, (a + b) / 2 - h); chart.rulers = [r0, r0 + 2 * h]; } chart.invalidateOver(); chart.updateReadout(); }
+  // Scientist view: Run values, Decay and Evidence. Engineer view adds the Run log, tabbed with Evidence when narrow.
+  function layoutBottom() { const rb = $('#runBottom'); if (!rb) return; const w = rb.getBoundingClientRect().width; if (!w) return; const narrow = S.engineer && w < 1200; rb.classList.toggle('narrow', narrow); $('#cardPanel').style.display = narrow && narrowTab === 'log' ? 'none' : ''; $('#logPanel').style.display = narrow && narrowTab === 'cards' ? 'none' : ''; ensureTabs(narrow); }
   function ensureTabs(narrow) {
     for (const id of ['logPanel', 'cardPanel']) {
       const ph = $('#' + id + ' .ph'); let t = $('.ptabs', ph);
@@ -4084,7 +4159,7 @@ const RC = (function () {
       if (t) { $$('button', t).forEach(b => b.classList.toggle('on', b.dataset.v === narrowTab)); $('h3', ph).style.display = 'none'; } else $('h3', ph).style.display = '';
     }
   }
-  function syncSeg() { $$('#rX button').forEach(b => { b.classList.toggle('on', b.dataset.v === RC.view.x && !RC.sa()); b.disabled = RC.sa(); }); $$('#rLog button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === RC.view.log)); RC.syncToggles(); }
+  function syncSeg() { $$('#rX button').forEach(b => { b.classList.toggle('on', b.dataset.v === RC.view.x && !RC.sa()); b.disabled = RC.sa(); }); $$('#rLog button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === RC.view.log)); }
   /* ---------- Decay panel ---------- */
   function showPane() {
     if (!S.engineer) decPane = 'decay';
@@ -4111,12 +4186,13 @@ const RC = (function () {
     const lt = R.lt, i = lt && lt.fit ? lt.n - 1 : R.derivedN - 1 - LTM.H; return { i: Math.max(0, i), why: 'Latest' };
   }
   function decSeries() {
-    const comps = dec.d ? dec.d.comps : [], sh = c => (c.a > 0 && dec.d.total > 0 ? ' ' + (c.a / dec.d.total * 100).toFixed(c.a / dec.d.total < 0.1 ? 1 : 0) + ' %' : ' 0 %');
+    // scatter is background: its component is Engineer view detail
+    const comps = dec.d ? dec.d.comps.filter(c => S.engineer || c.key !== 'sc') : [], tot = comps.reduce((s, c) => s + Math.max(0, c.a), 0), sh = c => (c.a > 0 && tot > 0 ? ' ' + (c.a / tot * 100).toFixed(c.a / tot < 0.1 ? 1 : 0) + ' %' : ' 0 %');
     const pos = a => pulseLog ? Float64Array.from(a, v => v > 0 ? v : NaN) : a;
     return [
       { key: 'd', label: 'Data', tip: 'Mean decay of the blocks in the 15 s window, ND-corrected', mode: 'points', shape: 'dot', size: 3, color: '#8C96A0', panel: 'main', src: () => dec.n ? { x: dec.x, y: pos(dec.y), n: dec.n } : null },
       ...(dec.d && dec.d.fit ? [{ key: 'f', label: 'Fit', tip: 'Sum of the components', color: C.text, width: 1.5, panel: 'main', src: () => ({ x: dec.x, y: pos(dec.f), n: dec.n, gen: dec.gen * 2 + (pulseLog ? 1 : 0) }), fmt: v => fmt.sig3(v) + ' V' }] : []),
-      ...comps.map((c, k) => ({ key: 'c' + c.key, label: c.short + sh(c), tip: c.name + ', τ ' + c.tau.toFixed(2) + ' ns: ' + fmt.sig3(c.a) + ' V·ns', color: c.color, width: 1.25, panel: 'main', src: () => dec.c[k] ? { x: dec.x, y: pos(dec.c[k]), n: dec.n, gen: dec.gen * 2 + (pulseLog ? 1 : 0) } : null, fmt: v => fmt.sig3(v) + ' V' })),
+      ...comps.map(c => ({ key: 'c' + c.key, label: c.short + sh(c), tip: c.name + (S.engineer ? ', τ ' + c.tau.toFixed(2) + ' ns' : '') + ': ' + fmt.sig3(c.a) + ' V·ns', color: c.color, width: 1.25, panel: 'main', src: () => dec.c[c.k] ? { x: dec.x, y: pos(dec.c[c.k]), n: dec.n, gen: dec.gen * 2 + (pulseLog ? 1 : 0) } : null, fmt: v => fmt.sig3(v) + ' V' })),
       ...(dec.d && dec.d.fit ? [{ key: 'r', label: 'Residual', legend: false, mode: 'points', shape: 'dot', size: 2, color: '#8C96A0', panel: 'res', src: () => ({ x: dec.x, y: dec.r, n: dec.n }) }] : [])
     ];
   }
@@ -4124,12 +4200,12 @@ const RC = (function () {
     const R = S.run, d = dec.d; if (!R || !d) return R ? 'No decay yet.' : '';
     const A = R.acq, i = d.i, f = R.fractions.find(q => A.u[i] >= q.a && A.u[i] < q.b), lt = R.lt;
     const where = R.standalone ? fmt.min1(A.t[i] / 60) + ' min' : fmt.min1(R.x.min[i]) + ' min · ' + fmt.ml(A.u[i]) + ' mL' + (f ? ' · ' + f.id : '');
-    const st = LTM.state(R), fitTxt = d.fit ? ' · χ²ᵣ ' + d.chi2r.toFixed(2) : st === 'waiting' ? ' · lifetime analysis after ' + fmt.int(150) + ' blocks' : st === 'fitting' ? ' · first lifetime fit running' : '';
-    return where + fitTxt + ' · block ' + fmt.int(i + 1) + ', ' + d.nBlocks + ' blocks averaged';
+    const st = LTM.state(R), fitTxt = d.fit ? (S.engineer ? ' · χ²ᵣ ' + d.chi2r.toFixed(2) : '') : st === 'waiting' ? ' · species after ' + fmt.int(150) + ' blocks' : st === 'fitting' ? ' · first species fit running' : '';
+    return where + fitTxt + (S.engineer ? ' · block ' + fmt.int(i + 1) + ', ' + d.nBlocks + ' blocks averaged' : '');
   }
   function updDecay() {
     const R = S.run; if (!R || !R.acq.dw) { if (dec.n) { dec.n = 0; dec.d = null; decChart.setSeries(decSeries()); } $('#decWhen').textContent = ''; return; }
-    const sb = shownBlock(R), key = sb.i + '|' + (R.lt ? R.lt.gen : 0) + '|' + pulseLog + '|' + sb.why;
+    const sb = shownBlock(R), key = sb.i + '|' + (R.lt ? R.lt.gen : 0) + '|' + pulseLog + '|' + sb.why + '|' + S.engineer;
     $('#decLatest').style.display = pin != null ? '' : 'none';
     if (key === decKey) return;
     // the latest block moves every tick while live: refresh at most 4 times a second
@@ -4202,15 +4278,17 @@ const RC = (function () {
     const vp = TR.pumpVolAt(R.ph, Math.max(0, tA));
     const lad = TR.LADDERS[R.pmt], st = lad[A.cur - 1], al = M.alignmentState(), disc = A.disc.subarray(0, n).reduce((a, b) => a + b, 0);
     const sys = R.state === 'complete' ? 'Complete. Acquisition time ' + fmt.clock(R.endAt) + '.' : R.state === 'paused' ? (R.standalone ? 'Paused.' : 'Paused. The AKTA run continues.') : R.standalone ? 'Acquiring. ' + fmt.min1(tS / 60) + ' min in.' : (tA < 0 ? 'Acquiring buffer. AKTA run starts in ' + fmt.min1(-tA) + ' min.' : (tA > R.ph.totalMin ? 'Acquiring after the AKTA method ended.' : 'Acquiring. ' + ph.name + (ph.hold && tA >= ph.tPump ? ', hold, no flow' : ', ' + fmt.ml(vp - ph.v0) + ' mL in') + '.'));
+    // Engineer view rows: instrument state the scientist does not act on
+    const eng = h => h.replace('<tr>', '<tr class="eng-only">');
     const row = (k2, u, v) => '<tr><td class="k">' + k2 + (u ? ' <span class="un">(' + u + ')</span>' : '') + '</td><td class="v">' + v + '</td></tr>';
     const fl = n && i >= 0 ? R.y.act[i] : NaN, use = n ? A.ruse[i] : NaN;
     const html = '<div class="sysstate">' + esc(sys) + '</div><table class="rv">' +
-      row('Fluorescence', 'V·ns', fmt.sig3(fl)) +
-      row('Sensitivity', '', '<span title="OD ' + st.nd + ', ' + st.range * 1000 + ' mV">' + A.cur + ' of ' + lad.length + '</span>') +
-      row('Input range', '', rangeBar(use, use < S.th.lowPrec ? '<span class="flag w" title="Pulse under ' + Math.round(S.th.lowPrec * 100) + ' % of the input range (provisional)">Low precision</span>' : use > TR.ACQ.limit ? '<span class="flag f">Above 90 % limit</span>' : '')) +
+      row('Total fluorescence', 'V·ns', fmt.sig3(fl)) +
+      eng(row('Sensitivity', '', '<span title="OD ' + st.nd + ', ' + st.range * 1000 + ' mV">' + A.cur + ' of ' + lad.length + '</span>')) +
+      eng(row('Input range', '', rangeBar(use, use < S.th.lowPrec ? '<span class="flag w" title="Pulse under ' + Math.round(S.th.lowPrec * 100) + ' % of the input range (provisional)">Low precision</span>' : use > TR.ACQ.limit ? '<span class="flag f">Above 90 % limit</span>' : ''))) +
       row('Blocks', '', fmt.int(n - disc) + ' (' + fmt.int(disc) + ' discarded)').replace('<tr>', '<tr class="eng-only">') +
       (R.setupSnap.beamPerBlock ? row('Beam monitor', '% of start', n ? fmt.pct1(A.bm[i] / (R.bmRef || A.bm[i])) : '–').replace('<tr>', '<tr class="eng-only">') : '') +
-      (al.detector === 'n/a' ? '' : row('Alignment', '', esc(al.detector === 'Aligned' && al.fractions === 'Uncertain' ? 'Fractions uncertain' : al.detector))) + RC.runRows.map(f => f(R, i, row)).join('') + '</table>';
+      (al.detector === 'n/a' || (!S.engineer && al.detector === 'Aligned' && al.fractions === 'Aligned') ? '' : row('Alignment', '', esc(al.detector === 'Aligned' && al.fractions === 'Uncertain' ? 'Fractions uncertain' : al.detector))) + RC.runRows.map(f => f(R, i, row)).join('') + '</table>';
     if (box._h !== html) { box.innerHTML = html; box._h = html; }
   }
   const LOGTYPES = { sensitivity: 'Sens.', laser: 'Laser', alignment: 'Align.', note: 'Note', event: 'Event', card: 'Card', system: 'System' };
@@ -4260,7 +4338,7 @@ const RC = (function () {
       '<div class="eh"><span class="rid" title="' + esc(M.ruleById(c.rule) ? M.ruleById(c.rule).cond(S.th) : '') + '">' + c.rule + '</span><span class="lvl">' + esc(c.levelName) + (c.linkedTo ? ', from ' + c.linkedTo.split('-')[0] : '') + '</span><span class="lvl">· ' + esc(c.phase) + '</span>' + (group ? '<span class="cnt" title="Repeated in this phase after the condition cleared">' + group.length + '×</span>' : '') + '</div>' +
       '<div>' + (c.obs && c.obs.indexOf(c.title) === 0 ? '<b>' + esc(c.title) + '</b>' + tx(c.obs.slice(c.title.length)) : '<b>' + esc(c.title) + '.</b> ' + tx(c.obs)) + '</div>' +
       (group ? '<div class="meta">Also at ' + group.slice(0, -1).map(x => S.run && S.run.standalone ? fmt.min1(x.x0) + ' min' : fmt.ml(x.x0) + ' mL').join(', ') + '.</div>' : '') +
-      '<div class="meta">' + (c.fractions && c.fractions.length ? 'Fractions: ' + esc(M.rangeIds(c.fractions)) + ' · ' : '') + '<button class="link small" data-show="' + c.x0 + ',' + c.x1 + '">Show on chart</button> · Processing: ' + esc(c.mode) + (feats ? ' · Relies on: ' + feats : '') + '</div>' +
+      '<div class="meta">' + (c.fractions && c.fractions.length ? 'Fractions: ' + esc(M.rangeIds(c.fractions)) + ' · ' : '') + '<button class="link small" data-show="' + c.x0 + ',' + c.x1 + '">Show on chart</button><span class="eng-only"> · Processing: ' + esc(c.mode) + (feats ? ' · Relies on: ' + feats : '') + '</span></div>' +
       (c.confirm ? '<div class="meta"><b>Suggested confirmation:</b> ' + esc(c.confirm) + '</div>' : '') + (c.action ? '<div class="meta"><b>Suggested action:</b> ' + tx(c.action) + '</div>' : '') +
       '<div class="acts">' + (nOpen ? '<input type="text" placeholder="Note (optional)" aria-label="Response note"><button class="btn sm" data-r="accepted">Accept</button><button class="btn sm" data-r="dismissed">Dismiss</button>' : resp) + '</div></div>';
   }
@@ -4271,14 +4349,21 @@ const RC = (function () {
       for (const c of S.run.rules.cards) if (ids.includes(c.id) && c.status === 'open') M.cardRespond(c, b.dataset.r, note);
     }));
   }
+  // Scientist view: process observations and hypotheses first; instrument evidence collapses into one line
+  let instOpen = false;
   function runCards() {
     const R = S.run, box = $('#runCards'); const cards = R ? R.rules.cards : [];
-    const key = JSON.stringify(cards.map(c => [c.id, c.status, c.obs, c.fractions && c.fractions.length]));
+    const key = JSON.stringify([S.engineer, cards.map(c => [c.id, c.status, c.obs, c.fractions && c.fractions.length])]);
     if (key === cardsKey) return; cardsKey = key;
-    $('#cardCnt').textContent = cards.filter(c => c.status === 'open').length;
     const focused = document.activeElement && box.contains(document.activeElement) && document.activeElement.tagName === 'INPUT';
     if (focused) { cardsKey = ''; return; }
-    box.innerHTML = '<div class="cards">' + cardsHtml(cards) + '</div>'; wireCards(box);
+    if (S.engineer) { $('#cardCnt').textContent = cards.filter(c => c.status === 'open').length; box.innerHTML = '<div class="cards">' + cardsHtml(cards) + '</div>'; wireCards(box); return; }
+    const main = cards.filter(c => c.level !== 'I'), inst = cards.filter(c => c.level === 'I');
+    $('#cardCnt').textContent = main.filter(c => c.status === 'open').length;
+    const byRule = {}; inst.forEach(c => { byRule[c.rule] = (byRule[c.rule] || 0) + 1; });
+    const instHtml = inst.length ? '<details class="inst-notes"' + (instOpen ? ' open' : '') + '><summary>Instrument notes <span class="cnt">' + inst.filter(c => c.status === 'open').length + '</span> <span class="note">' + Object.keys(byRule).map(k => k + (byRule[k] > 1 ? ' ×' + byRule[k] : '')).join(', ') + '</span></summary><div class="cards">' + cardsHtml(inst) + '</div></details>' : '';
+    box.innerHTML = '<div class="cards">' + (main.length ? cardsHtml(main) : '<div class="note">No process observations.</div>') + instHtml + '</div>'; wireCards(box);
+    const d = $('.inst-notes', box); if (d) d.ontoggle = () => { instOpen = d.open; };
   }
   function update(d) {
     if (!built) build();
@@ -4304,23 +4389,23 @@ const RC = (function () {
   function build() {
     const r = $('#scr-fractions'); r.classList.add('fixed'); r.style.overflow = 'auto';
     r.innerHTML = '<div class="scr-h"><h1>Fraction review</h1></div>' +
-      '<div class="run-top"><div class="chips" id="frChips" style="display:none"><span>Ranges one setting larger (what-if)</span></div><div class="toolbar" id="fTools"><div class="seg sm" id="fX"><button data-v="min">min</button><button data-v="vol">mL</button><button data-v="cv">CV</button></div><div class="seg sm" id="fLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div>' + RC.viewToggles('f') + '<span class="nowrap" style="display:inline-flex;align-items:center;gap:6px"><span class="lab">Drag to</span><div class="seg sm" id="fDrag"><button data-v="select" class="on">Select fractions</button><button data-v="zoom">Zoom</button></div></span><label class="chk small"><input type="checkbox" id="fRul"> Rulers</label><button class="btn sm" id="fReset">Reset zoom</button></div></div>' +
+      '<div class="run-top"><div class="chips" id="frChips" style="display:none"><span>Ranges one setting larger (what-if)</span></div><div class="toolbar" id="fTools"><div class="seg sm" id="fX"><button data-v="min">min</button><button data-v="vol">mL</button><button data-v="cv">CV</button></div><div class="seg sm" id="fLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div><span class="nowrap" style="display:inline-flex;align-items:center;gap:6px"><span class="lab">Drag to</span><div class="seg sm" id="fDrag"><button data-v="select" class="on">Select fractions</button><button data-v="zoom">Zoom</button></div></span><span id="fViewSlot"></span><button class="btn sm hidden" id="fReset">Reset zoom</button></div></div>' +
       '<div id="fEmpty" class="callout" style="display:none"></div>' +
       '<div class="fr-grid" id="frGrid" style="min-height:560px;grid-template-rows:minmax(0,56fr) minmax(0,44fr)">' +
       '<div class="panel" style="grid-column:1;grid-row:1"><div class="pb" style="padding:4px 8px"><div id="frOv" style="height:100%"></div></div></div>' +
       '<div class="panel fr-side" style="grid-column:2;grid-row:1"><div class="ph"><div class="ptabs" id="frTabs"><button data-v="frac" class="on">Fraction</button><button data-v="samples">Samples to send <span class="cnt" id="sampCnt">0</span></button></div><span class="sp"></span><span id="frNav" class="nowrap"></span></div><div class="pb" style="padding:4px 8px;display:flex;flex-direction:column;gap:6px;overflow:hidden" id="frSide"></div></div>' +
-      '<div class="panel fr-table" style="grid-column:1 / 3;grid-row:2"><div class="ph"><h3>Fractions</h3><span class="note" id="frNote"></span><span class="sp"></span><label class="chk small" title="Relative signal-area contribution only. Not equivalent to protein mass, yield or recovery."><input type="checkbox" id="frShare"> Fluorescence share</label></div><div class="pb tbl-wrap" style="padding:0" id="frTblWrap"><table class="tbl" id="frTbl"><thead></thead><tbody></tbody></table></div></div>' +
+      '<div class="panel fr-table" style="grid-column:1 / 3;grid-row:2"><div class="ph"><h3>Fractions</h3><span class="note" id="frNote"></span><span class="sp"></span><label class="chk small eng-only" title="Relative signal-area contribution only. Not equivalent to protein mass, yield or recovery."><input type="checkbox" id="frShare"> Fluorescence share</label></div><div class="pb tbl-wrap" style="padding:0" id="frTblWrap"><table class="tbl" id="frTbl"><thead></thead><tbody></tbody></table></div></div>' +
       '</div>';
-    UI.processingButton($('#fTools')); RC.wireToggles($('#fTools'));
+    UI.processingButton($('#fTools')).classList.add('eng-only');
+    RC.viewMenu($('#fViewSlot'), 'f', { get: () => !!(zm && zm.rulersOn), set: on => { zm.rulersOn = on; if (on) { const [a, b] = zm.xRange(); zm.rulers = [a + (b - a) * 0.4, a + (b - a) * 0.6]; } zm.invalidateOver(); zm.updateReadout(); } });
     $$('#fX button').forEach(b => b.onclick = () => { RC.view.x = b.dataset.v; sync(); ov.resetZoom(); ov.invalidate(); zoomTo(); UI.emitDirty('xmode'); });
     $$('#fLog button').forEach(b => b.onclick = () => { RC.view.log = b.dataset.v === '1'; sync(); ov.invalidate(); zm.invalidate(); });
     $$('#fDrag button').forEach(b => b.onclick = () => { ov.mode = b.dataset.v; $$('#fDrag button').forEach(x => x.classList.toggle('on', x === b)); });
     $('#fReset').onclick = () => ov.resetZoom();
-    $('#fRul').onchange = e => { zm.rulersOn = e.target.checked; if (zm.rulersOn) { const [a, b] = zm.xRange(); zm.rulers = [a + (b - a) * 0.4, a + (b - a) * 0.6]; } zm.invalidateOver(); zm.updateReadout(); };
     $('#frShare').onchange = e => { showShare = e.target.checked; lastKey = ''; };
     $$('#frTabs button').forEach(b => b.onclick = () => { tab = b.dataset.v; $$('#frTabs button').forEach(x => x.classList.toggle('on', x === b)); side(true); });
     ov = new CH.Chart($('#frOv'), {
-      ariaLabel: 'Run overview; drag to select fractions', dragMode: 'select', rulers: [0, 1],
+      ariaLabel: 'Run overview; drag to select fractions', dragMode: 'select', rulers: [0, 1], onView: v => $('#fReset').classList.toggle('hidden', !v),
       xDomain: RC.xDomain, xTitle: RC.xTitle, panels: ovPanels(), series: ovSeries(), bands: RC.bands, fractions: RC.fracItems,
       markers: () => RC.markers(false), hatches: RC.hatches, intervals: RC.intervals, info: RC.info, legendExtras: RC.legendExtras(), liveReadout: false,
       vlines: () => poolLines(false).map(l => ({ ...l, label: null })),
@@ -4349,20 +4434,22 @@ const RC = (function () {
     };
   }
   function fr(id) { return S.run ? S.run.fractions.find(f => f.id === id) : null; }
+  // the UV pool and fluorescence boundary comparison uses AKTA data: shown with the AKTA traces or in Engineer view
+  function cmpOn() { return S.engineer || RC.view.akta; }
   function poolLines(withFl) {
-    const R = S.run; if (!R || R.setupSnap.source !== 'import') return [];
+    const R = S.run; if (!R || R.setupSnap.source !== 'import' || !cmpOn()) return [];
     const p = M.uvPool(R), out = [];
     if (p) { out.push({ x: RC.toX(p.a), label: 'UV pool start', color: C.uv, dash: 'dash', row: 0 }); if (p.b != null) out.push({ x: RC.toX(p.b), label: 'UV pool end', color: C.uv, dash: 'dash', align: 'right', row: 0 }); }
     return out;
   }
   function flBounds() { const R = S.run; if (!R) return null; const b = M.flBounds(R, S.th.flPct); if (!b) return null; if (flManual) return { ...b, a: flManual[0] != null ? flManual[0] : b.a, b: flManual[1] != null ? flManual[1] : b.b, manual: true }; return b; }
   function flGuides() {
-    const b = flBounds(); if (!b) return []; const col = M.procMode() === 'v20' ? C.v20 : C.prop, out = [];
+    const b = flBounds(); if (!b || !cmpOn()) return []; const col = M.procMode() === 'v20' ? C.v20 : C.prop, out = [];
     const mk = (k, v) => ({ id: 'fl' + k, x: RC.toX(v), color: col, dash: 'dot', label: 'Fl. ' + S.th.flPct + ' %', row: 1 + k, drag: x => { flManual = flManual || [null, null]; flManual[k] = RC.fromX(x); }, onEnd: () => { M.audit('fraction review', 'Fluorescence boundary ' + (k ? 'end' : 'start') + ' moved by hand to ' + fmt.ml(flManual[k]) + ' mL (visual comparison only).'); lastKey = ''; } });
     if (b.a != null) out.push(mk(0, b.a)); if (b.b != null) out.push(mk(1, b.b));
     return out;
   }
-  function sync() { $$('#fX button').forEach(b => b.classList.toggle('on', b.dataset.v === RC.view.x)); $$('#fLog button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === RC.view.log)); RC.syncToggles(); }
+  function sync() { $$('#fX button').forEach(b => b.classList.toggle('on', b.dataset.v === RC.view.x)); $$('#fLog button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === RC.view.log)); }
   function zoomTo() { if (!zm || !focus) return; zm.view = null; zm.zoomStack = []; zm.invalidate(); }
   function selChanged() { userPick = true; lastKey = ''; ov.invalidateOver(); zoomTo(); mp.fid = null; if (tab !== 'frac') { tab = 'frac'; $$('#frTabs button').forEach(x => x.classList.toggle('on', x.dataset.v === 'frac')); } side(true); }
   /* ---------- table ---------- */
@@ -4371,13 +4458,15 @@ const RC = (function () {
     { k: 'id', h: 'Fraction', v: f => f.id },
     { k: 'phase', h: 'Phase', v: f => f.phase },
     { k: 'a', h: 'Volume <span class="unit">(mL)</span>', num: true, v: f => f.a, f: f => fmt.ml(f.a) + '–' + fmt.ml(f.b) },
-    { k: 'uvMean', h: 'UV 280 mean / max <span class="unit">(mAU)</span>', num: true, v: f => f.uvMean, f: f => fmt.mau(f.uvMean) + ' / ' + fmt.mau(f.uvMax) + (f.uvSat ? ' <span class="flag w" title="UV 280 at its 3,800 mAU ceiling">sat.</span>' : '') },
-    { k: 'fMean', h: 'Fluor. mean / max <span class="unit">(V·ns)</span>', num: true, v: f => f.fMean, f: f => fmt.sig3(f.fMean) + ' / ' + fmt.sig3(f.fMax) },
-    { k: 'qc', h: 'QC', wrap: true, v: f => f.chg + f.over + f.disc * 10 + f.laser * 10, f: f => qcFlags(f) },
+    { k: 'uvMean', h: 'UV 280 mean / max <span class="unit">(mAU)</span>', num: true, show: () => S.engineer || RC.view.akta, v: f => f.uvMean, f: f => fmt.mau(f.uvMean) + ' / ' + fmt.mau(f.uvMax) + (f.uvSat ? ' <span class="flag w" title="UV 280 at its 3,800 mAU ceiling">sat.</span>' : '') },
+    { k: 'fMean', get h() { return 'Fluor. mean' + (S.engineer ? ' / max' : '') + ' <span class="unit">(V·ns)</span>'; }, num: true, v: f => f.fMean, f: f => fmt.sig3(f.fMean) + (S.engineer ? ' / ' + fmt.sig3(f.fMax) : '') },
+    { k: 'qc', h: 'QC', wrap: true, show: () => S.engineer, v: f => f.chg + f.over + f.disc * 10 + f.laser * 10, f: f => qcFlags(f) },
     { k: 'share', h: 'Share <span class="unit">(%)</span>', num: true, opt: true, tip: 'Relative signal-area contribution only. Not equivalent to protein mass, yield or recovery.', v: f => f.share, f: f => isFinite(f.share) ? (f.share * 100).toFixed(1) : '–' },
-    { k: 'cards', h: 'Cards', wrap: true, v: f => f.linked.length, f: f => f.linked.length ? f.linked.join(', ') : '' },
+    // Scientist view: the cards, plus the two checks that change how a fraction is read (assignment, partial)
+    { k: 'cards', get h() { return S.engineer ? 'Cards' : 'Evidence'; }, wrap: true, v: f => f.linked.filter(UI.cardShown).length, f: f => f.linked.filter(UI.cardShown).join(', ') + (S.engineer ? '' : ' ' + sciFlags(f)) },
     { k: 'dec', h: 'Decision', v: f => decText(dec(f.id)), f: f => '<button class="btn sm decb" data-id="' + f.id + '" title="Choose offline analyses">' + esc(decText(dec(f.id))) + (dec(f.id).note ? ' *' : '') + '</button>' }
   ];
+  function sciFlags(f) { return (f.assign === 'Uncertain' ? '<span class="flag w" title="' + esc(['Fraction assignment uncertain.', ...M.alignmentState().issues].join(' ')) + '">Uncertain</span>' : '') + (!f.complete && f.nBlocks ? '<span class="flag" title="Fraction not yet fully acquired">Partial</span>' : ''); }
   function qcFlags(f) {
     const out = [];
     if (f.chg) out.push('<span class="flag" title="' + plural(f.chg, 'sensitivity change', 'sensitivity changes') + ' inside the fraction">Sens. ×' + f.chg + '</span>');
@@ -4391,7 +4480,7 @@ const RC = (function () {
   }
   function table() {
     const R = S.run; const cols = COLS.filter(c => (!c.opt || showShare) && (!c.show || c.show()));
-    const key = JSON.stringify([R ? R.derivedN : 0, R ? R.dataGen : 0, R && R.lt ? R.lt.gen : 0, [...sel], sortKey, sortDir, showShare, COLS.map(c => c.show ? c.show() : 1), R ? R.rules.cards.length : 0, S.decisions, M.alignmentState().fractions, RC.view.x]);
+    const key = JSON.stringify([R ? R.derivedN : 0, R ? R.dataGen : 0, R && R.lt ? R.lt.gen : 0, [...sel], sortKey, sortDir, showShare, COLS.map(c => c.show ? c.show() : 1), S.engineer, R ? R.rules.cards.length : 0, S.decisions, M.alignmentState().fractions, RC.view.x]);
     if (key === lastKey) return; lastKey = key;
     rows = R ? M.fractionStats(R) : [];
     if (sortKey) { const c = COLS.find(x => x.k === sortKey); rows.sort((a, b) => { const va = c.v(a), vb = c.v(b); return (va > vb ? 1 : va < vb ? -1 : 0) * sortDir; }); }
@@ -4427,7 +4516,7 @@ const RC = (function () {
   let sideKey = '';
   function side(force) {
     const R = S.run, box = $('#frSide');
-    const key = JSON.stringify([tab, focus, [...sel], S.decisions, R ? R.derivedN : 0, R && R.lt ? R.lt.gen : 0, R ? R.rules.cards.map(c => c.status) : 0, M.procLabel(), S.th.flPct, flManual, M.plumbing(), M.alignmentState().fractions]);
+    const key = JSON.stringify([tab, focus, [...sel], S.decisions, R ? R.derivedN : 0, R && R.lt ? R.lt.gen : 0, S.engineer, RC.view.akta, R ? R.rules.cards.map(c => c.status) : 0, M.procLabel(), S.th.flPct, flManual, M.plumbing(), M.alignmentState().fractions]);
     if (!force && key === sideKey) return; sideKey = key;
     $('#frNav').innerHTML = tab === 'frac' && R && R.fractions.length ? '<label class="chk small eng-only" title="Median pulse of the fraction"><input type="checkbox" id="frMp"' + (showMp ? ' checked' : '') + '> Pulse</label> <button class="btn sm" id="frPrev" title="Previous fraction">Prev</button> <button class="btn sm" id="frNext" title="Next fraction">Next</button>' : '';
     const mpb = $('#frMp'); if (mpb) mpb.onchange = () => { showMp = mpb.checked; const g = $('.fr-detail-grid'); if (g) g.classList.toggle('show-mp', showMp); };
@@ -4439,16 +4528,16 @@ const RC = (function () {
     const st = rows.find(r => r.id === f.id) || M.fractionStats(R).find(r => r.id === f.id), d = dec(f.id), b = flBounds(), pool = R.setupSnap.source === 'import' ? M.uvPool(R) : null;
     if (!zm._mounted) { box.innerHTML = '<div style="flex:1 1 0;min-height:150px" id="zmHost"></div><div class="fr-detail-grid' + (showMp ? ' show-mp' : '') + '" style="flex:0 1 auto;max-height:60%;min-height:0;display:grid"><div id="mpHost" class="eng-only" style="min-height:0"></div><div id="frDet" style="overflow:auto;font-size:13.5px;min-height:0"></div></div>'; $('#zmHost').append(zm.host); zm.resize(); zm._mounted = true; mountPulse(); }
     zm.invalidate();
-    const cards = R.rules.cards.filter(c => c.fractions && c.fractions.includes(f.id));
+    const cards = R.rules.cards.filter(c => c.fractions && c.fractions.includes(f.id) && UI.cardShown(c.rule));
     const shifted = Math.abs(st.ca - f.a) > 0.005 || Math.abs(st.cb - f.b) > 0.005, unc = st.assign === 'Uncertain';
     const sub = [shifted ? 'Collected liquid ' + fmt.ml(st.ca) + ' to ' + fmt.ml(st.cb) + ' mL' : '', unc ? '<span title="' + esc(M.alignmentState().issues.join(' ')) + '">Assignment uncertain</span>' : ''].filter(Boolean);
-    const bnd = st.phaseKey !== (R.tpl.fractions.elPhase || 'el') ? [] : [pool ? '<span title="UV 280 above 100 mAU">UV pool ' + fmt.ml(pool.a) + ' to ' + (pool.b != null ? fmt.ml(pool.b) : '…') + ' mL</span>' : '',
+    const bnd = st.phaseKey !== (R.tpl.fractions.elPhase || 'el') || !(S.engineer || RC.view.akta) ? [] : [pool ? '<span title="UV 280 above 100 mAU">UV pool ' + fmt.ml(pool.a) + ' to ' + (pool.b != null ? fmt.ml(pool.b) : '…') + ' mL</span>' : '',
       b ? '<span title="Fluorescence ' + S.th.flPct + ' % of peak; visual comparison only">Fl. ' + S.th.flPct + ' % ' + (b.a != null ? fmt.ml(b.a) : '…') + ' to ' + (b.b != null ? fmt.ml(b.b) : '…') + ' mL' + (b.manual ? ', moved' : '') + '</span>' + (flManual ? ' <button class="link small" id="flAuto">Reset</button>' : '') : ''].filter(Boolean);
     // order: fraction, linked cards and decision, confirmations, then the visual boundary comparison for the zoom chart
-    $('#frDet').innerHTML = '<div><b>' + f.id + '</b> · ' + esc(st.phase) + ' · ' + fmt.ml(f.a) + ' to ' + fmt.ml(f.b) + ' mL · ' + fmt.int(st.nBlocks) + ' blocks</div>' +
+    $('#frDet').innerHTML = '<div><b>' + f.id + '</b> · ' + esc(st.phase) + ' · ' + fmt.ml(f.a) + ' to ' + fmt.ml(f.b) + ' mL<span class="eng-only"> · ' + fmt.int(st.nBlocks) + ' blocks</span></div>' +
       (sub.length ? '<div class="muted">' + sub.join(' · ') + '</div>' : '') +
-      (st.lt ? '<div title="' + esc(LTUI.LTIP) + '"><b>Species</b> <span class="lt-cell">' + LTUI.compBar(st.lt.comps, 90) + '<span>' + esc(LTUI.compText(st.lt.comps, 4)) + '</span></span> <span class="muted small">share of fluorescence</span></div>' : '') +
-      '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px">' + (cards.length ? '<span><b>Linked cards</b> ' + cards.map(c => '<span class="flag" title="' + esc(c.obs && c.obs.indexOf(c.title) === 0 ? c.obs : c.title + (c.obs ? '. ' + c.obs : '')) + '">' + c.rule + (c.status !== 'open' ? ' ' + c.status : '') + '</span>').join('') + '</span>' : '') +
+      (st.lt ? '<div title="' + esc(LTUI.LTIP) + '"><b>Species</b> ' + LTUI.compCell(st.lt.comps, 90, 4) + (LTUI.background(st.lt.comps) ? '' : ' <span class="muted small">share of fluorescence</span>') + '</div>' : '') +
+      '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px">' + (cards.length ? '<span><b>' + (S.engineer ? 'Linked cards' : 'Evidence') + '</b> ' + cards.map(c => '<span class="flag" title="' + esc(c.obs && c.obs.indexOf(c.title) === 0 ? c.obs : c.title + (c.obs ? '. ' + c.obs : '')) + '">' + c.rule + (c.status !== 'open' ? ' ' + c.status : '') + '</span>').join('') + '</span>' : '') +
       '<span><b>Decision</b> <button class="btn sm" id="frDec">' + esc(decText(d)) + '</button></span></div>' + (d.note ? '<div class="small">Note: ' + esc(d.note) + '</div>' : '') +
       (cards.filter(c => c.confirm).map(c => '<div class="small">' + c.rule + ': ' + esc(c.confirm) + '</div>').join('')) +
       (bnd.length ? '<div class="muted">' + bnd.join(' · ') + '</div>' : '');
@@ -4548,23 +4637,37 @@ const REC = (function () {
     });
     return out;
   }
+  // Scientist view: the columns of Fraction review (UV 280 with the AKTA traces, mean fluorescence only)
+  function showUv() { return S.engineer || RC.view.akta; }
   function resultsHead(showAssign, showLt) {
-    return [['Fraction'], ['Phase'], ['Volume', 'mL'], ['UV 280 mean / max', 'mAU'], ['Fluor. mean / max', 'V·ns']].concat(showLt ? [['Species', '% of fluorescence']] : [], showAssign ? [['Assignment']] : [], [['Cards']]);
+    const eng = S.engineer;
+    return [['Fraction'], ['Phase'], ['Volume', 'mL']].concat(showUv() ? [['UV 280 mean / max', 'mAU']] : [], [[eng ? 'Fluor. mean / max' : 'Fluor. mean', 'V·ns']], showLt ? [['Species', '% of fluorescence']] : [], showAssign ? [['Assignment']] : [], [[eng ? 'Cards' : 'Evidence']]);
   }
   // lifetime analysis: components with their names, and a fraction's leading species
   function ltComps(R) { return LTM.components(R).map(c => c.tau.toFixed(2) + ' ns (' + (c.m >= 0 ? c.short : 'unassigned') + ')').join(', '); }
-  function ltShares(lt) { return lt ? lt.comps.filter(c => c.share >= 0.005).sort((a, b) => b.share - a.share).slice(0, 3).map(c => c.short + ' ' + (c.share * 100).toFixed(c.share < 0.1 ? 1 : 0)).join(', ') : ''; }
+  function ltShares(lt) {
+    if (!lt) return ''; if (LTUI.background(lt.comps)) return 'Background only';
+    const cs = LTUI.shown(lt.comps), tot = cs.reduce((s, c) => s + Math.max(0, c.a), 0);
+    return cs.map(c => ({ c, f: tot > 0 ? c.a / tot : NaN })).filter(x => x.f >= 0.005).sort((a, b) => b.f - a.f).slice(0, 3).map(x => x.c.short + ' ' + (x.f * 100).toFixed(x.f < 0.1 ? 1 : 0)).join(', ');
+  }
   function sections() {
     const R = S.run, s = R ? R.setupSnap : S.setup, al = M.alignmentState(), p = M.plumbing(), pi = M.presetInfo(s.pmt);
     const tpl = R ? R.tpl : M.template(), ph = R ? R.ph : TR.buildPhases(tpl), src = s.source;
     const out = {};
     out.purpose = purpose != null ? purpose : (src === 'standalone' ? 'Monitor ' + s.sample + ' (' + s.runName + ') with TRIFLE total fluorescence, without AKTA data.' : 'Monitor the ' + tpl.name + ' run of ' + s.sample + ' (' + s.runName + ') with TRIFLE total fluorescence and identify fractions for offline analysis.');
-    out.methods = [
+    const viaAkta = src === 'standalone' ? 'none (standalone TRIFLE)' : (s.system === 'avant' ? 'AKTA avant 150' : 'AKTA pure') + ', method ' + tpl.name + '; ' + ({ import: 'phases and fractions from the imported UNICORN result export', manual: 'phases from manual event marks' }[src]);
+    // Scientist view: what was run and how the species were read out; instrument settings are in the Engineer view and the metadata
+    out.methods = !S.engineer ? [
+      'Instrument: TRIFLE in-line time-resolved intrinsic fluorescence, preset ' + pi.id + '. Software: TRIFLE mock-up, simulated data.',
+      'Chromatography: ' + viaAkta + '.',
+      ...(src === 'standalone' ? [] : ['Fraction assignment: delay volumes V1 ' + fmt.ml(s.V1) + ' mL and V2 ' + fmt.ml(s.V2) + ' mL applied in the volume domain.']),
+      'Species: lifetime analysis (Proposed) of every decay, after Hales et al., J Chromatogr A 1641, 461968 (2021); names from the method template (assumed).'
+    ].join('\n') : [
       'Instrument: TRIFLE (pulsed UV laser, 10 Hz; PMT; six-position ND filter wheel; PicoScope 6000 series, 8-bit, 0.2 ns sampling). Software: TRIFLE mock-up, simulated data.',
       'Preset: ' + pi.id + ' (PMT ' + s.pmt + ' mV, checksum ' + pi.checksum + '; ' + pi.ladderFile + ', ' + pi.irfFile + ').',
       ...(s.rangeMap === 'shift' ? ['Input ranges simulated one setting larger than stated (what-if, to verify on hardware).'] : []),
       'Auto-ranging: ' + (s.autorange === 'v20' ? 'v2.0 reference' : 'Proposed (block median input, corrected no-signal test, baseline not scaled)') + '. Processing: ' + M.procLabel() + '.',
-      'Chromatography: ' + (src === 'standalone' ? 'none (standalone TRIFLE)' : (s.system === 'avant' ? 'AKTA avant 150' : 'AKTA pure') + ', method ' + tpl.name + '; ' + ({ import: 'phases and fractions from the imported UNICORN result export', manual: 'phases from manual event marks' }[src])) + '.',
+      'Chromatography: ' + viaAkta + '.',
       ...(src === 'standalone' ? ['Alignment: not used (standalone TRIFLE, time axis).'] : [
         'Delay volumes: V1 (UV to TRIFLE) ' + fmt.ml(s.V1) + ' mL, V2 (TRIFLE to collector) ' + fmt.ml(s.V2) + ' mL, UNICORN fraction delay ' + fmt.ml(p.fracDelay) + ' mL.',
         'Alignment method: ' + (src === 'manual' || !s.flowTrace ? 'delay volumes applied in the volume domain, without a flow trace.' : 'cumulative volume from the integrated AKTA flow trace; delay volumes applied in the volume domain.')
@@ -4574,8 +4677,11 @@ const REC = (function () {
     if (R) {
       const st = M.fractionStats(R), showAssign = st.some(f => f.assign === 'Uncertain'), showLt = !!(R.lt && R.lt.fit), lst = LTM.state(R);
       out.resultsHead = resultsHead(showAssign, showLt);
-      out.resultsTable = st.map(f => [f.id, f.phase, fmt.ml(f.a) + '-' + fmt.ml(f.b), fmt.mau(f.uvMean) + ' / ' + fmt.mau(f.uvMax) + (f.uvSat ? ' (sat.)' : ''), fmt.sig3(f.fMean) + ' / ' + fmt.sig3(f.fMax)].concat(showLt ? [ltShares(f.lt)] : [], showAssign ? [f.assign] : [], [f.linked.join(' ')]));
-      out.results = R.id + ': ' + fmt.int(R.acq.n) + ' blocks over ' + fmt.min1((R.state === 'complete' ? R.endAt : M.runTimeS(R)) / 60) + ' min. Fluorescence is relative (V·ns, ND-corrected); no recovery or purity is derived.' +
+      out.resultsTable = st.map(f => [f.id, f.phase, fmt.ml(f.a) + '-' + fmt.ml(f.b)].concat(showUv() ? [fmt.mau(f.uvMean) + ' / ' + fmt.mau(f.uvMax) + (f.uvSat ? ' (sat.)' : '')] : [], [fmt.sig3(f.fMean) + (S.engineer ? ' / ' + fmt.sig3(f.fMax) : '')],showLt ? [ltShares(f.lt)] : [], showAssign ? [f.assign] : [], [f.linked.filter(UI.cardShown).join(' ')]));
+      const named = showLt ? LTM.components(R).filter(c => c.key !== 'sc').map(c => c.m >= 0 ? c.short : 'an unassigned species') : [];
+      out.results = !S.engineer ? R.id + ': ' + fmt.min1((R.state === 'complete' ? R.endAt : M.runTimeS(R)) / 60) + ' min. Fluorescence is relative (V·ns); no recovery or purity is derived.' +
+        (showLt ? ' Species found by the lifetime analysis' + (lst === 'final' ? '' : ' (not final)') + ': ' + named.join(', ') + '. Shares are shares of fluorescence, not mass or purity.' : '') :
+        R.id + ': ' + fmt.int(R.acq.n) + ' blocks over ' + fmt.min1((R.state === 'complete' ? R.endAt : M.runTimeS(R)) / 60) + ' min. Fluorescence is relative (V·ns, ND-corrected); no recovery or purity is derived.' +
         (showLt ? ' Lifetime analysis' + (lst === 'final' ? '' : ' (not final)') + ': ' + R.lt.fit.taus.length + ' components, ' + ltComps(R) + '; reduced χ² ' + R.lt.fit.chi2r.toFixed(2) + '. Species shares are shares of fluorescence, not mass or purity.' : '') +
         (st.length ? '\n' + out.resultsHead.map(h => h[0] + (h[1] ? ' (' + h[1] + ')' : '')).join('  ') + '\n' + out.resultsTable.map(r => r.join('  ').trimEnd()).join('\n') : '');
       const A = R.acq, n = R.derivedN; let disc = 0, over = 0, low = 0; for (let i = 0; i < n; i++) { disc += A.disc[i]; over += A.nOver[i]; low += R.low[i]; }
@@ -4583,7 +4689,13 @@ const REC = (function () {
       const nOpen = cards.filter(c => c.status === 'open').length;
       const open = cardLines(cards.filter(c => c.status === 'open' && c.level !== 'I'));
       const noted = cardLines(cards.filter(c => c.status !== 'open' && c.note));
-      out.quality = [
+      const inst = cards.filter(c => c.level === 'I'), instRules = {}; inst.forEach(c => { instRules[c.rule] = (instRules[c.rule] || 0) + 1; });
+      out.quality = !S.engineer ? [
+        'Instrument: ' + (R.laserStableAtStart ? 'laser stable at run start' : 'laser not stable at run start (I1)') + (R.override ? '; readiness override: ' + R.override.reason.replace(/[.!?]$/, '') : '') + '; ' + (inst.length ? inst.length + ' instrument note' + (inst.length > 1 ? 's' : '') + ' (' + Object.keys(instRules).sort(ruleOrder).map(k => k + (instRules[k] > 1 ? ' ×' + instRules[k] : '')).join(', ') + '), details in the metadata.' : 'no instrument notes.'),
+        'Fraction assignment: ' + al.fractions.toLowerCase() + '.' + (al.issues.length ? ' ' + al.issues.join(' ') : ''),
+        'Open observations and hypotheses:' + (open.length ? '' : ' none.'), ...open,
+        ...(noted.length ? ['Closed with a note:', ...noted] : [])
+      ].join('\n') : [
         'Blocks: ' + fmt.int(n - disc) + ' recorded, ' + disc + ' discarded (' + (disc === 1 ? 'timeout' : 'timeouts') + '). Waveforms above 90 % of the input range: ' + fmt.int(over) + '. Low-precision blocks (under ' + Math.round(S.th.lowPrec * 100) + ' % of range): ' + (n ? (low / n * 100).toFixed(0) : 0) + ' %.',
         'Sensitivity changes: ' + R.acq.changes.length + '.',
         'Laser: ' + (R.laserStableAtStart ? 'stable (provisional) at run start.' : 'not stable at run start; see I1.') + (R.override ? ' Readiness override: ' + stop(R.override.reason) : ''),
@@ -4595,7 +4707,12 @@ const REC = (function () {
       ].join('\n');
     } else { out.results = 'No run recorded yet.'; out.quality = 'No run recorded yet.'; out.resultsTable = []; out.resultsHead = resultsHead(false); }
     out.decisions = samples();
-    out.attachments = [
+    out.attachments = !S.engineer ? [
+      ...(src === 'standalone' ? [] : ['UNICORN result report', 'TRIFLE fraction table: ' + fileBase() + '_fractions.csv']),
+      'Chromatogram figure: ' + fileBase() + '_chromatogram.png',
+      'TRIFLE run folder (instrument record: block data, settings and audit trail)',
+      ...(src === 'standalone' ? [] : ['HPLC-SEC, Lunatic and Protein A HPLC results for the fractions in section 5'])
+    ].join('\n') : [
       ...(src === 'standalone' ? [] : ['UNICORN result report']),
       'TRIFLE block data: ' + fileBase() + '_blocks.csv',
       ...(src === 'standalone' ? [] : ['TRIFLE fraction table: ' + fileBase() + '_fractions.csv']),
@@ -4614,17 +4731,18 @@ const REC = (function () {
       '<div class="grid2 rec-grid"><div class="stack"><div class="panel"><div class="ph"><h3>Exports</h3></div><div class="pb stack" style="gap:8px" id="recExports"></div></div>' +
       '<div class="panel eng-only"><div class="ph"><h3>Provenance</h3></div><div class="pb" id="recProv"></div></div></div>' +
       '<div class="panel"><div class="ph"><h3>Notebook-ready summary</h3><span class="sp"></span><button class="btn sm" id="recCopyAll">Copy all</button></div><div class="pb" id="recBody"></div></div></div>' +
-      '<div class="panel" style="margin-top:12px"><div class="ph"><h3>Audit trail</h3></div><div class="pb tbl-wrap" style="padding:0;max-height:360px"><table class="tbl" id="recAudit"><thead><tr><th>Time</th><th>Type</th><th>Entry</th><th>By</th></tr></thead><tbody></tbody></table></div></div>';
+      '<details class="panel rec-audit" id="recAuditBox" style="margin-top:12px"><summary class="ph"><h3>Audit trail</h3><span class="cnt" id="recAuditN">0</span><span class="sp"></span><span class="note">Every setting, decision and export, with time and user</span></summary><div class="pb tbl-wrap" style="padding:0;max-height:360px"><table class="tbl" id="recAudit"><thead><tr><th>Time</th><th>Type</th><th>Entry</th><th>By</th></tr></thead><tbody></tbody></table></div></details>';
     built = true;
     $('#recCopyAll').onclick = e => UI.copyText(allText(), e.target);
   }
   function allText() { const s = sections(); return ['1. Purpose', s.purpose, '', '2. Methods', s.methods, '', '3. Results', s.results, '', '4. Data quality', s.quality, '', '5. Fraction decisions', s.decisions, '', '6. Attachments', s.attachments].join('\n'); }
   function render() {
     const R = S.run, s = sections();
-    const key = JSON.stringify([R ? R.derivedN : 0, R ? R.state : '', R ? R.rules.cards.map(c => c.status + c.obs.length) : 0, S.decisions, M.procLabel(), purpose, S.audit.length]);
+    const key = JSON.stringify([R ? R.derivedN : 0, R ? R.state : '', R ? R.rules.cards.map(c => c.status + c.obs.length) : 0, S.decisions, M.procLabel(), purpose, S.audit.length, S.engineer, RC.view.akta]);
     if (key === lastKey) return; lastKey = key;
-    const thead = s.resultsHead.map((h, k) => '<th' + (k >= 2 && k <= 4 ? ' class="num"' : '') + '>' + esc(h[0]) + (h[1] ? ' <span class="unit">(' + esc(h[1]) + ')</span>' : '') + '</th>').join('');
-    const sec3 = (s, fig) => '<div class="rec-sec"><div class="rh"><h3>3. Results</h3><span class="sp"></span><button class="btn sm" data-copy="3">Copy</button></div>' + fig + '<div class="rec-text">' + esc(s.results.split('\n')[0]) + '</div>' + (s.resultsTable.length ? '<div class="tbl-wrap" style="margin-top:6px"><table class="tbl"><thead><tr>' + thead + '</tr></thead><tbody>' + s.resultsTable.map(r => '<tr>' + r.map((c, k) => '<td' + (k >= 2 && k <= 4 ? ' class="num"' : '') + '>' + esc(c) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>' : '') + '</div>';
+    const nNum = showUv() ? 4 : 3, isNum = k => k >= 2 && k <= nNum;
+    const thead = s.resultsHead.map((h, k) => '<th' + (isNum(k) ? ' class="num"' : '') + '>' + esc(h[0]) + (h[1] ? ' <span class="unit">(' + esc(h[1]) + ')</span>' : '') + '</th>').join('');
+    const sec3 = (s, fig) => '<div class="rec-sec"><div class="rh"><h3>3. Results</h3><span class="sp"></span><button class="btn sm" data-copy="3">Copy</button></div>' + fig + '<div class="rec-text">' + esc(s.results.split('\n')[0]) + '</div>' + (s.resultsTable.length ? '<div class="tbl-wrap" style="margin-top:6px"><table class="tbl"><thead><tr>' + thead + '</tr></thead><tbody>' + s.resultsTable.map(r => '<tr>' + r.map((c, k) => '<td' + (isNum(k) ? ' class="num"' : '') + '>' + esc(c) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>' : '') + '</div>';
     const sec = (n, title, text, extra) => '<div class="rec-sec"><div class="rh"><h3>' + n + '. ' + title + '</h3><span class="sp"></span><button class="btn sm" data-copy="' + n + '">Copy</button></div>' + (extra || '') + '<div class="rec-text">' + esc(text) + '</div></div>';
     let fig = '';
     const rc = runChart();
@@ -4639,11 +4757,12 @@ const REC = (function () {
   function exportsPanel() {
     const R = S.run, dis = R ? '' : ' disabled', csv = (R ? R.setupSnap : S.setup).csvJson;
     const box = $('#recExports');
-    box.innerHTML = '<div class="toolbar"><button class="btn" id="exBlocks"' + dis + '>Block data (CSV)</button><button class="btn" id="exFr"' + (R && R.fractions.length ? '' : ' disabled') + '>Fraction table (CSV)</button><button class="btn" id="exJson">Metadata (JSON)</button><button class="btn" id="exPng"' + dis + '>Chromatogram (PNG)</button><span id="exStage2"></span></div>' +
-      '<div class="callout small"><b>Instrument record</b> ' + tag('E') + ' Run folder (.pkl and settings). Move it to SharePoint, then delete the local copy.' + (csv ? ' CSV and JSON metadata are written alongside. ' + tag('P') : '') + '</div>';
+    box.innerHTML = '<div class="toolbar"><span id="exStage2"></span><button class="btn" id="exFr"' + (R && R.fractions.length ? '' : ' disabled') + '>Fraction table (CSV)</button><button class="btn" id="exPng"' + dis + '>Chromatogram (PNG)</button>' +
+      '<span class="ex-eng eng-only"><span class="sep"></span><button class="btn" id="exBlocks"' + dis + '>Block data (CSV)</button><button class="btn" id="exJson">Metadata (JSON)</button><span id="exStage2b"></span></span></div>' +
+      '<div class="callout small eng-only"><b>Instrument record</b> ' + tag('E') + ' Run folder (.pkl and settings). Move it to SharePoint, then delete the local copy.' + (csv ? ' CSV and JSON metadata are written alongside. ' + tag('P') : '') + '</div>';
     if (R) { $('#exBlocks').onclick = () => exportBlocks(); $('#exFr').onclick = () => exportFractions(); $('#exPng').onclick = () => exportPng(); }
     $('#exJson').onclick = () => exportJson();
-    if (window.REC_STAGE2) window.REC_STAGE2($('#exStage2'));
+    if (window.REC_STAGE2) window.REC_STAGE2($('#exStage2'), $('#exStage2b'));
   }
   function logExport(name) { S.exports.push({ name, ts: M.stamp(S.simT) }); M.audit('export', 'Exported ' + name + '.'); if (S.run) M.log(S.run, 'system', 'Exported ' + name + '.'); }
   // On the hosted page a save resolves false when it fails or is declined; only a completed save is logged.
@@ -4693,11 +4812,12 @@ const REC = (function () {
       '<tr><td>Fraction decisions</td><td class="wrap small">Scientist decisions in Fraction review, with notes; audit trail.</td></tr></tbody></table>';
   }
   function audit() {
+    $('#recAuditN').textContent = fmt.int(S.audit.length);
     const tb = $('#recAudit tbody'); if (tb._n === S.audit.length) return; tb._n = S.audit.length;
     tb.innerHTML = S.audit.slice().reverse().map(a => '<tr><td class="nowrap">' + esc(a.ts) + '</td><td>' + esc(a.kind) + '</td><td class="wrap">' + esc(a.text) + '</td><td>' + esc(a.by) + '</td></tr>').join('') || '<tr><td colspan="4" class="muted">No entries yet.</td></tr>';
   }
   let lastT = 0;
-  UI.register('record', { show() { if (!built) build(); lastKey = ''; render(); lastT = performance.now(); }, update() { if (!built) build(); if (performance.now() - lastT < 2000) return; lastT = performance.now(); render(); } });
+  UI.register('record', { show() { if (!built) build(); $('#recAuditBox').open = S.engineer; lastKey = ''; render(); lastT = performance.now(); }, update() { if (!built) build(); if (performance.now() - lastT < 2000) return; lastT = performance.now(); render(); } });
   return { sections, allText, fileBase, logExport };
 })();
 
@@ -5549,13 +5669,14 @@ const Q = (function () {
   };
 
   /* ---------- Record: export packaging ---------- */
-  window.REC_STAGE2 = slot => {
-    slot.innerHTML = '';
+  // slot: before the scientist's exports; eng: with the Engineer view data files
+  window.REC_STAGE2 = (slot, eng) => {
+    slot.innerHTML = ''; eng.innerHTML = '';
     const pdf = el('<button class="btn offline-only" title="Opens the print dialog. Choose Save as PDF (A4).">Summary (PDF)</button>'), pdfTag = el(tag('P')), h5 = el('<button class="btn"' + (S.run ? '' : ' disabled') + '>Raw waveforms (HDF5)…</button>');
     pdfTag.classList.add('offline-only');
     pdf.onclick = () => { REC.logExport(REC.fileBase() + '_summary.pdf (print)'); setTimeout(() => window.print(), 50); };
     h5.onclick = () => hdf5Dialog();
-    slot.append(pdf, pdfTag, h5, el(tag('P')));
+    slot.append(pdf, pdfTag); eng.append(h5, el(tag('P')));
   };
   function hdf5Dialog() {
     const R = S.run, n = R.acq.n, disc = R.acq.disc.subarray(0, n).reduce((a, b) => a + b, 0), wf = (n - disc) * 10, bytes = wf * 600 * 2 + wf * 96 + (n - disc) * 64 + 64 * 1024;
@@ -5640,6 +5761,8 @@ const Q = (function () {
   // display order: the product first, then the other species from the longest expected lifetime down
   function order(lib) { return lib.map((s, m) => m).sort((a, b) => (lib[b].product ? 1 : 0) - (lib[a].product ? 1 : 0) || lib[b].exp - lib[a].exp); }
   const GAP = { vol: 1.0, cv: 0.25, min: 1.0, acq: 1.0 }, MODE = { vol: 1, cv: 2, min: 3, acq: 4 };
+  // species amounts in the legend and readout: below 0.001 V·ns reads as such, not as a long run of zeros
+  const amt = v => (v < 0.001 ? '< 0.001' : fmt.sig3(v)) + ' V·ns';
   function src(m) {
     return () => {
       const R = S.run; if (!R || !R.lt || !R.lt.fit) return null; const lt = R.lt, mode = RC.sa() ? 'acq' : RC.view.x, lg = RC.view.log;
@@ -5652,14 +5775,16 @@ const Q = (function () {
     const comps = LTM.components(R), lib = R.lt.lib, out = [];
     for (const m of order(lib)) {
       const c = comps.find(q => q.m === m); if (!c) continue;
-      out.push({ key: 'lt_' + c.key, label: c.short + ', ' + c.tau.toFixed(2) + ' ns', tip: c.name + ': decay-associated chromatogram, lifetime ' + c.tau.toFixed(2) + ' ns (template expects about ' + c.exp + ' ns). Mean decay over 15 s. On the log axis only amplitudes above 2 standard errors are drawn. Proposed.', color: c.color, width: c.key === 'sc' ? 1 : 1.6, panel: 'main', src: src(m), fmt: v => fmt.sig3(v) + ' V·ns' });
+      // Scientist view: species names; the lifetimes and the scatter background are Engineer view detail
+      const sc = c.key === 'sc';
+      out.push({ key: 'lt_' + c.key, label: c.short + (S.engineer ? ', ' + c.tau.toFixed(2) + ' ns' : ''), visible: S.engineer || !sc, legend: S.engineer || !sc, tip: c.name + ': decay-associated chromatogram, lifetime ' + c.tau.toFixed(2) + ' ns (template expects about ' + c.exp + ' ns). Mean decay over 15 s. On the log axis only amplitudes above 2 standard errors are drawn. Proposed.', color: c.color, width: c.key === 'sc' ? 1 : 1.6, panel: 'main', src: src(m), fmt: amt });
     }
     const other = comps.filter(c => c.m < 0);
-    if (other.length) out.push({ key: 'lt_other', label: 'Unassigned, ' + other.map(c => c.tau.toFixed(2)).join(', ') + ' ns', tip: 'A component with no expected species of a similar lifetime in the method template. It may be a new species, or may resolve as more of the run is fitted.', color: LTM.COLORS.other, width: 1.4, panel: 'main', src: src(-1), fmt: v => fmt.sig3(v) + ' V·ns' });
+    if (other.length) out.push({ key: 'lt_other', label: S.engineer ? 'Unassigned, ' + other.map(c => c.tau.toFixed(2)).join(', ') + ' ns' : 'Unassigned species', tip: 'A component with no expected species of a similar lifetime in the method template. It may be a new species, or may resolve as more of the run is fitted.', color: LTM.COLORS.other, width: 1.4, panel: 'main', src: src(-1), fmt: amt });
     return out;
   });
   const baseExtras = RC.legendExtras;
-  RC.legendExtras = () => { const R = S.run, st = LTM.state(R); const ex = baseExtras(); if (st === 'none') return ex; const word = { waiting: 'waiting for signal', fitting: 'first fit running', live: 'updating', finalising: 'final fit running', final: 'final' }[st]; return [{ html: '<span class="ch-ll">Species: lifetime analysis, ' + word + '</span> ' + tag('P', 'always'), tip: LTIP }, ...ex]; };
+  RC.legendExtras = () => { const R = S.run, st = LTM.state(R); const ex = baseExtras(); if (st === 'none') return ex; const word = { waiting: 'waiting for signal', fitting: 'first fit running', live: 'updating', finalising: 'final fit running', final: 'final' }[st]; return [{ html: '<span class="ch-ll">' + (S.engineer ? 'Species: lifetime analysis, ' + word : 'Species by lifetime analysis' + (st === 'final' ? '' : ', ' + word)) + '</span> ' + tag('P', 'always'), tip: LTIP }, ...ex]; };
   RC.extraInfo.push((r, i) => { const a = LTM.ampsAt(r, i); if (!a) return ''; const top = a.comps.filter(c => c.share >= 0.01).sort((x, y) => y.share - x.share).slice(0, 3); return top.length ? ' · ' + top.map(c => c.short + ' ' + fmt.pct0(c.share) + ' %').join(', ') : ''; });
 
   /* ---------- composition: stacked bar plus the leading species ---------- */
@@ -5670,15 +5795,22 @@ const Q = (function () {
   }
   function pct(f) { return f >= 0.1 ? (f * 100).toFixed(0) : (f * 100).toFixed(1); }
   function compText(comps, n) { const tot = comps.reduce((s, c) => s + Math.max(0, c.a), 0); if (!(tot > 0)) return ''; return comps.filter(c => c.a / tot >= 0.005).sort((a, b) => b.a - a.a).slice(0, n || 4).map(c => c.short + ' ' + pct(c.a / tot) + ' %').join(' · '); }
-  window.LTUI = { compBar, compText, LTIP };
+  // Scientist view: the sample's species only. Scatter is the buffer's background, not fluorescence; where it gives
+  // over half the signal the composition reads as background only
+  function shown(comps) { return S.engineer ? comps : comps.filter(c => c.key !== 'sc'); }
+  function background(comps) { const tot = comps.reduce((s, c) => s + Math.max(0, c.a), 0), sc = comps.find(c => c.key === 'sc'); return !S.engineer && !!sc && tot > 0 && sc.a / tot > 0.5; }
+  function compCell(comps, w, n, cls) { return background(comps) ? '<span class="muted">Background only</span>' : '<span class="lt-cell' + (cls ? ' ' + cls : '') + '">' + compBar(shown(comps), w) + '<span>' + esc(compText(shown(comps), n)) + '</span></span>'; }
+  window.LTUI = { compBar, compText, compCell, shown, background, LTIP };
   RC.runRows.push((R, i, row) => {
     const st = LTM.state(R); if (st === 'none') return '';
-    const a = LTM.ampsAt(R, R.lt.n - 1);
-    return row('Species', '', a ? '<span class="lt-cell wrap" title="Latest block, 15 s window">' + compBar(a.comps, 56) + '<span>' + esc(compText(a.comps, 2)) + '</span></span>' : '<span class="muted" style="font-weight:normal">' + (st === 'waiting' ? 'Lifetime analysis after 150 blocks' : 'Fitting lifetimes…') + '</span>');
+    const a = LTM.ampsAt(R, R.lt.n - 1), muted = t => '<span class="muted" style="font-weight:normal">' + t + '</span>';
+    if (!a) return row('Species', '', muted(st === 'waiting' ? 'Lifetime analysis after 150 blocks' : 'Fitting lifetimes…'));
+    if (background(a.comps)) return row('Species', '', muted('Background only'));
+    return row('Species', '', '<span class="lt-cell wrap" title="Latest block, 15 s window">' + compBar(shown(a.comps), 56) + '<span>' + esc(compText(shown(a.comps), 2)) + '</span></span>');
   });
   function addFrCol() {
     const fr = UI.screen('fractions'); if (!fr || !fr.addCol) return;
-    fr.addCol({ k: 'lt', h: 'Species <span class="unit">(lifetime analysis)</span>', tip: 'Share of the fraction\'s fluorescence in each species, from the mean decay of its blocks. Relative signal only: not mass, purity, yield or recovery. Proposed.', show: () => !!(S.run && S.run.lt && S.run.lt.fit), v: f => f.lt ? (f.lt.comps.find(c => c.product) || { share: -1 }).share : -1, f: f => f.lt ? '<span class="lt-cell">' + compBar(f.lt.comps, 64) + '<span>' + esc(compText(f.lt.comps, 2)) + '</span></span>' : '–' }, 'qc');
+    fr.addCol({ k: 'lt', h: 'Species <span class="unit">(lifetime analysis)</span>', tip: 'Share of the fraction\'s fluorescence in each species, from the mean decay of its blocks. Relative signal only: not mass, purity, yield or recovery. Proposed.', show: () => !!(S.run && S.run.lt && S.run.lt.fit), v: f => f.lt ? (f.lt.comps.find(c => c.product) || { share: -1 }).share : -1, f: f => f.lt ? compCell(f.lt.comps, 64, 2) : '–' }, 'qc');
   }
 
   /* ---------- Engineer view: Lifetimes ---------- */
@@ -5794,7 +5926,8 @@ const Q = (function () {
   const S = M.S;
   UI.buildRail([
     { group: '' }, { key: 'setup', label: 'Setup' }, { key: 'readiness', label: 'Readiness' }, { key: 'run', label: 'Run' }, { key: 'fractions', label: 'Fraction review' }, { key: 'record', label: 'Record' },
-    ...(window.STAGE2 ? [{ group: 'Analysis' }, { key: 'calibration', label: 'Calibration' }, { key: 'comparison', label: 'Run comparison' }] : []),
+    // Calibration is an occasional specialist task: Engineer view (its concentrations still reach the fraction table)
+    ...(window.STAGE2 ? [{ group: 'Analysis' }, { key: 'comparison', label: 'Run comparison' }, { key: 'calibration', label: 'Calibration', eng: true }] : []),
     { group: 'Engineer', eng: true }, { key: 'engineer', label: 'Diagnostics', eng: true }
   ]);
   Q.init();

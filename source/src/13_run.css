@@ -26,3 +26,5 @@
 .lt-bar { display: inline-flex; gap: 1px; height: 10px; border-radius: 2px; overflow: hidden; background: #FFFFFF; flex: none; }
 .lt-bar > span { min-width: 1px; height: 100%; }
 .lt-grid { align-items: start; }
+/* the Decay panel's "showing" note stays on one line when the panel is narrow */
+#decWhen { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }

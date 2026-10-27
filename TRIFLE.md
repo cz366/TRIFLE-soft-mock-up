@@ -13,7 +13,7 @@ Interactive single-file mock-up of the TRIFLE control and analysis software (in-
 
 - `stage1/trifle_mockup_stage1.html`: Stage 1 build.
 - `stage2/trifle_mockup_stage2_trifle_view.html` (built at the commit "Refit live when the fit degrades"): Stage 2 with the TRIFLE view and lifetime analysis, before the interface simplification.
-- `trifle_mockup.html`: current build.
+- `trifle_mockup.html`: current build, with the simplified scientist view.
 
 ## Decisions to keep
 
@@ -23,6 +23,7 @@ Interactive single-file mock-up of the TRIFLE control and analysis software (in-
 - **P7** compares with the elution front (blocks at least 20 times the buffer baseline), not the load plateau.
 - **AAV:** components may be named empty and full capsids (assumed); never an empty-to-full particle ratio.
 - **Rule IDs are permanent;** labels Existing / Proposed / Future / Assumed / Development assumption / To verify on hardware.
+- **Scientist view is minimal; Engineer view has everything.** Scientist: one header status, Setup run details, sign-in and a Method summary, Readiness check and status, the Run chart with species by name (no lifetimes, no scatter), Run values (state, total fluorescence, concentration, species), Decay and Evidence (instrument cards collapsed under Instrument notes), Fraction review without QC (UV columns only with AKTA traces), Record with three exports, a concise notebook summary and a collapsed audit trail. Decay map, AKTA traces and rulers live in a View menu, off by default. Engineer-only: acquisition settings, chips, Processing, Run log, sensitivity and input range, residuals and χ², Calibration, Block data, Metadata, HDF5, Provenance. Scientist species shares exclude scatter; over half scatter reads "Background only". Conventions in `source/DEVELOPING.md`.
 - **Colours:** species follow the species (product blue #2A78D6, impurity orange #EB6834, flow-through aqua #1BAF7A, scatter grey #8C96A0); total fluorescence in primary ink.
 
 ## The user's preferences

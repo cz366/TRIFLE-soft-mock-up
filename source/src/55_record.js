@@ -24,23 +24,37 @@ const REC = (function () {
     });
     return out;
   }
+  // Scientist view: the columns of Fraction review (UV 280 with the AKTA traces, mean fluorescence only)
+  function showUv() { return S.engineer || RC.view.akta; }
   function resultsHead(showAssign, showLt) {
-    return [['Fraction'], ['Phase'], ['Volume', 'mL'], ['UV 280 mean / max', 'mAU'], ['Fluor. mean / max', 'V·ns']].concat(showLt ? [['Species', '% of fluorescence']] : [], showAssign ? [['Assignment']] : [], [['Cards']]);
+    const eng = S.engineer;
+    return [['Fraction'], ['Phase'], ['Volume', 'mL']].concat(showUv() ? [['UV 280 mean / max', 'mAU']] : [], [[eng ? 'Fluor. mean / max' : 'Fluor. mean', 'V·ns']], showLt ? [['Species', '% of fluorescence']] : [], showAssign ? [['Assignment']] : [], [[eng ? 'Cards' : 'Evidence']]);
   }
   // lifetime analysis: components with their names, and a fraction's leading species
   function ltComps(R) { return LTM.components(R).map(c => c.tau.toFixed(2) + ' ns (' + (c.m >= 0 ? c.short : 'unassigned') + ')').join(', '); }
-  function ltShares(lt) { return lt ? lt.comps.filter(c => c.share >= 0.005).sort((a, b) => b.share - a.share).slice(0, 3).map(c => c.short + ' ' + (c.share * 100).toFixed(c.share < 0.1 ? 1 : 0)).join(', ') : ''; }
+  function ltShares(lt) {
+    if (!lt) return ''; if (LTUI.background(lt.comps)) return 'Background only';
+    const cs = LTUI.shown(lt.comps), tot = cs.reduce((s, c) => s + Math.max(0, c.a), 0);
+    return cs.map(c => ({ c, f: tot > 0 ? c.a / tot : NaN })).filter(x => x.f >= 0.005).sort((a, b) => b.f - a.f).slice(0, 3).map(x => x.c.short + ' ' + (x.f * 100).toFixed(x.f < 0.1 ? 1 : 0)).join(', ');
+  }
   function sections() {
     const R = S.run, s = R ? R.setupSnap : S.setup, al = M.alignmentState(), p = M.plumbing(), pi = M.presetInfo(s.pmt);
     const tpl = R ? R.tpl : M.template(), ph = R ? R.ph : TR.buildPhases(tpl), src = s.source;
     const out = {};
     out.purpose = purpose != null ? purpose : (src === 'standalone' ? 'Monitor ' + s.sample + ' (' + s.runName + ') with TRIFLE total fluorescence, without AKTA data.' : 'Monitor the ' + tpl.name + ' run of ' + s.sample + ' (' + s.runName + ') with TRIFLE total fluorescence and identify fractions for offline analysis.');
-    out.methods = [
+    const viaAkta = src === 'standalone' ? 'none (standalone TRIFLE)' : (s.system === 'avant' ? 'AKTA avant 150' : 'AKTA pure') + ', method ' + tpl.name + '; ' + ({ import: 'phases and fractions from the imported UNICORN result export', manual: 'phases from manual event marks' }[src]);
+    // Scientist view: what was run and how the species were read out; instrument settings are in the Engineer view and the metadata
+    out.methods = !S.engineer ? [
+      'Instrument: TRIFLE in-line time-resolved intrinsic fluorescence, preset ' + pi.id + '. Software: TRIFLE mock-up, simulated data.',
+      'Chromatography: ' + viaAkta + '.',
+      ...(src === 'standalone' ? [] : ['Fraction assignment: delay volumes V1 ' + fmt.ml(s.V1) + ' mL and V2 ' + fmt.ml(s.V2) + ' mL applied in the volume domain.']),
+      'Species: lifetime analysis (Proposed) of every decay, after Hales et al., J Chromatogr A 1641, 461968 (2021); names from the method template (assumed).'
+    ].join('\n') : [
       'Instrument: TRIFLE (pulsed UV laser, 10 Hz; PMT; six-position ND filter wheel; PicoScope 6000 series, 8-bit, 0.2 ns sampling). Software: TRIFLE mock-up, simulated data.',
       'Preset: ' + pi.id + ' (PMT ' + s.pmt + ' mV, checksum ' + pi.checksum + '; ' + pi.ladderFile + ', ' + pi.irfFile + ').',
       ...(s.rangeMap === 'shift' ? ['Input ranges simulated one setting larger than stated (what-if, to verify on hardware).'] : []),
       'Auto-ranging: ' + (s.autorange === 'v20' ? 'v2.0 reference' : 'Proposed (block median input, corrected no-signal test, baseline not scaled)') + '. Processing: ' + M.procLabel() + '.',
-      'Chromatography: ' + (src === 'standalone' ? 'none (standalone TRIFLE)' : (s.system === 'avant' ? 'AKTA avant 150' : 'AKTA pure') + ', method ' + tpl.name + '; ' + ({ import: 'phases and fractions from the imported UNICORN result export', manual: 'phases from manual event marks' }[src])) + '.',
+      'Chromatography: ' + viaAkta + '.',
       ...(src === 'standalone' ? ['Alignment: not used (standalone TRIFLE, time axis).'] : [
         'Delay volumes: V1 (UV to TRIFLE) ' + fmt.ml(s.V1) + ' mL, V2 (TRIFLE to collector) ' + fmt.ml(s.V2) + ' mL, UNICORN fraction delay ' + fmt.ml(p.fracDelay) + ' mL.',
         'Alignment method: ' + (src === 'manual' || !s.flowTrace ? 'delay volumes applied in the volume domain, without a flow trace.' : 'cumulative volume from the integrated AKTA flow trace; delay volumes applied in the volume domain.')
@@ -50,8 +64,11 @@ const REC = (function () {
     if (R) {
       const st = M.fractionStats(R), showAssign = st.some(f => f.assign === 'Uncertain'), showLt = !!(R.lt && R.lt.fit), lst = LTM.state(R);
       out.resultsHead = resultsHead(showAssign, showLt);
-      out.resultsTable = st.map(f => [f.id, f.phase, fmt.ml(f.a) + '-' + fmt.ml(f.b), fmt.mau(f.uvMean) + ' / ' + fmt.mau(f.uvMax) + (f.uvSat ? ' (sat.)' : ''), fmt.sig3(f.fMean) + ' / ' + fmt.sig3(f.fMax)].concat(showLt ? [ltShares(f.lt)] : [], showAssign ? [f.assign] : [], [f.linked.join(' ')]));
-      out.results = R.id + ': ' + fmt.int(R.acq.n) + ' blocks over ' + fmt.min1((R.state === 'complete' ? R.endAt : M.runTimeS(R)) / 60) + ' min. Fluorescence is relative (V·ns, ND-corrected); no recovery or purity is derived.' +
+      out.resultsTable = st.map(f => [f.id, f.phase, fmt.ml(f.a) + '-' + fmt.ml(f.b)].concat(showUv() ? [fmt.mau(f.uvMean) + ' / ' + fmt.mau(f.uvMax) + (f.uvSat ? ' (sat.)' : '')] : [], [fmt.sig3(f.fMean) + (S.engineer ? ' / ' + fmt.sig3(f.fMax) : '')],showLt ? [ltShares(f.lt)] : [], showAssign ? [f.assign] : [], [f.linked.filter(UI.cardShown).join(' ')]));
+      const named = showLt ? LTM.components(R).filter(c => c.key !== 'sc').map(c => c.m >= 0 ? c.short : 'an unassigned species') : [];
+      out.results = !S.engineer ? R.id + ': ' + fmt.min1((R.state === 'complete' ? R.endAt : M.runTimeS(R)) / 60) + ' min. Fluorescence is relative (V·ns); no recovery or purity is derived.' +
+        (showLt ? ' Species found by the lifetime analysis' + (lst === 'final' ? '' : ' (not final)') + ': ' + named.join(', ') + '. Shares are shares of fluorescence, not mass or purity.' : '') :
+        R.id + ': ' + fmt.int(R.acq.n) + ' blocks over ' + fmt.min1((R.state === 'complete' ? R.endAt : M.runTimeS(R)) / 60) + ' min. Fluorescence is relative (V·ns, ND-corrected); no recovery or purity is derived.' +
         (showLt ? ' Lifetime analysis' + (lst === 'final' ? '' : ' (not final)') + ': ' + R.lt.fit.taus.length + ' components, ' + ltComps(R) + '; reduced χ² ' + R.lt.fit.chi2r.toFixed(2) + '. Species shares are shares of fluorescence, not mass or purity.' : '') +
         (st.length ? '\n' + out.resultsHead.map(h => h[0] + (h[1] ? ' (' + h[1] + ')' : '')).join('  ') + '\n' + out.resultsTable.map(r => r.join('  ').trimEnd()).join('\n') : '');
       const A = R.acq, n = R.derivedN; let disc = 0, over = 0, low = 0; for (let i = 0; i < n; i++) { disc += A.disc[i]; over += A.nOver[i]; low += R.low[i]; }
@@ -59,7 +76,13 @@ const REC = (function () {
       const nOpen = cards.filter(c => c.status === 'open').length;
       const open = cardLines(cards.filter(c => c.status === 'open' && c.level !== 'I'));
       const noted = cardLines(cards.filter(c => c.status !== 'open' && c.note));
-      out.quality = [
+      const inst = cards.filter(c => c.level === 'I'), instRules = {}; inst.forEach(c => { instRules[c.rule] = (instRules[c.rule] || 0) + 1; });
+      out.quality = !S.engineer ? [
+        'Instrument: ' + (R.laserStableAtStart ? 'laser stable at run start' : 'laser not stable at run start (I1)') + (R.override ? '; readiness override: ' + R.override.reason.replace(/[.!?]$/, '') : '') + '; ' + (inst.length ? inst.length + ' instrument note' + (inst.length > 1 ? 's' : '') + ' (' + Object.keys(instRules).sort(ruleOrder).map(k => k + (instRules[k] > 1 ? ' ×' + instRules[k] : '')).join(', ') + '), details in the metadata.' : 'no instrument notes.'),
+        'Fraction assignment: ' + al.fractions.toLowerCase() + '.' + (al.issues.length ? ' ' + al.issues.join(' ') : ''),
+        'Open observations and hypotheses:' + (open.length ? '' : ' none.'), ...open,
+        ...(noted.length ? ['Closed with a note:', ...noted] : [])
+      ].join('\n') : [
         'Blocks: ' + fmt.int(n - disc) + ' recorded, ' + disc + ' discarded (' + (disc === 1 ? 'timeout' : 'timeouts') + '). Waveforms above 90 % of the input range: ' + fmt.int(over) + '. Low-precision blocks (under ' + Math.round(S.th.lowPrec * 100) + ' % of range): ' + (n ? (low / n * 100).toFixed(0) : 0) + ' %.',
         'Sensitivity changes: ' + R.acq.changes.length + '.',
         'Laser: ' + (R.laserStableAtStart ? 'stable (provisional) at run start.' : 'not stable at run start; see I1.') + (R.override ? ' Readiness override: ' + stop(R.override.reason) : ''),
@@ -71,7 +94,12 @@ const REC = (function () {
       ].join('\n');
     } else { out.results = 'No run recorded yet.'; out.quality = 'No run recorded yet.'; out.resultsTable = []; out.resultsHead = resultsHead(false); }
     out.decisions = samples();
-    out.attachments = [
+    out.attachments = !S.engineer ? [
+      ...(src === 'standalone' ? [] : ['UNICORN result report', 'TRIFLE fraction table: ' + fileBase() + '_fractions.csv']),
+      'Chromatogram figure: ' + fileBase() + '_chromatogram.png',
+      'TRIFLE run folder (instrument record: block data, settings and audit trail)',
+      ...(src === 'standalone' ? [] : ['HPLC-SEC, Lunatic and Protein A HPLC results for the fractions in section 5'])
+    ].join('\n') : [
       ...(src === 'standalone' ? [] : ['UNICORN result report']),
       'TRIFLE block data: ' + fileBase() + '_blocks.csv',
       ...(src === 'standalone' ? [] : ['TRIFLE fraction table: ' + fileBase() + '_fractions.csv']),
@@ -90,17 +118,18 @@ const REC = (function () {
       '<div class="grid2 rec-grid"><div class="stack"><div class="panel"><div class="ph"><h3>Exports</h3></div><div class="pb stack" style="gap:8px" id="recExports"></div></div>' +
       '<div class="panel eng-only"><div class="ph"><h3>Provenance</h3></div><div class="pb" id="recProv"></div></div></div>' +
       '<div class="panel"><div class="ph"><h3>Notebook-ready summary</h3><span class="sp"></span><button class="btn sm" id="recCopyAll">Copy all</button></div><div class="pb" id="recBody"></div></div></div>' +
-      '<div class="panel" style="margin-top:12px"><div class="ph"><h3>Audit trail</h3></div><div class="pb tbl-wrap" style="padding:0;max-height:360px"><table class="tbl" id="recAudit"><thead><tr><th>Time</th><th>Type</th><th>Entry</th><th>By</th></tr></thead><tbody></tbody></table></div></div>';
+      '<details class="panel rec-audit" id="recAuditBox" style="margin-top:12px"><summary class="ph"><h3>Audit trail</h3><span class="cnt" id="recAuditN">0</span><span class="sp"></span><span class="note">Every setting, decision and export, with time and user</span></summary><div class="pb tbl-wrap" style="padding:0;max-height:360px"><table class="tbl" id="recAudit"><thead><tr><th>Time</th><th>Type</th><th>Entry</th><th>By</th></tr></thead><tbody></tbody></table></div></details>';
     built = true;
     $('#recCopyAll').onclick = e => UI.copyText(allText(), e.target);
   }
   function allText() { const s = sections(); return ['1. Purpose', s.purpose, '', '2. Methods', s.methods, '', '3. Results', s.results, '', '4. Data quality', s.quality, '', '5. Fraction decisions', s.decisions, '', '6. Attachments', s.attachments].join('\n'); }
   function render() {
     const R = S.run, s = sections();
-    const key = JSON.stringify([R ? R.derivedN : 0, R ? R.state : '', R ? R.rules.cards.map(c => c.status + c.obs.length) : 0, S.decisions, M.procLabel(), purpose, S.audit.length]);
+    const key = JSON.stringify([R ? R.derivedN : 0, R ? R.state : '', R ? R.rules.cards.map(c => c.status + c.obs.length) : 0, S.decisions, M.procLabel(), purpose, S.audit.length, S.engineer, RC.view.akta]);
     if (key === lastKey) return; lastKey = key;
-    const thead = s.resultsHead.map((h, k) => '<th' + (k >= 2 && k <= 4 ? ' class="num"' : '') + '>' + esc(h[0]) + (h[1] ? ' <span class="unit">(' + esc(h[1]) + ')</span>' : '') + '</th>').join('');
-    const sec3 = (s, fig) => '<div class="rec-sec"><div class="rh"><h3>3. Results</h3><span class="sp"></span><button class="btn sm" data-copy="3">Copy</button></div>' + fig + '<div class="rec-text">' + esc(s.results.split('\n')[0]) + '</div>' + (s.resultsTable.length ? '<div class="tbl-wrap" style="margin-top:6px"><table class="tbl"><thead><tr>' + thead + '</tr></thead><tbody>' + s.resultsTable.map(r => '<tr>' + r.map((c, k) => '<td' + (k >= 2 && k <= 4 ? ' class="num"' : '') + '>' + esc(c) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>' : '') + '</div>';
+    const nNum = showUv() ? 4 : 3, isNum = k => k >= 2 && k <= nNum;
+    const thead = s.resultsHead.map((h, k) => '<th' + (isNum(k) ? ' class="num"' : '') + '>' + esc(h[0]) + (h[1] ? ' <span class="unit">(' + esc(h[1]) + ')</span>' : '') + '</th>').join('');
+    const sec3 = (s, fig) => '<div class="rec-sec"><div class="rh"><h3>3. Results</h3><span class="sp"></span><button class="btn sm" data-copy="3">Copy</button></div>' + fig + '<div class="rec-text">' + esc(s.results.split('\n')[0]) + '</div>' + (s.resultsTable.length ? '<div class="tbl-wrap" style="margin-top:6px"><table class="tbl"><thead><tr>' + thead + '</tr></thead><tbody>' + s.resultsTable.map(r => '<tr>' + r.map((c, k) => '<td' + (isNum(k) ? ' class="num"' : '') + '>' + esc(c) + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>' : '') + '</div>';
     const sec = (n, title, text, extra) => '<div class="rec-sec"><div class="rh"><h3>' + n + '. ' + title + '</h3><span class="sp"></span><button class="btn sm" data-copy="' + n + '">Copy</button></div>' + (extra || '') + '<div class="rec-text">' + esc(text) + '</div></div>';
     let fig = '';
     const rc = runChart();
@@ -115,11 +144,12 @@ const REC = (function () {
   function exportsPanel() {
     const R = S.run, dis = R ? '' : ' disabled', csv = (R ? R.setupSnap : S.setup).csvJson;
     const box = $('#recExports');
-    box.innerHTML = '<div class="toolbar"><button class="btn" id="exBlocks"' + dis + '>Block data (CSV)</button><button class="btn" id="exFr"' + (R && R.fractions.length ? '' : ' disabled') + '>Fraction table (CSV)</button><button class="btn" id="exJson">Metadata (JSON)</button><button class="btn" id="exPng"' + dis + '>Chromatogram (PNG)</button><span id="exStage2"></span></div>' +
-      '<div class="callout small"><b>Instrument record</b> ' + tag('E') + ' Run folder (.pkl and settings). Move it to SharePoint, then delete the local copy.' + (csv ? ' CSV and JSON metadata are written alongside. ' + tag('P') : '') + '</div>';
+    box.innerHTML = '<div class="toolbar"><span id="exStage2"></span><button class="btn" id="exFr"' + (R && R.fractions.length ? '' : ' disabled') + '>Fraction table (CSV)</button><button class="btn" id="exPng"' + dis + '>Chromatogram (PNG)</button>' +
+      '<span class="ex-eng eng-only"><span class="sep"></span><button class="btn" id="exBlocks"' + dis + '>Block data (CSV)</button><button class="btn" id="exJson">Metadata (JSON)</button><span id="exStage2b"></span></span></div>' +
+      '<div class="callout small eng-only"><b>Instrument record</b> ' + tag('E') + ' Run folder (.pkl and settings). Move it to SharePoint, then delete the local copy.' + (csv ? ' CSV and JSON metadata are written alongside. ' + tag('P') : '') + '</div>';
     if (R) { $('#exBlocks').onclick = () => exportBlocks(); $('#exFr').onclick = () => exportFractions(); $('#exPng').onclick = () => exportPng(); }
     $('#exJson').onclick = () => exportJson();
-    if (window.REC_STAGE2) window.REC_STAGE2($('#exStage2'));
+    if (window.REC_STAGE2) window.REC_STAGE2($('#exStage2'), $('#exStage2b'));
   }
   function logExport(name) { S.exports.push({ name, ts: M.stamp(S.simT) }); M.audit('export', 'Exported ' + name + '.'); if (S.run) M.log(S.run, 'system', 'Exported ' + name + '.'); }
   // On the hosted page a save resolves false when it fails or is declined; only a completed save is logged.
@@ -169,10 +199,11 @@ const REC = (function () {
       '<tr><td>Fraction decisions</td><td class="wrap small">Scientist decisions in Fraction review, with notes; audit trail.</td></tr></tbody></table>';
   }
   function audit() {
+    $('#recAuditN').textContent = fmt.int(S.audit.length);
     const tb = $('#recAudit tbody'); if (tb._n === S.audit.length) return; tb._n = S.audit.length;
     tb.innerHTML = S.audit.slice().reverse().map(a => '<tr><td class="nowrap">' + esc(a.ts) + '</td><td>' + esc(a.kind) + '</td><td class="wrap">' + esc(a.text) + '</td><td>' + esc(a.by) + '</td></tr>').join('') || '<tr><td colspan="4" class="muted">No entries yet.</td></tr>';
   }
   let lastT = 0;
-  UI.register('record', { show() { if (!built) build(); lastKey = ''; render(); lastT = performance.now(); }, update() { if (!built) build(); if (performance.now() - lastT < 2000) return; lastT = performance.now(); render(); } });
+  UI.register('record', { show() { if (!built) build(); $('#recAuditBox').open = S.engineer; lastKey = ''; render(); lastT = performance.now(); }, update() { if (!built) build(); if (performance.now() - lastT < 2000) return; lastT = performance.now(); render(); } });
   return { sections, allText, fileBase, logExport };
 })();

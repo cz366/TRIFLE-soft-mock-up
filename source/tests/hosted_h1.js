@@ -10,13 +10,18 @@ module.exports = async (page, shot) => {
   await page.click('[data-go=record]'); await page.waitForTimeout(800);
   console.log('pdf visible:', await ev(() => [...document.querySelectorAll('#recExports button')].filter(b => /PDF/.test(b.textContent)).map(b => b.offsetParent !== null).join(',')));
   const before = await ev(() => M.S.audit ? M.S.audit.filter(a => /Exported/.test(a.text || a.msg || JSON.stringify(a))).length : -1);
-  for (const t of ['Block data (CSV)', 'Fraction table (CSV)', 'Metadata (JSON)', 'Chromatogram (PNG)']) {
+  // the scientist's exports; the Block data and Metadata files are in the Engineer view
+  const shown = () => ev(() => [...document.querySelectorAll('#recExports button')].filter(b => b.offsetParent !== null).map(b => b.textContent).join(', '));
+  console.log('scientist exports:', await shown());
+  for (const t of ['Fraction table (CSV)', 'Chromatogram (PNG)', 'Block data (CSV)', 'Metadata (JSON)']) {
+    if (t === 'Block data (CSV)') { await page.click('#engSwitch'); await page.waitForTimeout(300); console.log('engineer exports:', await shown()); }
     await page.click('#recExports button >> text=' + t); await page.waitForTimeout(700);
     console.log(t, '-> toast:', await ev(() => { const x = document.querySelector('#toast'); return x ? x.className + ' ' + x.textContent : 'none'; }));
   }
   console.log('saved:', await ev(() => JSON.stringify(window.__saved)));
   const after = await ev(() => M.S.audit ? M.S.audit.filter(a => /Exported/.test(a.text || a.msg || JSON.stringify(a))).length : -1);
   console.log('audit export entries before/after:', before, after);
+  await page.click('#engSwitch'); await page.waitForTimeout(300);
   await page.click('#recCopyAll'); await page.waitForTimeout(300);
   console.log('copy all button:', await ev(() => document.querySelector('#recCopyAll').textContent));
   await shot('h_record');

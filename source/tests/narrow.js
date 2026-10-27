@@ -14,6 +14,9 @@ module.exports = async (page, shot) => {
   await page.screenshot({ path: dir + '/n04_run.png' }); console.log('run', JSON.stringify(await ov()));
   await page.evaluate(() => { const s = document.querySelector('.screen.active'); s.scrollTop = 900; }); await page.waitForTimeout(300); await page.screenshot({ path: dir + '/n05_run_scrolled.png' });
   for (const k of ['fractions', 'record', 'calibration', 'comparison']) {
+    // Calibration is in the Engineer view
+    if (k === 'calibration') { await page.click('#mMenu'); await page.click('#engSwitch'); await page.keyboard.press('Escape'); }
+    if (k === 'comparison') { await page.click('#mMenu'); await page.click('#engSwitch'); await page.keyboard.press('Escape'); }
     await page.click('#mMenu'); await page.click('.nav[data-go=' + k + ']'); await page.waitForTimeout(k === 'comparison' ? 8000 : 1200);
     await page.screenshot({ path: dir + '/n_' + k + '.png' }); console.log(k, JSON.stringify(await ov()));
   }

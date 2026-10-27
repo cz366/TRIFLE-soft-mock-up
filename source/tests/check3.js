@@ -3,7 +3,7 @@ module.exports = async (page, shot) => {
   const measure = async (tag) => out.push(tag + ' ' + JSON.stringify(await page.evaluate(() => { const w = document.getElementById('work').getBoundingClientRect(), c = document.querySelector('#scr-run .run-chart').getBoundingClientRect(), s = document.getElementById('scr-run'); return { ratio: +(c.height / w.height).toFixed(3), scroll: s.scrollHeight - s.clientHeight }; })));
   await page.waitForTimeout(400);
   await page.click('#sTrained'); await page.click('#sIp');
-  await page.click('input[name=ar][value=prop]'); await page.selectOption('#demoAkta', 'protA|manual');
+  await page.click('#engSwitch'); await page.click('input[name=ar][value=prop]'); await page.click('#engSwitch'); await page.selectOption('#demoAkta', 'protA|manual');
   await page.click('#speedSeg button[data-v="60"]');
   await page.click('[data-go=readiness]'); await page.waitForTimeout(30000);
   const pmt = await page.$('#pmtChk'); if (pmt) await pmt.click(); await page.waitForTimeout(600);

@@ -9,6 +9,8 @@
   // display order: the product first, then the other species from the longest expected lifetime down
   function order(lib) { return lib.map((s, m) => m).sort((a, b) => (lib[b].product ? 1 : 0) - (lib[a].product ? 1 : 0) || lib[b].exp - lib[a].exp); }
   const GAP = { vol: 1.0, cv: 0.25, min: 1.0, acq: 1.0 }, MODE = { vol: 1, cv: 2, min: 3, acq: 4 };
+  // species amounts in the legend and readout: below 0.001 V·ns reads as such, not as a long run of zeros
+  const amt = v => (v < 0.001 ? '< 0.001' : fmt.sig3(v)) + ' V·ns';
   function src(m) {
     return () => {
       const R = S.run; if (!R || !R.lt || !R.lt.fit) return null; const lt = R.lt, mode = RC.sa() ? 'acq' : RC.view.x, lg = RC.view.log;
@@ -21,14 +23,16 @@
     const comps = LTM.components(R), lib = R.lt.lib, out = [];
     for (const m of order(lib)) {
       const c = comps.find(q => q.m === m); if (!c) continue;
-      out.push({ key: 'lt_' + c.key, label: c.short + ', ' + c.tau.toFixed(2) + ' ns', tip: c.name + ': decay-associated chromatogram, lifetime ' + c.tau.toFixed(2) + ' ns (template expects about ' + c.exp + ' ns). Mean decay over 15 s. On the log axis only amplitudes above 2 standard errors are drawn. Proposed.', color: c.color, width: c.key === 'sc' ? 1 : 1.6, panel: 'main', src: src(m), fmt: v => fmt.sig3(v) + ' V·ns' });
+      // Scientist view: species names; the lifetimes and the scatter background are Engineer view detail
+      const sc = c.key === 'sc';
+      out.push({ key: 'lt_' + c.key, label: c.short + (S.engineer ? ', ' + c.tau.toFixed(2) + ' ns' : ''), visible: S.engineer || !sc, legend: S.engineer || !sc, tip: c.name + ': decay-associated chromatogram, lifetime ' + c.tau.toFixed(2) + ' ns (template expects about ' + c.exp + ' ns). Mean decay over 15 s. On the log axis only amplitudes above 2 standard errors are drawn. Proposed.', color: c.color, width: c.key === 'sc' ? 1 : 1.6, panel: 'main', src: src(m), fmt: amt });
     }
     const other = comps.filter(c => c.m < 0);
-    if (other.length) out.push({ key: 'lt_other', label: 'Unassigned, ' + other.map(c => c.tau.toFixed(2)).join(', ') + ' ns', tip: 'A component with no expected species of a similar lifetime in the method template. It may be a new species, or may resolve as more of the run is fitted.', color: LTM.COLORS.other, width: 1.4, panel: 'main', src: src(-1), fmt: v => fmt.sig3(v) + ' V·ns' });
+    if (other.length) out.push({ key: 'lt_other', label: S.engineer ? 'Unassigned, ' + other.map(c => c.tau.toFixed(2)).join(', ') + ' ns' : 'Unassigned species', tip: 'A component with no expected species of a similar lifetime in the method template. It may be a new species, or may resolve as more of the run is fitted.', color: LTM.COLORS.other, width: 1.4, panel: 'main', src: src(-1), fmt: amt });
     return out;
   });
   const baseExtras = RC.legendExtras;
-  RC.legendExtras = () => { const R = S.run, st = LTM.state(R); const ex = baseExtras(); if (st === 'none') return ex; const word = { waiting: 'waiting for signal', fitting: 'first fit running', live: 'updating', finalising: 'final fit running', final: 'final' }[st]; return [{ html: '<span class="ch-ll">Species: lifetime analysis, ' + word + '</span> ' + tag('P', 'always'), tip: LTIP }, ...ex]; };
+  RC.legendExtras = () => { const R = S.run, st = LTM.state(R); const ex = baseExtras(); if (st === 'none') return ex; const word = { waiting: 'waiting for signal', fitting: 'first fit running', live: 'updating', finalising: 'final fit running', final: 'final' }[st]; return [{ html: '<span class="ch-ll">' + (S.engineer ? 'Species: lifetime analysis, ' + word : 'Species by lifetime analysis' + (st === 'final' ? '' : ', ' + word)) + '</span> ' + tag('P', 'always'), tip: LTIP }, ...ex]; };
   RC.extraInfo.push((r, i) => { const a = LTM.ampsAt(r, i); if (!a) return ''; const top = a.comps.filter(c => c.share >= 0.01).sort((x, y) => y.share - x.share).slice(0, 3); return top.length ? ' · ' + top.map(c => c.short + ' ' + fmt.pct0(c.share) + ' %').join(', ') : ''; });
 
   /* ---------- composition: stacked bar plus the leading species ---------- */
@@ -39,15 +43,22 @@
   }
   function pct(f) { return f >= 0.1 ? (f * 100).toFixed(0) : (f * 100).toFixed(1); }
   function compText(comps, n) { const tot = comps.reduce((s, c) => s + Math.max(0, c.a), 0); if (!(tot > 0)) return ''; return comps.filter(c => c.a / tot >= 0.005).sort((a, b) => b.a - a.a).slice(0, n || 4).map(c => c.short + ' ' + pct(c.a / tot) + ' %').join(' · '); }
-  window.LTUI = { compBar, compText, LTIP };
+  // Scientist view: the sample's species only. Scatter is the buffer's background, not fluorescence; where it gives
+  // over half the signal the composition reads as background only
+  function shown(comps) { return S.engineer ? comps : comps.filter(c => c.key !== 'sc'); }
+  function background(comps) { const tot = comps.reduce((s, c) => s + Math.max(0, c.a), 0), sc = comps.find(c => c.key === 'sc'); return !S.engineer && !!sc && tot > 0 && sc.a / tot > 0.5; }
+  function compCell(comps, w, n, cls) { return background(comps) ? '<span class="muted">Background only</span>' : '<span class="lt-cell' + (cls ? ' ' + cls : '') + '">' + compBar(shown(comps), w) + '<span>' + esc(compText(shown(comps), n)) + '</span></span>'; }
+  window.LTUI = { compBar, compText, compCell, shown, background, LTIP };
   RC.runRows.push((R, i, row) => {
     const st = LTM.state(R); if (st === 'none') return '';
-    const a = LTM.ampsAt(R, R.lt.n - 1);
-    return row('Species', '', a ? '<span class="lt-cell wrap" title="Latest block, 15 s window">' + compBar(a.comps, 56) + '<span>' + esc(compText(a.comps, 2)) + '</span></span>' : '<span class="muted" style="font-weight:normal">' + (st === 'waiting' ? 'Lifetime analysis after 150 blocks' : 'Fitting lifetimes…') + '</span>');
+    const a = LTM.ampsAt(R, R.lt.n - 1), muted = t => '<span class="muted" style="font-weight:normal">' + t + '</span>';
+    if (!a) return row('Species', '', muted(st === 'waiting' ? 'Lifetime analysis after 150 blocks' : 'Fitting lifetimes…'));
+    if (background(a.comps)) return row('Species', '', muted('Background only'));
+    return row('Species', '', '<span class="lt-cell wrap" title="Latest block, 15 s window">' + compBar(shown(a.comps), 56) + '<span>' + esc(compText(shown(a.comps), 2)) + '</span></span>');
   });
   function addFrCol() {
     const fr = UI.screen('fractions'); if (!fr || !fr.addCol) return;
-    fr.addCol({ k: 'lt', h: 'Species <span class="unit">(lifetime analysis)</span>', tip: 'Share of the fraction\'s fluorescence in each species, from the mean decay of its blocks. Relative signal only: not mass, purity, yield or recovery. Proposed.', show: () => !!(S.run && S.run.lt && S.run.lt.fit), v: f => f.lt ? (f.lt.comps.find(c => c.product) || { share: -1 }).share : -1, f: f => f.lt ? '<span class="lt-cell">' + compBar(f.lt.comps, 64) + '<span>' + esc(compText(f.lt.comps, 2)) + '</span></span>' : '–' }, 'qc');
+    fr.addCol({ k: 'lt', h: 'Species <span class="unit">(lifetime analysis)</span>', tip: 'Share of the fraction\'s fluorescence in each species, from the mean decay of its blocks. Relative signal only: not mass, purity, yield or recovery. Proposed.', show: () => !!(S.run && S.run.lt && S.run.lt.fit), v: f => f.lt ? (f.lt.comps.find(c => c.product) || { share: -1 }).share : -1, f: f => f.lt ? compCell(f.lt.comps, 64, 2) : '–' }, 'qc');
   }
 
   /* ---------- Engineer view: Lifetimes ---------- */

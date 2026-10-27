@@ -9,7 +9,7 @@ module.exports = async (page, shot) => {
     out.push(tag + ' ' + JSON.stringify(m));
   };
   await page.waitForTimeout(400);
-  await page.click('#sTrained'); await page.click('#sIp'); await page.click('#sBm');
+  await page.click('#engSwitch'); await page.click('#sTrained'); await page.click('#sIp'); await page.click('#sBm');
   await page.click('#speedSeg button[data-v="60"]');
   await page.click('#demoEarly');
   await page.click('[data-go=readiness]'); await page.waitForTimeout(9000);
@@ -28,7 +28,7 @@ module.exports = async (page, shot) => {
   await page.mouse.click(700, 40); await page.waitForTimeout(800); await shot('32_run_proposed');
   await page.click('#rLog button[data-v="1"]'); await page.click('#rX button[data-v=min]'); await page.waitForTimeout(800); await shot('33_run_log_min');
   await page.click('#rX button[data-v=vol]'); await page.click('#rLog button[data-v="0"]');
-  await page.click('#rRul'); await page.click('#rExp'); await page.waitForTimeout(800); await shot('34_expanded');
+  await page.click('#rView'); await page.click('#rRul'); await page.mouse.click(700, 40); await page.click('#rExp'); await page.waitForTimeout(800); await shot('34_expanded');
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
   // Evidence tab on narrow
   await page.click('.nav[data-go=fractions]'); await page.waitForTimeout(1500); await shot('35_fr_uncertain');

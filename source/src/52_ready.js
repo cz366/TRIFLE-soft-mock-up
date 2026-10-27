@@ -10,11 +10,11 @@
     const r = $('#scr-readiness');
     r.innerHTML = '<div class="scr-h"><h1>Readiness</h1><span class="sp"></span><button class="btn" id="rdRun">Run checks</button><button class="btn primary" id="rdGo">Go to Run</button></div>' +
       '<div class="ready-banner" id="rdBanner"></div>' +
-      '<div class="panel" style="margin-top:12px"><div class="ph"><h3>Instrument checks</h3></div><div class="pb" style="padding:0"><div class="tbl-wrap"><table class="tbl" id="rdTbl"><thead><tr><th style="width:18%">Check</th><th style="width:14%">Status</th><th>Measured</th><th style="width:32%">Limit</th><th class="eng-only">Label</th></tr></thead><tbody></tbody></table></div></div></div>' +
+      '<div class="panel" style="margin-top:12px"><div class="ph"><h3>Instrument checks</h3></div><div class="pb" style="padding:0"><div class="tbl-wrap"><table class="tbl" id="rdTbl"><thead><tr><th style="width:22%">Check</th><th>Status</th><th class="eng-only">Measured</th><th class="eng-only" style="width:30%">Limit</th><th class="eng-only">Label</th></tr></thead><tbody></tbody></table></div></div></div>' +
       '<div class="grid2 rd-lower" style="margin-top:12px"><div class="stack eng-only">' +
       
       '<div class="panel"><div class="ph"><h3>Live pulse preview</h3><span class="sp"></span><div class="seg sm" id="rdPLog"><button data-v="0" class="on">Linear</button><button data-v="1">Log</button></div></div><div class="pb"><div style="height:220px" id="rdPulse"></div></div></div>' +
-      '</div><div class="stack"><div class="panel"><div class="ph"><h3>Laser readiness</h3><span class="sp"></span>' + tag('P') + '</div><div class="pb"><div id="lzState" class="small" style="margin-bottom:6px;min-height:22px"></div><div style="height:270px" id="lzChart"></div><div class="note" style="margin-top:4px">A stable controller reading does not confirm stable UV output.</div></div></div>' +
+      '</div><div class="stack"><div class="panel"><div class="ph"><h3>Laser</h3><span class="sp"></span>' + tag('P') + '</div><div class="pb"><div id="lzState" class="small" style="min-height:22px"></div><div class="eng-only" style="margin-top:6px"><div style="height:270px" id="lzChart"></div><div class="note" style="margin-top:4px">A stable controller reading does not confirm stable UV output.</div></div></div></div>' +
       '</div></div>';
     $('#rdRun').onclick = () => { M.readinessStart(); UI.emitDirty(); };
     $('#rdGo').onclick = () => UI.go('run');
@@ -70,11 +70,13 @@
     const key = JSON.stringify([R && R.checks, S.setup.laserCheck, S.engineer, !!S.run]); if (key === lastKey) return; lastKey = key;
     tb.innerHTML = M.RD_CHECKS.map(c => {
       const st = R ? R.checks[c.key] : { status: 'pending', value: '' }; const [k, t] = STATUS[st.status];
-      let val = esc(st.value || '');
-      if (c.key === 'pmt' && R && st.status === 'manual') val = '<label class="chk"><input type="checkbox" id="pmtChk"> ' + esc(st.value) + '</label>';
+      // the status cell carries what the scientist acts on: the PMT confirmation and, on a failure, the fix
+      let val = esc(st.value || ''), stc = UI.stateHtml(k, t);
+      if (c.key === 'pmt' && R && st.status === 'manual') stc = '<label class="chk"><input type="checkbox" id="pmtChk"> ' + esc(st.value) + '</label>';
       if (c.key === 'emit' && !S.setup.laserCheck && st.status !== 'blocked') val = S.run ? 'Not checked' : 'Not checked <button class="link small" id="enEmit">Turn on</button>';
-      if (st.status === 'fail') val += '<div class="small rd-fix">' + esc(c.ifFail) + '</div>';
-      return '<tr><td class="wrap" title="' + esc(c.meaning) + '"><b>' + esc(c.name) + '</b></td><td>' + UI.stateHtml(k, t) + '</td><td class="wrap">' + val + '</td><td class="wrap">' + esc(c.limit) + '</td><td class="eng-only">' + tag(c.label, 'engineer') + '</td></tr>';
+      if (st.status === 'fail') stc += '<div class="small rd-fix">' + esc(c.ifFail) + '</div>';
+      const engRow = c.key === 'emit' && st.status === 'disabled';
+      return '<tr' + (engRow ? ' class="eng-only"' : '') + '><td class="wrap" title="' + esc(c.meaning) + '"><b>' + esc(c.name) + '</b></td><td class="wrap">' + stc + '</td><td class="wrap eng-only">' + val + '</td><td class="wrap eng-only">' + esc(c.limit) + '</td><td class="eng-only">' + tag(c.label, 'engineer') + '</td></tr>';
     }).join('');
     const pc = $('#pmtChk'); if (pc) pc.onchange = () => { if (pc.checked) { S._pmtConfirmed = true; if (S.readiness) S.readiness.pmtConfirmed = true; M.audit('readiness', 'PMT voltage ' + S.setup.pmt + ' mV confirmed on the supply.'); lastKey = ''; } };
     const ee = $('#enEmit'); if (ee) ee.onclick = () => { S.setup.laserCheck = true; M.audit('setting', 'Laser emission check enabled (Proposed).'); lastKey = ''; };

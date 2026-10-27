@@ -6,7 +6,7 @@
 
 | Path | What it holds |
 |---|---|
-| `src/1*.css` | Styles, concatenated in name order |
+| `src/1*.css` | Styles, concatenated in name order; `14_simple.css` holds the scientist-view layout |
 | `src/15_body.html` | Page skeleton (header, rail, screens, status line) |
 | `src/20_engine.js` | Simulation (species and their decays) and the v2.0 algorithms (fluorescence, auto-ranging); the lifetime analysis maths (basis decays, non-negative least squares, global fit) |
 | `src/30_chart.js` | Canvas charts |
@@ -17,6 +17,17 @@
 | `src/90_boot.js` | Navigation and start-up |
 | `reference/trifle_reference_tests.json` | v2.0 reference values, embedded in the page and checked in Engineer view |
 | `tests/` | Headless browser tests and the screenshot renderer |
+
+## Scientist view and Engineer view
+
+The scientist view shows only what is needed to run and decide; the Engineer view (`body.eng`) shows everything.
+
+- `.eng-only` hides an element in the scientist view; `.sci-only` hides it in the Engineer view (a simpler stand-in, such as the one header status or the Setup Method summary).
+- Code that renders text or table columns reads `S.engineer`, and its cache key must include it, because the switch emits `series`, `cards` and a dirty frame but does not rebuild screens.
+- `UI.cardShown(rule)` leaves the housekeeping cards (I2, I3) out of the scientist's status line and fraction Evidence column.
+- `tag(k)` shows a label tag in the Engineer view only; `tag(k, 'always')` shows it in both.
+- `RC.viewMenu` holds the optional chart layers (decay map, AKTA traces) and rulers for Run and Fraction review. Its checkboxes exist only while the menu is open, so tests open `#rView` (or `#fView`) first.
+- Tests that use an Engineer control (Processing, acquisition settings, Calibration, Block data, Metadata, HDF5) click `#engSwitch` first.
 
 ## Build
 
@@ -39,8 +50,8 @@ It builds both variants, runs every test script and prints pass or FAIL for each
 - `steps7`: "final checksum E9F1FA72 13673" and "Reference tests 228 of 228 pass". This test runs on its own, because its checksum depends on fast-forward finishing within its wait; a busy machine can change it.
 - `check1`: the Run chart takes at least 55 % of the work area at 1440 × 900 and 1280 × 800 (currently 0.599 and 0.580).
 - `check3`: "changes 39".
-- `steps8`: every check prints `ok` and the script ends with "lifetimes ok": four components named scatter, HCP, mAb and HMW, each within 5 % of its simulated lifetime, with the Decay panel, toggles, fraction Species column, Lifetimes tab and Questions answer checked.
-- Hosted checks: all four exports save, the PDF button is hidden, and 26 checks pass at 400 and 768 px wide.
+- `steps8`: every check prints `ok` and the script ends with "lifetimes ok": four components named scatter, HCP, mAb and HMW, each within 5 % of its simulated lifetime, with the scientist and Engineer legends, the Decay panel, the View menu (AKTA traces, decay map), fraction Species column, Lifetimes tab and Questions answer checked.
+- Hosted checks: the scientist sees Fraction table and Chromatogram (the PDF button is hidden), Engineer view adds Block data and Metadata, all four save, and 28 checks pass at 400 and 768 px wide.
 
 Output, screenshots and logs go to `source/test-output/`, which git ignores.
 

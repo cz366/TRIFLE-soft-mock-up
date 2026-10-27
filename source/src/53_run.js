@@ -1,8 +1,9 @@
 /* ---------- shared chromatogram configuration (Run and Fraction review) ---------- */
 const RC = (function () {
   const S = M.S, fmt = M.fmt, C = CH.C, { esc } = UI;
-  // TRIFLE view by default: time axis, decay map on, AKTA traces off (they belong to UNICORN; one click away)
-  const view = { x: 'min', log: false, akta: false, map: true };
+  // TRIFLE view by default: time axis, species chromatogram only. The decay map and the AKTA traces (which
+  // belong to UNICORN) are one click away in the View menu.
+  const view = { x: 'min', log: false, akta: false, map: false };
   const extraSeries = [], extraPanels = [], extraInfo = [], runRows = [];
   const XT = { vol: 'Volume (mL)', cv: 'Column volumes (CV)', min: 'Time (min)' };
   function R() { return S.run; }
@@ -38,7 +39,7 @@ const RC = (function () {
     const ff = v => fmt.sig3(v) + ' V·ns', tot = 'Total fluorescence';
     // total fluorescence in primary ink, like the species it is the sum of; UV 280 has its own strip (one y axis per panel)
     const list = [
-      { key: 'v20', label: tot + (p === 'v20' && !cmp ? '' : ', v2.0 reference'), tip: 'Total fluorescence, ND-corrected: the integral of each pulse (v2.0 reference processing)', color: C.text, width: 1.25, z: 2, panel: 'main', src: trifle('v20'), fmt: ff, visible: p === 'v20' || cmp, shade: true },
+      { key: 'v20', label: tot + (p === 'v20' && !cmp ? '' : ', v2.0 reference'), tip: 'Total fluorescence, ND-corrected: the integral of each pulse (v2.0 reference processing)', color: C.text, width: 1.25, z: 2, panel: 'main', src: trifle('v20'), fmt: ff, visible: p === 'v20' || cmp, shade: S.engineer },
       { key: 'prop', label: tot + ', Proposed' + (lc ? ' (corrected)' : ''), color: C.text, dash: 'dash', width: 1.25, z: 2, panel: 'main', src: trifle('prop'), fmt: ff, visible: p === 'prop', legend: p === 'prop' },
       { key: 'propU', label: tot + ', Proposed, uncorrected', color: C.cond, width: 0.9, panel: 'main', src: trifle('propU'), fmt: ff, visible: p === 'prop' && lc, legend: p === 'prop' && lc },
       { key: 'uv', label: 'UV 280', color: C.uv, width: 1.25, panel: 'uv', src: akta('uv'), fmt: v => fmt.mau(v) + ' mAU', visible: ak, legend: ak },
@@ -56,7 +57,7 @@ const RC = (function () {
     const bmOn = () => (r() ? r().setupSnap.beamPerBlock : S.setup.beamPerBlock);
     const imp = () => (r() ? r().setupSnap.source : S.setup.source) === 'import', ak = () => imp() && view.akta;
     const out = [
-      { key: 'main', yl: { title: 'Fluorescence', unit: 'V·ns, ND-corrected', log: () => view.log, minLog: -3 } },
+      { key: 'main', yl: { title: 'Fluorescence', unit: S.engineer ? 'V·ns, ND-corrected' : 'V·ns', log: () => view.log, minLog: -3 } },
       { key: 'map', px: 64, hidden: () => !view.map || !(r() && r().acq.dw), yl: { title: 'Decay map', short: 'Decay map', unit: 'ns', fixed: [0, 30], zero: false, tickFmt: v => v.toFixed(0) }, draw: mapDraw },
       { key: 'uv', px: 46, hidden: () => !ak(), yl: { title: 'UV 280', short: 'UV 280', unit: 'mAU', fixed: [0, 4000], tickFmt: v => v.toFixed(0) } },
       { key: 'cond', px: 46, hidden: () => !ak(), yl: { title: 'Conductivity', short: 'Cond.', unit: 'mS/cm', fixed: [0, 100], tickFmt: v => v.toFixed(0) } },
@@ -130,13 +131,25 @@ const RC = (function () {
     m.octx.putImageData(m.img, 0, 0, c0, 0, c1 - c0 + 1, h);
     ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(m.off, c0, 0, c1 - c0 + 1, h, p.x + c0, p.y, c1 - c0 + 1, h); ctx.restore();
   }
-  function legendExtras() { return [{ html: '<span class="ch-sw box" style="background:rgba(183,121,31,0.12);border:1px solid rgba(183,121,31,0.5)"></span><span class="ch-ll">Low precision</span>', tip: 'Pulse fills under ' + Math.round(S.th.lowPrec * 100) + ' % of the input range (provisional). Not used for the y-axis autoscale; values beyond the axis are marked at its edge.' }]; }
+  function legendExtras() { if (!S.engineer) return []; return [{ html: '<span class="ch-sw box" style="background:rgba(183,121,31,0.12);border:1px solid rgba(183,121,31,0.5)"></span><span class="ch-ll">Low precision</span>', tip: 'Pulse fills under ' + Math.round(S.th.lowPrec * 100) + ' % of the input range (provisional). Not used for the y-axis autoscale; values beyond the axis are marked at its edge.' }]; }
   function xTitle() { return sa() ? 'Time from TRIFLE start (min)' : XT[view.x]; }
-  // view toggles shared by Run and Fraction review
-  function viewToggles(id) { return '<label class="chk small" title="Every block\'s decay against time, normalised per column (log intensity)"><input type="checkbox" id="' + id + 'Map" data-vk="map"> Decay map</label><label class="chk small" title="UV 280, conductivity and pH from the UNICORN result export, each in its own strip"><input type="checkbox" id="' + id + 'Ak" data-vk="akta"> AKTA traces</label>'; }
-  function wireToggles(host) { UI.$$('input[data-vk]', host).forEach(cb => { cb.checked = !!view[cb.dataset.vk]; cb.onchange = () => { view[cb.dataset.vk] = cb.checked; M.emit('series'); UI.emitDirty(); }; }); }
-  function syncToggles() { UI.$$('input[data-vk]').forEach(cb => { cb.checked = !!view[cb.dataset.vk]; }); }
-  return { extraSeries, extraPanels, extraInfo, runRows, view, XT, xTitle, sa, toX, fromX, xDomain, bands, fracItems, trifle, akta, seriesFor, panels, markers, hatches, intervals, info, rulerInfo, legendExtras, mapDraw, viewToggles, wireToggles, syncToggles };
+  // View menu shared by Run and Fraction review: optional layers and tools, kept off the toolbar.
+  // rul: { get, set } for the screen's rulers. The button shows how many options are on.
+  function viewMenu(host, id, rul) {
+    const b = UI.el('<button class="btn sm" id="' + id + 'View" title="Decay map, AKTA traces and rulers">View <span class="vm-n"></span>▾</button>');
+    const count = () => { const n = (view.map ? 1 : 0) + (view.akta ? 1 : 0) + (rul.get() ? 1 : 0); UI.$('.vm-n', b).textContent = n ? '(' + n + ') ' : ''; };
+    b.onclick = () => {
+      const c = UI.el('<div class="view-menu"><label class="opt"><input type="checkbox" id="' + id + 'Map" data-vk="map"><span>Decay map<span class="note">Every decay against time, normalised per column</span></span></label>' +
+        '<label class="opt"><input type="checkbox" id="' + id + 'Ak" data-vk="akta"><span>AKTA traces<span class="note">UV 280, conductivity, pH and fraction cuts from UNICORN</span></span></label>' +
+        '<label class="opt"><input type="checkbox" id="' + id + 'Rul"><span>Rulers<span class="note">Two draggable lines with the interval between them</span></span></label></div>');
+      UI.$$('input[data-vk]', c).forEach(cb => { cb.checked = !!view[cb.dataset.vk]; cb.onchange = () => { view[cb.dataset.vk] = cb.checked; count(); M.emit('series'); UI.emitDirty(); }; });
+      const r = UI.$('#' + id + 'Rul', c); r.checked = !!rul.get(); r.onchange = () => { rul.set(r.checked); count(); };
+      UI.popover(b, c);
+    };
+    host.append(b); count(); M.on(ev => { if (ev === 'series') count(); });
+    return b;
+  }
+  return { extraSeries, extraPanels, extraInfo, runRows, view, XT, xTitle, sa, toX, fromX, xDomain, bands, fracItems, trifle, akta, seriesFor, panels, markers, hatches, intervals, info, rulerInfo, legendExtras, mapDraw, viewMenu };
 })();
 
 /* ---------- Run (Acquire and Validate) ---------- */
@@ -151,18 +164,19 @@ const RC = (function () {
   for (let j = 0; j < 600; j++) pulse.x[j] = j * 0.2;
   function build() {
     const r = $('#scr-run'); r.classList.add('fixed');
-    r.innerHTML = '<div class="scr-h"><h1>Run</h1><div class="chips acq-chips"></div><span class="sp"></span>' +
+    r.innerHTML = '<div class="scr-h"><h1>Run</h1><div class="chips acq-chips eng-only"></div><span class="sp"></span>' +
       '<button class="btn primary" id="rStart">Start</button><button class="btn" id="rPause">Pause</button><button class="btn" id="rCont">Continue</button><button class="btn" id="rEnd">End</button><span class="sep"></span><button class="btn" id="rMark">Mark event</button><button class="btn" id="rNote">Add note</button></div>' +
       '<div class="run-top">' +
-      '<div class="toolbar" id="rTools"><div class="seg sm" id="rX" role="group" aria-label="X-axis units"><button data-v="min">min</button><button data-v="vol">mL</button><button data-v="cv">CV</button></div><div class="seg sm" id="rLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div>' + RC.viewToggles('r') + '<label class="chk small"><input type="checkbox" id="rRul"> Rulers</label><button class="btn sm" id="rReset" title="Right-click the chart to undo one zoom step">Reset zoom</button><button class="btn sm" id="rExp" title="Esc exits the expanded view">Expand chart</button></div><span class="note" id="rCtlNote"></span></div>' +
+      '<div class="toolbar" id="rTools"><div class="seg sm" id="rX" role="group" aria-label="X-axis units"><button data-v="min">min</button><button data-v="vol">mL</button><button data-v="cv">CV</button></div><div class="seg sm" id="rLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div><span id="rViewSlot"></span><button class="btn sm hidden" id="rReset" title="Right-click the chart to undo one zoom step">Reset zoom</button><button class="btn sm" id="rExp" title="Esc exits the expanded view">Expand chart</button></div><span class="note" id="rCtlNote"></span></div>' +
       '<div class="panel run-chart expand-target"><div class="pb"><div id="runChart" style="flex:1;min-height:0"></div></div></div>' +
       '<div class="run-bottom" id="runBottom">' +
       '<div class="panel"><div class="ph"><h3>Run values</h3></div><div class="pb" id="runValues"></div></div>' +
       '<div class="panel" id="decPanel"><div class="ph"><h3>Decay</h3><span class="note" id="decWhen"></span><span class="sp"></span><button class="btn sm" id="decLatest" style="display:none" title="Follow the latest block again">Latest</button><div class="seg sm eng-only" id="rDecV" title="Species decay or the raw pulse"><button data-v="decay" class="on">Decay</button><button data-v="pulse">Pulse</button></div><div class="seg sm" id="rPLog"><button data-v="0" class="on">Linear</button><button data-v="1">Log</button></div></div><div class="pb" style="padding:2px 4px;overflow:hidden"><div id="runDecay" style="height:100%"></div><div id="runPulse" style="height:100%;display:none"></div></div></div>' +
-      '<div class="panel" id="logPanel"><div class="ph"><h3>Run log</h3><span class="sp"></span><select id="rLogF" class="small" style="height:22px" aria-label="Filter run log"><option value="all">All entries</option><option value="sensitivity">Sensitivity</option><option value="laser">Laser</option><option value="alignment">Alignment</option><option value="note">Notes and events</option><option value="card">Cards</option><option value="system">System</option></select></div><div class="pb log" id="runLog"></div></div>' +
+      '<div class="panel eng-only" id="logPanel"><div class="ph"><h3>Run log</h3><span class="sp"></span><select id="rLogF" class="small" style="height:22px" aria-label="Filter run log"><option value="all">All entries</option><option value="sensitivity">Sensitivity</option><option value="laser">Laser</option><option value="alignment">Alignment</option><option value="note">Notes and events</option><option value="card">Cards</option><option value="system">System</option></select></div><div class="pb log" id="runLog"></div></div>' +
       '<div class="panel" id="cardPanel"><div class="ph"><h3>Evidence</h3><span class="cnt" id="cardCnt">0</span></div><div class="pb" id="runCards"><div class="cards"></div></div></div>' +
       '</div>';
-    UI.processingButton($('#rTools'));
+    UI.processingButton($('#rTools')).classList.add('eng-only');
+    RC.viewMenu($('#rViewSlot'), 'r', { get: () => !!(chart && chart.rulersOn), set: setRulers });
     $('#rStart').onclick = start; $('#rPause').onclick = () => { M.pauseRun(S.run); UI.emitDirty(); };
     $('#rCont').onclick = () => { M.continueRun(S.run); UI.emitDirty(); };
     $('#rEnd').onclick = endRun; $('#rMark').onclick = () => noteDlg('event'); $('#rNote').onclick = () => noteDlg('note');
@@ -171,8 +185,6 @@ const RC = (function () {
     $$('#rPLog button').forEach(b => b.onclick = () => { pulseLog = b.dataset.v === '1'; $$('#rPLog button').forEach(x => x.classList.toggle('on', x === b)); pulseChart.invalidate(); decKey = ''; });
     $$('#rDecV button').forEach(b => b.onclick = () => { decPane = b.dataset.v; showPane(); });
     $('#decLatest').onclick = () => { pin = null; chart.invalidateBase(); decKey = ''; };
-    RC.wireToggles($('#rTools'));
-    $('#rRul').onchange = e => { chart.rulersOn = e.target.checked; if (chart.rulersOn) { const R = S.run, xs = R && R.derivedN ? R.x[RC.sa() ? 'acq' : RC.view.x] : null, [a, b0] = chart.xRange(), b = xs ? Math.min(b0, xs[R.derivedN - 1]) : b0, h = Math.max((b - a) * 0.1, 20 * (b0 - a) / chart.pw), r0 = Math.max(a, (a + b) / 2 - h); chart.rulers = [r0, r0 + 2 * h]; } chart.invalidateOver(); chart.updateReadout(); };
     $('#rReset').onclick = () => chart.resetZoom();
     $('#rExp').onclick = toggleExpand;
     $('#rLogF').onchange = e => { logFilter = e.target.value; logN = -1; };
@@ -184,13 +196,14 @@ const RC = (function () {
       // fraction cuts come from UNICORN: shown with the AKTA traces; Fraction review always shows them
       fractions: () => RC.view.akta ? RC.fracItems() : null,
       vlines: () => { const R = S.run; return R && pin != null && pin < R.derivedN ? [{ x: R.x[RC.sa() ? 'acq' : RC.view.x][pin], color: C.accent, dash: 'solid', label: 'Decay', align: 'left' }] : []; },
+      onView: v => $('#rReset').classList.toggle('hidden', !v),
       onHover: x => { const i = x == null ? null : blockAt(x); if (i !== hov) { hov = i; decKey = ''; } },
       onClick: x => { const i = blockAt(x); if (i != null) { pin = i; chart.invalidateBase(); decKey = ''; } }
     });
     decChart = new CH.Chart($('#runDecay'), {
       ariaLabel: 'Fluorescence decay with its species components', topBand: 8, marginRight: 8, marginLeft: 58, bottom: 32, liveReadout: false,
       xDomain: () => [0, 32], xTitle: () => 'Time (ns)',
-      panels: [{ key: 'main', yl: { title: 'Decay', unit: 'V', log: () => pulseLog, zero: true, minLog: -5 } }, { key: 'res', px: 34, yl: { title: 'Weighted residual', short: 'Residual', unit: 'σ', sym: true, symMin: 3, zero: false } }],
+      panels: [{ key: 'main', yl: { title: 'Decay', unit: 'V', log: () => pulseLog, zero: true, minLog: -5 } }, { key: 'res', px: 34, hidden: () => !S.engineer, yl: { title: 'Weighted residual', short: 'Residual', unit: 'σ', sym: true, symMin: 3, zero: false } }],
       series: decSeries(), info: () => decInfo()
     });
     pulseChart = new CH.Chart($('#runPulse'), {
@@ -208,7 +221,9 @@ const RC = (function () {
     built = true; syncSeg(); layoutBottom();
     M.on(ev => { if (ev === 'proc' || ev === 'run' || ev === 'series' || ev === 'setup' || ev === 'lt') { chart.cfg.panels = RC.panels(); chart.setSeries(RC.seriesFor()); chart.cfg.legendExtras = RC.legendExtras(); chart.buildLegend(); chart.relayout(); pulse.blk = -1; decKey = ''; syncSeg(); } if (ev === 'run' && S.run && S.run.state === 'acquiring' && S.run.derivedN === 0) { pin = null; hov = null; } if (ev === 'cards') cardsKey = ''; if (ev === 'notes') chart.invalidateBase(); if (ev === 'setup') syncSeg(); });
   }
-  function layoutBottom() { const rb = $('#runBottom'); if (!rb) return; const w = rb.getBoundingClientRect().width; if (!w) return; const narrow = w < 1200; rb.classList.toggle('narrow', narrow); $('#cardPanel').style.display = narrow && narrowTab === 'log' ? 'none' : ''; $('#logPanel').style.display = narrow && narrowTab === 'cards' ? 'none' : ''; ensureTabs(narrow); }
+  function setRulers(on) { chart.rulersOn = on; if (on) { const R = S.run, xs = R && R.derivedN ? R.x[RC.sa() ? 'acq' : RC.view.x] : null, [a, b0] = chart.xRange(), b = xs ? Math.min(b0, xs[R.derivedN - 1]) : b0, h = Math.max((b - a) * 0.1, 20 * (b0 - a) / chart.pw), r0 = Math.max(a, (a + b) / 2 - h); chart.rulers = [r0, r0 + 2 * h]; } chart.invalidateOver(); chart.updateReadout(); }
+  // Scientist view: Run values, Decay and Evidence. Engineer view adds the Run log, tabbed with Evidence when narrow.
+  function layoutBottom() { const rb = $('#runBottom'); if (!rb) return; const w = rb.getBoundingClientRect().width; if (!w) return; const narrow = S.engineer && w < 1200; rb.classList.toggle('narrow', narrow); $('#cardPanel').style.display = narrow && narrowTab === 'log' ? 'none' : ''; $('#logPanel').style.display = narrow && narrowTab === 'cards' ? 'none' : ''; ensureTabs(narrow); }
   function ensureTabs(narrow) {
     for (const id of ['logPanel', 'cardPanel']) {
       const ph = $('#' + id + ' .ph'); let t = $('.ptabs', ph);
@@ -217,7 +232,7 @@ const RC = (function () {
       if (t) { $$('button', t).forEach(b => b.classList.toggle('on', b.dataset.v === narrowTab)); $('h3', ph).style.display = 'none'; } else $('h3', ph).style.display = '';
     }
   }
-  function syncSeg() { $$('#rX button').forEach(b => { b.classList.toggle('on', b.dataset.v === RC.view.x && !RC.sa()); b.disabled = RC.sa(); }); $$('#rLog button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === RC.view.log)); RC.syncToggles(); }
+  function syncSeg() { $$('#rX button').forEach(b => { b.classList.toggle('on', b.dataset.v === RC.view.x && !RC.sa()); b.disabled = RC.sa(); }); $$('#rLog button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === RC.view.log)); }
   /* ---------- Decay panel ---------- */
   function showPane() {
     if (!S.engineer) decPane = 'decay';
@@ -244,12 +259,13 @@ const RC = (function () {
     const lt = R.lt, i = lt && lt.fit ? lt.n - 1 : R.derivedN - 1 - LTM.H; return { i: Math.max(0, i), why: 'Latest' };
   }
   function decSeries() {
-    const comps = dec.d ? dec.d.comps : [], sh = c => (c.a > 0 && dec.d.total > 0 ? ' ' + (c.a / dec.d.total * 100).toFixed(c.a / dec.d.total < 0.1 ? 1 : 0) + ' %' : ' 0 %');
+    // scatter is background: its component is Engineer view detail
+    const comps = dec.d ? dec.d.comps.filter(c => S.engineer || c.key !== 'sc') : [], tot = comps.reduce((s, c) => s + Math.max(0, c.a), 0), sh = c => (c.a > 0 && tot > 0 ? ' ' + (c.a / tot * 100).toFixed(c.a / tot < 0.1 ? 1 : 0) + ' %' : ' 0 %');
     const pos = a => pulseLog ? Float64Array.from(a, v => v > 0 ? v : NaN) : a;
     return [
       { key: 'd', label: 'Data', tip: 'Mean decay of the blocks in the 15 s window, ND-corrected', mode: 'points', shape: 'dot', size: 3, color: '#8C96A0', panel: 'main', src: () => dec.n ? { x: dec.x, y: pos(dec.y), n: dec.n } : null },
       ...(dec.d && dec.d.fit ? [{ key: 'f', label: 'Fit', tip: 'Sum of the components', color: C.text, width: 1.5, panel: 'main', src: () => ({ x: dec.x, y: pos(dec.f), n: dec.n, gen: dec.gen * 2 + (pulseLog ? 1 : 0) }), fmt: v => fmt.sig3(v) + ' V' }] : []),
-      ...comps.map((c, k) => ({ key: 'c' + c.key, label: c.short + sh(c), tip: c.name + ', τ ' + c.tau.toFixed(2) + ' ns: ' + fmt.sig3(c.a) + ' V·ns', color: c.color, width: 1.25, panel: 'main', src: () => dec.c[k] ? { x: dec.x, y: pos(dec.c[k]), n: dec.n, gen: dec.gen * 2 + (pulseLog ? 1 : 0) } : null, fmt: v => fmt.sig3(v) + ' V' })),
+      ...comps.map(c => ({ key: 'c' + c.key, label: c.short + sh(c), tip: c.name + (S.engineer ? ', τ ' + c.tau.toFixed(2) + ' ns' : '') + ': ' + fmt.sig3(c.a) + ' V·ns', color: c.color, width: 1.25, panel: 'main', src: () => dec.c[c.k] ? { x: dec.x, y: pos(dec.c[c.k]), n: dec.n, gen: dec.gen * 2 + (pulseLog ? 1 : 0) } : null, fmt: v => fmt.sig3(v) + ' V' })),
       ...(dec.d && dec.d.fit ? [{ key: 'r', label: 'Residual', legend: false, mode: 'points', shape: 'dot', size: 2, color: '#8C96A0', panel: 'res', src: () => ({ x: dec.x, y: dec.r, n: dec.n }) }] : [])
     ];
   }
@@ -257,12 +273,12 @@ const RC = (function () {
     const R = S.run, d = dec.d; if (!R || !d) return R ? 'No decay yet.' : '';
     const A = R.acq, i = d.i, f = R.fractions.find(q => A.u[i] >= q.a && A.u[i] < q.b), lt = R.lt;
     const where = R.standalone ? fmt.min1(A.t[i] / 60) + ' min' : fmt.min1(R.x.min[i]) + ' min · ' + fmt.ml(A.u[i]) + ' mL' + (f ? ' · ' + f.id : '');
-    const st = LTM.state(R), fitTxt = d.fit ? ' · χ²ᵣ ' + d.chi2r.toFixed(2) : st === 'waiting' ? ' · lifetime analysis after ' + fmt.int(150) + ' blocks' : st === 'fitting' ? ' · first lifetime fit running' : '';
-    return where + fitTxt + ' · block ' + fmt.int(i + 1) + ', ' + d.nBlocks + ' blocks averaged';
+    const st = LTM.state(R), fitTxt = d.fit ? (S.engineer ? ' · χ²ᵣ ' + d.chi2r.toFixed(2) : '') : st === 'waiting' ? ' · species after ' + fmt.int(150) + ' blocks' : st === 'fitting' ? ' · first species fit running' : '';
+    return where + fitTxt + (S.engineer ? ' · block ' + fmt.int(i + 1) + ', ' + d.nBlocks + ' blocks averaged' : '');
   }
   function updDecay() {
     const R = S.run; if (!R || !R.acq.dw) { if (dec.n) { dec.n = 0; dec.d = null; decChart.setSeries(decSeries()); } $('#decWhen').textContent = ''; return; }
-    const sb = shownBlock(R), key = sb.i + '|' + (R.lt ? R.lt.gen : 0) + '|' + pulseLog + '|' + sb.why;
+    const sb = shownBlock(R), key = sb.i + '|' + (R.lt ? R.lt.gen : 0) + '|' + pulseLog + '|' + sb.why + '|' + S.engineer;
     $('#decLatest').style.display = pin != null ? '' : 'none';
     if (key === decKey) return;
     // the latest block moves every tick while live: refresh at most 4 times a second
@@ -335,15 +351,17 @@ const RC = (function () {
     const vp = TR.pumpVolAt(R.ph, Math.max(0, tA));
     const lad = TR.LADDERS[R.pmt], st = lad[A.cur - 1], al = M.alignmentState(), disc = A.disc.subarray(0, n).reduce((a, b) => a + b, 0);
     const sys = R.state === 'complete' ? 'Complete. Acquisition time ' + fmt.clock(R.endAt) + '.' : R.state === 'paused' ? (R.standalone ? 'Paused.' : 'Paused. The AKTA run continues.') : R.standalone ? 'Acquiring. ' + fmt.min1(tS / 60) + ' min in.' : (tA < 0 ? 'Acquiring buffer. AKTA run starts in ' + fmt.min1(-tA) + ' min.' : (tA > R.ph.totalMin ? 'Acquiring after the AKTA method ended.' : 'Acquiring. ' + ph.name + (ph.hold && tA >= ph.tPump ? ', hold, no flow' : ', ' + fmt.ml(vp - ph.v0) + ' mL in') + '.'));
+    // Engineer view rows: instrument state the scientist does not act on
+    const eng = h => h.replace('<tr>', '<tr class="eng-only">');
     const row = (k2, u, v) => '<tr><td class="k">' + k2 + (u ? ' <span class="un">(' + u + ')</span>' : '') + '</td><td class="v">' + v + '</td></tr>';
     const fl = n && i >= 0 ? R.y.act[i] : NaN, use = n ? A.ruse[i] : NaN;
     const html = '<div class="sysstate">' + esc(sys) + '</div><table class="rv">' +
-      row('Fluorescence', 'V·ns', fmt.sig3(fl)) +
-      row('Sensitivity', '', '<span title="OD ' + st.nd + ', ' + st.range * 1000 + ' mV">' + A.cur + ' of ' + lad.length + '</span>') +
-      row('Input range', '', rangeBar(use, use < S.th.lowPrec ? '<span class="flag w" title="Pulse under ' + Math.round(S.th.lowPrec * 100) + ' % of the input range (provisional)">Low precision</span>' : use > TR.ACQ.limit ? '<span class="flag f">Above 90 % limit</span>' : '')) +
+      row('Total fluorescence', 'V·ns', fmt.sig3(fl)) +
+      eng(row('Sensitivity', '', '<span title="OD ' + st.nd + ', ' + st.range * 1000 + ' mV">' + A.cur + ' of ' + lad.length + '</span>')) +
+      eng(row('Input range', '', rangeBar(use, use < S.th.lowPrec ? '<span class="flag w" title="Pulse under ' + Math.round(S.th.lowPrec * 100) + ' % of the input range (provisional)">Low precision</span>' : use > TR.ACQ.limit ? '<span class="flag f">Above 90 % limit</span>' : ''))) +
       row('Blocks', '', fmt.int(n - disc) + ' (' + fmt.int(disc) + ' discarded)').replace('<tr>', '<tr class="eng-only">') +
       (R.setupSnap.beamPerBlock ? row('Beam monitor', '% of start', n ? fmt.pct1(A.bm[i] / (R.bmRef || A.bm[i])) : '–').replace('<tr>', '<tr class="eng-only">') : '') +
-      (al.detector === 'n/a' ? '' : row('Alignment', '', esc(al.detector === 'Aligned' && al.fractions === 'Uncertain' ? 'Fractions uncertain' : al.detector))) + RC.runRows.map(f => f(R, i, row)).join('') + '</table>';
+      (al.detector === 'n/a' || (!S.engineer && al.detector === 'Aligned' && al.fractions === 'Aligned') ? '' : row('Alignment', '', esc(al.detector === 'Aligned' && al.fractions === 'Uncertain' ? 'Fractions uncertain' : al.detector))) + RC.runRows.map(f => f(R, i, row)).join('') + '</table>';
     if (box._h !== html) { box.innerHTML = html; box._h = html; }
   }
   const LOGTYPES = { sensitivity: 'Sens.', laser: 'Laser', alignment: 'Align.', note: 'Note', event: 'Event', card: 'Card', system: 'System' };
@@ -393,7 +411,7 @@ const RC = (function () {
       '<div class="eh"><span class="rid" title="' + esc(M.ruleById(c.rule) ? M.ruleById(c.rule).cond(S.th) : '') + '">' + c.rule + '</span><span class="lvl">' + esc(c.levelName) + (c.linkedTo ? ', from ' + c.linkedTo.split('-')[0] : '') + '</span><span class="lvl">· ' + esc(c.phase) + '</span>' + (group ? '<span class="cnt" title="Repeated in this phase after the condition cleared">' + group.length + '×</span>' : '') + '</div>' +
       '<div>' + (c.obs && c.obs.indexOf(c.title) === 0 ? '<b>' + esc(c.title) + '</b>' + tx(c.obs.slice(c.title.length)) : '<b>' + esc(c.title) + '.</b> ' + tx(c.obs)) + '</div>' +
       (group ? '<div class="meta">Also at ' + group.slice(0, -1).map(x => S.run && S.run.standalone ? fmt.min1(x.x0) + ' min' : fmt.ml(x.x0) + ' mL').join(', ') + '.</div>' : '') +
-      '<div class="meta">' + (c.fractions && c.fractions.length ? 'Fractions: ' + esc(M.rangeIds(c.fractions)) + ' · ' : '') + '<button class="link small" data-show="' + c.x0 + ',' + c.x1 + '">Show on chart</button> · Processing: ' + esc(c.mode) + (feats ? ' · Relies on: ' + feats : '') + '</div>' +
+      '<div class="meta">' + (c.fractions && c.fractions.length ? 'Fractions: ' + esc(M.rangeIds(c.fractions)) + ' · ' : '') + '<button class="link small" data-show="' + c.x0 + ',' + c.x1 + '">Show on chart</button><span class="eng-only"> · Processing: ' + esc(c.mode) + (feats ? ' · Relies on: ' + feats : '') + '</span></div>' +
       (c.confirm ? '<div class="meta"><b>Suggested confirmation:</b> ' + esc(c.confirm) + '</div>' : '') + (c.action ? '<div class="meta"><b>Suggested action:</b> ' + tx(c.action) + '</div>' : '') +
       '<div class="acts">' + (nOpen ? '<input type="text" placeholder="Note (optional)" aria-label="Response note"><button class="btn sm" data-r="accepted">Accept</button><button class="btn sm" data-r="dismissed">Dismiss</button>' : resp) + '</div></div>';
   }
@@ -404,14 +422,21 @@ const RC = (function () {
       for (const c of S.run.rules.cards) if (ids.includes(c.id) && c.status === 'open') M.cardRespond(c, b.dataset.r, note);
     }));
   }
+  // Scientist view: process observations and hypotheses first; instrument evidence collapses into one line
+  let instOpen = false;
   function runCards() {
     const R = S.run, box = $('#runCards'); const cards = R ? R.rules.cards : [];
-    const key = JSON.stringify(cards.map(c => [c.id, c.status, c.obs, c.fractions && c.fractions.length]));
+    const key = JSON.stringify([S.engineer, cards.map(c => [c.id, c.status, c.obs, c.fractions && c.fractions.length])]);
     if (key === cardsKey) return; cardsKey = key;
-    $('#cardCnt').textContent = cards.filter(c => c.status === 'open').length;
     const focused = document.activeElement && box.contains(document.activeElement) && document.activeElement.tagName === 'INPUT';
     if (focused) { cardsKey = ''; return; }
-    box.innerHTML = '<div class="cards">' + cardsHtml(cards) + '</div>'; wireCards(box);
+    if (S.engineer) { $('#cardCnt').textContent = cards.filter(c => c.status === 'open').length; box.innerHTML = '<div class="cards">' + cardsHtml(cards) + '</div>'; wireCards(box); return; }
+    const main = cards.filter(c => c.level !== 'I'), inst = cards.filter(c => c.level === 'I');
+    $('#cardCnt').textContent = main.filter(c => c.status === 'open').length;
+    const byRule = {}; inst.forEach(c => { byRule[c.rule] = (byRule[c.rule] || 0) + 1; });
+    const instHtml = inst.length ? '<details class="inst-notes"' + (instOpen ? ' open' : '') + '><summary>Instrument notes <span class="cnt">' + inst.filter(c => c.status === 'open').length + '</span> <span class="note">' + Object.keys(byRule).map(k => k + (byRule[k] > 1 ? ' ×' + byRule[k] : '')).join(', ') + '</span></summary><div class="cards">' + cardsHtml(inst) + '</div></details>' : '';
+    box.innerHTML = '<div class="cards">' + (main.length ? cardsHtml(main) : '<div class="note">No process observations.</div>') + instHtml + '</div>'; wireCards(box);
+    const d = $('.inst-notes', box); if (d) d.ontoggle = () => { instOpen = d.open; };
   }
   function update(d) {
     if (!built) build();

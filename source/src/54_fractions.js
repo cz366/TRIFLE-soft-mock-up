@@ -11,23 +11,23 @@
   function build() {
     const r = $('#scr-fractions'); r.classList.add('fixed'); r.style.overflow = 'auto';
     r.innerHTML = '<div class="scr-h"><h1>Fraction review</h1></div>' +
-      '<div class="run-top"><div class="chips" id="frChips" style="display:none"><span>Ranges one setting larger (what-if)</span></div><div class="toolbar" id="fTools"><div class="seg sm" id="fX"><button data-v="min">min</button><button data-v="vol">mL</button><button data-v="cv">CV</button></div><div class="seg sm" id="fLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div>' + RC.viewToggles('f') + '<span class="nowrap" style="display:inline-flex;align-items:center;gap:6px"><span class="lab">Drag to</span><div class="seg sm" id="fDrag"><button data-v="select" class="on">Select fractions</button><button data-v="zoom">Zoom</button></div></span><label class="chk small"><input type="checkbox" id="fRul"> Rulers</label><button class="btn sm" id="fReset">Reset zoom</button></div></div>' +
+      '<div class="run-top"><div class="chips" id="frChips" style="display:none"><span>Ranges one setting larger (what-if)</span></div><div class="toolbar" id="fTools"><div class="seg sm" id="fX"><button data-v="min">min</button><button data-v="vol">mL</button><button data-v="cv">CV</button></div><div class="seg sm" id="fLog"><button data-v="0">Linear</button><button data-v="1">Log</button></div><span class="nowrap" style="display:inline-flex;align-items:center;gap:6px"><span class="lab">Drag to</span><div class="seg sm" id="fDrag"><button data-v="select" class="on">Select fractions</button><button data-v="zoom">Zoom</button></div></span><span id="fViewSlot"></span><button class="btn sm hidden" id="fReset">Reset zoom</button></div></div>' +
       '<div id="fEmpty" class="callout" style="display:none"></div>' +
       '<div class="fr-grid" id="frGrid" style="min-height:560px;grid-template-rows:minmax(0,56fr) minmax(0,44fr)">' +
       '<div class="panel" style="grid-column:1;grid-row:1"><div class="pb" style="padding:4px 8px"><div id="frOv" style="height:100%"></div></div></div>' +
       '<div class="panel fr-side" style="grid-column:2;grid-row:1"><div class="ph"><div class="ptabs" id="frTabs"><button data-v="frac" class="on">Fraction</button><button data-v="samples">Samples to send <span class="cnt" id="sampCnt">0</span></button></div><span class="sp"></span><span id="frNav" class="nowrap"></span></div><div class="pb" style="padding:4px 8px;display:flex;flex-direction:column;gap:6px;overflow:hidden" id="frSide"></div></div>' +
-      '<div class="panel fr-table" style="grid-column:1 / 3;grid-row:2"><div class="ph"><h3>Fractions</h3><span class="note" id="frNote"></span><span class="sp"></span><label class="chk small" title="Relative signal-area contribution only. Not equivalent to protein mass, yield or recovery."><input type="checkbox" id="frShare"> Fluorescence share</label></div><div class="pb tbl-wrap" style="padding:0" id="frTblWrap"><table class="tbl" id="frTbl"><thead></thead><tbody></tbody></table></div></div>' +
+      '<div class="panel fr-table" style="grid-column:1 / 3;grid-row:2"><div class="ph"><h3>Fractions</h3><span class="note" id="frNote"></span><span class="sp"></span><label class="chk small eng-only" title="Relative signal-area contribution only. Not equivalent to protein mass, yield or recovery."><input type="checkbox" id="frShare"> Fluorescence share</label></div><div class="pb tbl-wrap" style="padding:0" id="frTblWrap"><table class="tbl" id="frTbl"><thead></thead><tbody></tbody></table></div></div>' +
       '</div>';
-    UI.processingButton($('#fTools')); RC.wireToggles($('#fTools'));
+    UI.processingButton($('#fTools')).classList.add('eng-only');
+    RC.viewMenu($('#fViewSlot'), 'f', { get: () => !!(zm && zm.rulersOn), set: on => { zm.rulersOn = on; if (on) { const [a, b] = zm.xRange(); zm.rulers = [a + (b - a) * 0.4, a + (b - a) * 0.6]; } zm.invalidateOver(); zm.updateReadout(); } });
     $$('#fX button').forEach(b => b.onclick = () => { RC.view.x = b.dataset.v; sync(); ov.resetZoom(); ov.invalidate(); zoomTo(); UI.emitDirty('xmode'); });
     $$('#fLog button').forEach(b => b.onclick = () => { RC.view.log = b.dataset.v === '1'; sync(); ov.invalidate(); zm.invalidate(); });
     $$('#fDrag button').forEach(b => b.onclick = () => { ov.mode = b.dataset.v; $$('#fDrag button').forEach(x => x.classList.toggle('on', x === b)); });
     $('#fReset').onclick = () => ov.resetZoom();
-    $('#fRul').onchange = e => { zm.rulersOn = e.target.checked; if (zm.rulersOn) { const [a, b] = zm.xRange(); zm.rulers = [a + (b - a) * 0.4, a + (b - a) * 0.6]; } zm.invalidateOver(); zm.updateReadout(); };
     $('#frShare').onchange = e => { showShare = e.target.checked; lastKey = ''; };
     $$('#frTabs button').forEach(b => b.onclick = () => { tab = b.dataset.v; $$('#frTabs button').forEach(x => x.classList.toggle('on', x === b)); side(true); });
     ov = new CH.Chart($('#frOv'), {
-      ariaLabel: 'Run overview; drag to select fractions', dragMode: 'select', rulers: [0, 1],
+      ariaLabel: 'Run overview; drag to select fractions', dragMode: 'select', rulers: [0, 1], onView: v => $('#fReset').classList.toggle('hidden', !v),
       xDomain: RC.xDomain, xTitle: RC.xTitle, panels: ovPanels(), series: ovSeries(), bands: RC.bands, fractions: RC.fracItems,
       markers: () => RC.markers(false), hatches: RC.hatches, intervals: RC.intervals, info: RC.info, legendExtras: RC.legendExtras(), liveReadout: false,
       vlines: () => poolLines(false).map(l => ({ ...l, label: null })),
@@ -56,20 +56,22 @@
     };
   }
   function fr(id) { return S.run ? S.run.fractions.find(f => f.id === id) : null; }
+  // the UV pool and fluorescence boundary comparison uses AKTA data: shown with the AKTA traces or in Engineer view
+  function cmpOn() { return S.engineer || RC.view.akta; }
   function poolLines(withFl) {
-    const R = S.run; if (!R || R.setupSnap.source !== 'import') return [];
+    const R = S.run; if (!R || R.setupSnap.source !== 'import' || !cmpOn()) return [];
     const p = M.uvPool(R), out = [];
     if (p) { out.push({ x: RC.toX(p.a), label: 'UV pool start', color: C.uv, dash: 'dash', row: 0 }); if (p.b != null) out.push({ x: RC.toX(p.b), label: 'UV pool end', color: C.uv, dash: 'dash', align: 'right', row: 0 }); }
     return out;
   }
   function flBounds() { const R = S.run; if (!R) return null; const b = M.flBounds(R, S.th.flPct); if (!b) return null; if (flManual) return { ...b, a: flManual[0] != null ? flManual[0] : b.a, b: flManual[1] != null ? flManual[1] : b.b, manual: true }; return b; }
   function flGuides() {
-    const b = flBounds(); if (!b) return []; const col = M.procMode() === 'v20' ? C.v20 : C.prop, out = [];
+    const b = flBounds(); if (!b || !cmpOn()) return []; const col = M.procMode() === 'v20' ? C.v20 : C.prop, out = [];
     const mk = (k, v) => ({ id: 'fl' + k, x: RC.toX(v), color: col, dash: 'dot', label: 'Fl. ' + S.th.flPct + ' %', row: 1 + k, drag: x => { flManual = flManual || [null, null]; flManual[k] = RC.fromX(x); }, onEnd: () => { M.audit('fraction review', 'Fluorescence boundary ' + (k ? 'end' : 'start') + ' moved by hand to ' + fmt.ml(flManual[k]) + ' mL (visual comparison only).'); lastKey = ''; } });
     if (b.a != null) out.push(mk(0, b.a)); if (b.b != null) out.push(mk(1, b.b));
     return out;
   }
-  function sync() { $$('#fX button').forEach(b => b.classList.toggle('on', b.dataset.v === RC.view.x)); $$('#fLog button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === RC.view.log)); RC.syncToggles(); }
+  function sync() { $$('#fX button').forEach(b => b.classList.toggle('on', b.dataset.v === RC.view.x)); $$('#fLog button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === RC.view.log)); }
   function zoomTo() { if (!zm || !focus) return; zm.view = null; zm.zoomStack = []; zm.invalidate(); }
   function selChanged() { userPick = true; lastKey = ''; ov.invalidateOver(); zoomTo(); mp.fid = null; if (tab !== 'frac') { tab = 'frac'; $$('#frTabs button').forEach(x => x.classList.toggle('on', x.dataset.v === 'frac')); } side(true); }
   /* ---------- table ---------- */
@@ -78,13 +80,15 @@
     { k: 'id', h: 'Fraction', v: f => f.id },
     { k: 'phase', h: 'Phase', v: f => f.phase },
     { k: 'a', h: 'Volume <span class="unit">(mL)</span>', num: true, v: f => f.a, f: f => fmt.ml(f.a) + '–' + fmt.ml(f.b) },
-    { k: 'uvMean', h: 'UV 280 mean / max <span class="unit">(mAU)</span>', num: true, v: f => f.uvMean, f: f => fmt.mau(f.uvMean) + ' / ' + fmt.mau(f.uvMax) + (f.uvSat ? ' <span class="flag w" title="UV 280 at its 3,800 mAU ceiling">sat.</span>' : '') },
-    { k: 'fMean', h: 'Fluor. mean / max <span class="unit">(V·ns)</span>', num: true, v: f => f.fMean, f: f => fmt.sig3(f.fMean) + ' / ' + fmt.sig3(f.fMax) },
-    { k: 'qc', h: 'QC', wrap: true, v: f => f.chg + f.over + f.disc * 10 + f.laser * 10, f: f => qcFlags(f) },
+    { k: 'uvMean', h: 'UV 280 mean / max <span class="unit">(mAU)</span>', num: true, show: () => S.engineer || RC.view.akta, v: f => f.uvMean, f: f => fmt.mau(f.uvMean) + ' / ' + fmt.mau(f.uvMax) + (f.uvSat ? ' <span class="flag w" title="UV 280 at its 3,800 mAU ceiling">sat.</span>' : '') },
+    { k: 'fMean', get h() { return 'Fluor. mean' + (S.engineer ? ' / max' : '') + ' <span class="unit">(V·ns)</span>'; }, num: true, v: f => f.fMean, f: f => fmt.sig3(f.fMean) + (S.engineer ? ' / ' + fmt.sig3(f.fMax) : '') },
+    { k: 'qc', h: 'QC', wrap: true, show: () => S.engineer, v: f => f.chg + f.over + f.disc * 10 + f.laser * 10, f: f => qcFlags(f) },
     { k: 'share', h: 'Share <span class="unit">(%)</span>', num: true, opt: true, tip: 'Relative signal-area contribution only. Not equivalent to protein mass, yield or recovery.', v: f => f.share, f: f => isFinite(f.share) ? (f.share * 100).toFixed(1) : '–' },
-    { k: 'cards', h: 'Cards', wrap: true, v: f => f.linked.length, f: f => f.linked.length ? f.linked.join(', ') : '' },
+    // Scientist view: the cards, plus the two checks that change how a fraction is read (assignment, partial)
+    { k: 'cards', get h() { return S.engineer ? 'Cards' : 'Evidence'; }, wrap: true, v: f => f.linked.filter(UI.cardShown).length, f: f => f.linked.filter(UI.cardShown).join(', ') + (S.engineer ? '' : ' ' + sciFlags(f)) },
     { k: 'dec', h: 'Decision', v: f => decText(dec(f.id)), f: f => '<button class="btn sm decb" data-id="' + f.id + '" title="Choose offline analyses">' + esc(decText(dec(f.id))) + (dec(f.id).note ? ' *' : '') + '</button>' }
   ];
+  function sciFlags(f) { return (f.assign === 'Uncertain' ? '<span class="flag w" title="' + esc(['Fraction assignment uncertain.', ...M.alignmentState().issues].join(' ')) + '">Uncertain</span>' : '') + (!f.complete && f.nBlocks ? '<span class="flag" title="Fraction not yet fully acquired">Partial</span>' : ''); }
   function qcFlags(f) {
     const out = [];
     if (f.chg) out.push('<span class="flag" title="' + plural(f.chg, 'sensitivity change', 'sensitivity changes') + ' inside the fraction">Sens. ×' + f.chg + '</span>');
@@ -98,7 +102,7 @@
   }
   function table() {
     const R = S.run; const cols = COLS.filter(c => (!c.opt || showShare) && (!c.show || c.show()));
-    const key = JSON.stringify([R ? R.derivedN : 0, R ? R.dataGen : 0, R && R.lt ? R.lt.gen : 0, [...sel], sortKey, sortDir, showShare, COLS.map(c => c.show ? c.show() : 1), R ? R.rules.cards.length : 0, S.decisions, M.alignmentState().fractions, RC.view.x]);
+    const key = JSON.stringify([R ? R.derivedN : 0, R ? R.dataGen : 0, R && R.lt ? R.lt.gen : 0, [...sel], sortKey, sortDir, showShare, COLS.map(c => c.show ? c.show() : 1), S.engineer, R ? R.rules.cards.length : 0, S.decisions, M.alignmentState().fractions, RC.view.x]);
     if (key === lastKey) return; lastKey = key;
     rows = R ? M.fractionStats(R) : [];
     if (sortKey) { const c = COLS.find(x => x.k === sortKey); rows.sort((a, b) => { const va = c.v(a), vb = c.v(b); return (va > vb ? 1 : va < vb ? -1 : 0) * sortDir; }); }
@@ -134,7 +138,7 @@
   let sideKey = '';
   function side(force) {
     const R = S.run, box = $('#frSide');
-    const key = JSON.stringify([tab, focus, [...sel], S.decisions, R ? R.derivedN : 0, R && R.lt ? R.lt.gen : 0, R ? R.rules.cards.map(c => c.status) : 0, M.procLabel(), S.th.flPct, flManual, M.plumbing(), M.alignmentState().fractions]);
+    const key = JSON.stringify([tab, focus, [...sel], S.decisions, R ? R.derivedN : 0, R && R.lt ? R.lt.gen : 0, S.engineer, RC.view.akta, R ? R.rules.cards.map(c => c.status) : 0, M.procLabel(), S.th.flPct, flManual, M.plumbing(), M.alignmentState().fractions]);
     if (!force && key === sideKey) return; sideKey = key;
     $('#frNav').innerHTML = tab === 'frac' && R && R.fractions.length ? '<label class="chk small eng-only" title="Median pulse of the fraction"><input type="checkbox" id="frMp"' + (showMp ? ' checked' : '') + '> Pulse</label> <button class="btn sm" id="frPrev" title="Previous fraction">Prev</button> <button class="btn sm" id="frNext" title="Next fraction">Next</button>' : '';
     const mpb = $('#frMp'); if (mpb) mpb.onchange = () => { showMp = mpb.checked; const g = $('.fr-detail-grid'); if (g) g.classList.toggle('show-mp', showMp); };
@@ -146,16 +150,16 @@
     const st = rows.find(r => r.id === f.id) || M.fractionStats(R).find(r => r.id === f.id), d = dec(f.id), b = flBounds(), pool = R.setupSnap.source === 'import' ? M.uvPool(R) : null;
     if (!zm._mounted) { box.innerHTML = '<div style="flex:1 1 0;min-height:150px" id="zmHost"></div><div class="fr-detail-grid' + (showMp ? ' show-mp' : '') + '" style="flex:0 1 auto;max-height:60%;min-height:0;display:grid"><div id="mpHost" class="eng-only" style="min-height:0"></div><div id="frDet" style="overflow:auto;font-size:13.5px;min-height:0"></div></div>'; $('#zmHost').append(zm.host); zm.resize(); zm._mounted = true; mountPulse(); }
     zm.invalidate();
-    const cards = R.rules.cards.filter(c => c.fractions && c.fractions.includes(f.id));
+    const cards = R.rules.cards.filter(c => c.fractions && c.fractions.includes(f.id) && UI.cardShown(c.rule));
     const shifted = Math.abs(st.ca - f.a) > 0.005 || Math.abs(st.cb - f.b) > 0.005, unc = st.assign === 'Uncertain';
     const sub = [shifted ? 'Collected liquid ' + fmt.ml(st.ca) + ' to ' + fmt.ml(st.cb) + ' mL' : '', unc ? '<span title="' + esc(M.alignmentState().issues.join(' ')) + '">Assignment uncertain</span>' : ''].filter(Boolean);
-    const bnd = st.phaseKey !== (R.tpl.fractions.elPhase || 'el') ? [] : [pool ? '<span title="UV 280 above 100 mAU">UV pool ' + fmt.ml(pool.a) + ' to ' + (pool.b != null ? fmt.ml(pool.b) : '…') + ' mL</span>' : '',
+    const bnd = st.phaseKey !== (R.tpl.fractions.elPhase || 'el') || !(S.engineer || RC.view.akta) ? [] : [pool ? '<span title="UV 280 above 100 mAU">UV pool ' + fmt.ml(pool.a) + ' to ' + (pool.b != null ? fmt.ml(pool.b) : '…') + ' mL</span>' : '',
       b ? '<span title="Fluorescence ' + S.th.flPct + ' % of peak; visual comparison only">Fl. ' + S.th.flPct + ' % ' + (b.a != null ? fmt.ml(b.a) : '…') + ' to ' + (b.b != null ? fmt.ml(b.b) : '…') + ' mL' + (b.manual ? ', moved' : '') + '</span>' + (flManual ? ' <button class="link small" id="flAuto">Reset</button>' : '') : ''].filter(Boolean);
     // order: fraction, linked cards and decision, confirmations, then the visual boundary comparison for the zoom chart
-    $('#frDet').innerHTML = '<div><b>' + f.id + '</b> · ' + esc(st.phase) + ' · ' + fmt.ml(f.a) + ' to ' + fmt.ml(f.b) + ' mL · ' + fmt.int(st.nBlocks) + ' blocks</div>' +
+    $('#frDet').innerHTML = '<div><b>' + f.id + '</b> · ' + esc(st.phase) + ' · ' + fmt.ml(f.a) + ' to ' + fmt.ml(f.b) + ' mL<span class="eng-only"> · ' + fmt.int(st.nBlocks) + ' blocks</span></div>' +
       (sub.length ? '<div class="muted">' + sub.join(' · ') + '</div>' : '') +
-      (st.lt ? '<div title="' + esc(LTUI.LTIP) + '"><b>Species</b> <span class="lt-cell">' + LTUI.compBar(st.lt.comps, 90) + '<span>' + esc(LTUI.compText(st.lt.comps, 4)) + '</span></span> <span class="muted small">share of fluorescence</span></div>' : '') +
-      '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px">' + (cards.length ? '<span><b>Linked cards</b> ' + cards.map(c => '<span class="flag" title="' + esc(c.obs && c.obs.indexOf(c.title) === 0 ? c.obs : c.title + (c.obs ? '. ' + c.obs : '')) + '">' + c.rule + (c.status !== 'open' ? ' ' + c.status : '') + '</span>').join('') + '</span>' : '') +
+      (st.lt ? '<div title="' + esc(LTUI.LTIP) + '"><b>Species</b> ' + LTUI.compCell(st.lt.comps, 90, 4) + (LTUI.background(st.lt.comps) ? '' : ' <span class="muted small">share of fluorescence</span>') + '</div>' : '') +
+      '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px">' + (cards.length ? '<span><b>' + (S.engineer ? 'Linked cards' : 'Evidence') + '</b> ' + cards.map(c => '<span class="flag" title="' + esc(c.obs && c.obs.indexOf(c.title) === 0 ? c.obs : c.title + (c.obs ? '. ' + c.obs : '')) + '">' + c.rule + (c.status !== 'open' ? ' ' + c.status : '') + '</span>').join('') + '</span>' : '') +
       '<span><b>Decision</b> <button class="btn sm" id="frDec">' + esc(decText(d)) + '</button></span></div>' + (d.note ? '<div class="small">Note: ' + esc(d.note) + '</div>' : '') +
       (cards.filter(c => c.confirm).map(c => '<div class="small">' + c.rule + ': ' + esc(c.confirm) + '</div>').join('')) +
       (bnd.length ? '<div class="muted">' + bnd.join(' · ') + '</div>' : '');

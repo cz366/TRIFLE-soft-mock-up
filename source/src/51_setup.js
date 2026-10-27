@@ -53,10 +53,18 @@
       '<div class="panel"><div class="ph"><h3>Sign-in</h3></div><div class="pb stack" style="gap:8px">' +
       '<label class="chk" title="I am a trained user of this instrument"><input type="checkbox" id="sTrained"' + (s.trained ? ' checked' : '') + dis + '> Trained user</label>' +
       '<label class="chk" title="IP arrangements are in place for collaborative work"><input type="checkbox" id="sIp"' + (s.ip ? ' checked' : '') + dis + '> IP agreement</label>' +
-      '</div></div>' +
-      (s.template === 'aav' ? '<div class="callout">Empty and full capsid assessment is not a TRIFLE output in this version.</div>' : '');
+      '</div></div>';
+    // Scientist view: what TRIFLE will watch, read-only. The acquisition settings are in the Engineer view.
+    const tplName = s.source === 'standalone' ? 'No AKTA data (TRIFLE only, time axis)' : M.template().name + (s.source === 'manual' ? ', manual event marks' : '');
     Rt.innerHTML =
-      '<div class="panel"><div class="ph"><h3>Acquisition</h3><span class="sp"></span>' + tag('P') + '</div><div class="pb form">' +
+      '<div class="panel sci-only"><div class="ph"><h3>Method</h3><span class="sp"></span><span class="note">From the UNICORN export</span></div><div class="pb form">' +
+      '<label class="l">AKTA method</label><div>' + esc(tplName) + '</div>' +
+      (s.source === 'standalone' ? '' : '<label class="l">Column</label><div>' + esc(s.column) + '</div>') +
+      '<label class="l">Sample</label><div>' + esc(s.sample) + '</div>' +
+      '<label class="l">Run time</label><div>' + (s.timerMin || Math.ceil(ph.totalMin + 2)) + ' min</div>' +
+      '<label class="l">Detector</label><div>PMT ' + s.pmt + ' mV <span class="note">set on the PMT supply</span></div>' +
+      '</div></div>' +
+      '<div class="panel eng-only"><div class="ph"><h3>Acquisition</h3><span class="sp"></span>' + tag('P') + '</div><div class="pb form">' +
       '<label class="l">PMT voltage</label><div class="inl"><div class="seg" id="sPmt">' + [400, 800].map(v => '<button data-v="' + v + '" class="' + (s.pmt === v ? 'on' : '') + '"' + dis + '>' + v + ' mV</button>').join('') + '</div><span class="note">Set on the PMT supply ' + tag('E') + '</span></div>' +
       '<label class="l">Preset</label><div><b>' + pi.id + '</b> <span class="muted small eng-only">checksum ' + pi.checksum + '</span></div>' +
       '<label class="l eng-only">Loads</label><div class="small eng-only">IRF ' + esc('impulse_' + s.irfFile + '_mV.txt') + '<br>Ladder ' + esc('od_filters_and_ranges_' + s.ladderFile + '_mV.txt') + ', ' + lad.length + ' steps</div>' +

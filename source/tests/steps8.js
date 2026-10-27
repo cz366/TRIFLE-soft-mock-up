@@ -7,7 +7,7 @@ module.exports = async (page, shot) => {
   await page.click('[data-go=readiness]'); await page.waitForTimeout(29000);
   const pmt = await page.$('#pmtChk'); if (pmt) await pmt.click(); await page.waitForTimeout(500);
   await page.click('[data-go=run]'); await page.waitForTimeout(300);
-  check(await ev(() => RC.view.x === 'min' && RC.view.map && !RC.view.akta), 'TRIFLE view by default: time axis, decay map on, AKTA traces off');
+  check(await ev(() => RC.view.x === 'min' && !RC.view.map && !RC.view.akta), 'TRIFLE view by default: time axis, decay map and AKTA traces off');
   await page.click('#rStart'); await page.waitForTimeout(6000);
   await page.click('#demoFF');
   await until('() => M.S.run && M.S.run.state === "complete" && !UI.isFF()');
@@ -19,17 +19,18 @@ module.exports = async (page, shot) => {
   check(lt.chi2r > 0.9 && lt.chi2r < 1.3, 'reduced chi-squared near 1');
   check(lt.n === lt.N, 'amplitudes for every block once complete');
   const legend = await ev(() => [...document.querySelectorAll('#runChart .ch-ll')].map(e => e.textContent).join(' | '));
-  check(/Total fluorescence/.test(legend) && /mAb, 3\.\d\d ns/.test(legend) && /HMW, 5\.\d\d ns/.test(legend), 'Run legend: total and species with lifetimes');
+  check(/Total fluorescence/.test(legend) && /\bmAb\b/.test(legend) && /\bHMW\b/.test(legend) && !/ ns\b/.test(legend) && !/Scatter/.test(legend), 'Run legend (scientist view): total and species by name, no lifetimes or scatter');
   const dec = await ev(() => ({ keys: UI.screen('run').chart() && [...document.querySelectorAll('#runDecay .ch-ll')].map(e => e.textContent), when: document.querySelector('#decWhen').textContent, info: document.querySelector('#runDecay .ch-info').textContent }));
   check(dec.when === 'Fluorescence maximum' && dec.keys.includes('Fit') && dec.keys.some(k => /^mAb \d/.test(k)), 'Decay panel at the fluorescence maximum with fit and components');
-  check(/χ²ᵣ/.test(dec.info), 'Decay panel reports the fit quality');
+  check(!/χ²ᵣ/.test(dec.info), 'Decay panel (scientist view): no fit statistics');
   await shot('80_run_trifle');
-  await page.click('#rAk'); await page.waitForTimeout(500);
+  const viewOpt = async id => { await page.click('#rView'); await page.click(id); await page.mouse.click(700, 40); await page.waitForTimeout(400); };
+  await viewOpt('#rAk');
   check(await ev(() => { const c = UI.screen('run').chart(); return ['uv', 'cond', 'ph'].every(k => c.panels.some(p => p.key === k)) && !c.cfg.panels[0].yr; }), 'AKTA traces in their own strips, no second y axis');
-  await page.click('#rMap'); await page.waitForTimeout(400);
-  check(await ev(() => !UI.screen('run').chart().panels.some(p => p.key === 'map')), 'decay map hides');
-  await shot('81_run_akta_nomap');
-  await page.click('#rMap'); await page.click('#rAk'); await page.click('#rLog button[data-v="1"]'); await page.waitForTimeout(500);
+  await viewOpt('#rMap');
+  check(await ev(() => UI.screen('run').chart().panels.some(p => p.key === 'map')), 'decay map shows from the View menu');
+  await shot('81_run_akta_map');
+  await viewOpt('#rMap'); await viewOpt('#rAk'); await page.click('#rLog button[data-v="1"]'); await page.waitForTimeout(500);
   await shot('82_run_log');
   await page.click('#rLog button[data-v="0"]');
   // pin the decay at the elution tail
@@ -48,6 +49,10 @@ module.exports = async (page, shot) => {
   await page.click('#engSwitch'); await page.click('.nav[data-go=engineer]'); await page.click('#engTabs button[data-v=lt]'); await page.waitForTimeout(1000);
   check(await ev(() => /Global lifetimes/.test(document.querySelector('#engBody').textContent)), 'Engineer view: Lifetimes tab');
   await shot('85_eng_lifetimes');
+  await page.click('[data-go=run]'); await page.waitForTimeout(800);
+  const eng = await ev(() => ({ legend: [...document.querySelectorAll('#runChart .ch-ll')].map(e => e.textContent).join(' | '), info: document.querySelector('#runDecay .ch-info').textContent }));
+  check(/mAb, 3\.\d\d ns/.test(eng.legend) && /HMW, 5\.\d\d ns/.test(eng.legend) && /Scatter, 0\.\d\d ns/.test(eng.legend), 'Run legend (Engineer view): species with lifetimes, and scatter');
+  check(/χ²ᵣ/.test(eng.info), 'Decay panel (Engineer view) reports the fit quality');
   await page.click('#engSwitch');
   await page.click('[data-go=run]'); await page.waitForTimeout(500);
   await page.click('#qOpen'); await page.fill('#qIn', 'Which species are co-eluting?'); await page.press('#qIn', 'Enter'); await page.waitForTimeout(300);
