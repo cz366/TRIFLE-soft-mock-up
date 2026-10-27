@@ -8,6 +8,7 @@ An interactive mock-up of the TRIFLE control and analysis software, for review w
 - **Verified against TRIFLE v2.0.** The v2.0 fluorescence and auto-ranging algorithms reproduce `trifle_reference_tests.json`, which is embedded in the file. Open **Engineer view → Diagnostics → Reference tests** to see each value checked (228 of 228 pass).
 - **Source:** `source/` holds the parts the file is built from, the build script and the browser test suite. See `source/DEVELOPING.md`.
 - **Stage 1 snapshot:** `stage1/trifle_mockup_stage1.html` is the Stage 1 build on its own, kept for comparison.
+- **TRIFLE view snapshot:** `stage2/trifle_mockup_stage2_trifle_view.html` (git tag `v2-trifle-view`) is Stage 2 with the TRIFLE view and lifetime analysis, before the interface simplification.
 - **Phone and hosted page.** Below 820 px wide the navigation moves into a Menu drawer and panels stack. When the page runs inside a hosting viewer, exports go through the viewer's save prompt and the Summary (PDF) button is hidden, because printing is not available there.
 
 ## Five-minute demonstration
